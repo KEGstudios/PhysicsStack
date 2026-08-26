@@ -236,6 +236,29 @@ git clone <repo-url>
 Unity Hub'dan 6000.5.10f1 ile aç. İlk açılış paketleri çözümlediği için uzun sürer.
 Sahne: `Assets/_Project/Scenes/Main.unity`.
 
+## Telefon build'i
+
+```bash
+Unity.exe -batchmode -quit -projectPath . -buildTarget Android           -executeMethod PhysicsStack.EditorTools.AndroidBuild.BuildApk
+```
+
+Çıktı: `Build/Android/PhysicsStack.apk` (Build klasörü commit'lenmiyor).
+Editörden almak istersen aynı iş `PhysicsStack > Android APK Al` menüsünde.
+
+**Build ayarları neden kodda?** Inspector'dan tıklayarak da yapılabilirdi, ama bu
+proje iki makine arasında Git ile taşınıyor ve tıklamaların bir kısmı taşınmıyor:
+aktif build target ve çıktı yolu makinede kalıyor. Ayarlar `AndroidBuild.cs`'te
+durunca build'in nasıl alındığı repoda yazılı oluyor ve iki makinede aynı çıktıyı
+veriyor. Build başarısız olursa script batchmode'da `Exit(1)` veriyor — sessizce
+geçen bir hata, yeşil görünen kırık bir build demek olurdu.
+
+**IL2CPP + ARM64** seçildi. Mono ARM64'ü desteklemiyor ve modern telefonların bir
+kısmı 32-bit çalıştırmıyor; ilk build uzun sürüyor (C++ runtime da derleniyor) ama
+telefonda çalışmayan bir APK'yı hızlı almanın değeri yok.
+
+Ekran yönü yatay kilitli: kamera yatay kadraj için kurulu, otomatik döndürme açık
+kalsaydı portre tutunca zemin kadrajdan taşardı.
+
 ## Durum
 
 5 günlük planın günlük kararları ve notları: [docs/KARARLAR.md](docs/KARARLAR.md)

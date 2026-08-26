@@ -228,6 +228,41 @@ rengini değiştirmek gibi kod tarafında ucuz bir işaret yeter.
 
 ## Gün 5 — Build ve kapanış
 
-**Yapılan:** _(doldurulacak)_
+**Yapılan:** Önce bitişin görünürlüğü: hedef çizgisi kazanınca yeşile, kaybedince
+kırmızıya dönüyor (`MaterialPropertyBlock` ile — `renderer.material` materyalin
+kopyasını çıkarıp ayrı bir draw call açardı), ve bittikten sonra ekrana dokununca
+sahne yeniden yükleniyor. İkincisi menü değil: telefonda kazandıktan sonra
+yapılabilecek tek şey uygulamayı kapatmaktı ve günün çıktısı 30 saniyelik kayıt.
 
-**Bitmeyen ne kaldı:** _(dürüst liste; "bitti" demek yerine ne eksik kaldıysa yaz)_
+Build ayarları `PlayerBuilds.cs`'e yazıldı. Sebep: proje iki makine arasında Git ile
+taşınıyor ve Inspector'daki tıklamaların bir kısmı taşınmıyor. Batchmode'da build
+başarısız olursa `Exit(1)` veriyor — sessizce geçen bir hata, yeşil görünen kırık
+bir build demek.
+
+- **Android APK:** 32.5 MB, 8.7 dk (IL2CPP + ARM64). Mono ARM64 desteklemiyor,
+  modern telefonların bir kısmı 32-bit çalıştırmıyor.
+- **WebGL:** 12 MB, 9.1 dk (Brotli + `decompressionFallback`; GitHub Pages
+  sıkıştırılmış dosyayı doğru başlıkla sunmadığı için yükleyicinin kendisi çözüyor).
+
+**Plandan sapma — ve sebebi:** Plan "telefonda build" diyordu, elimdeki telefon
+iPhone çıktı. iOS build'i Xcode ve macOS istiyor; Windows'ta mümkün değil. Android
+APK yine de alındı (pipeline'ın kurulduğunun kanıtı) ama **gerçek cihazda
+denenmedi**. Onun yerine WebGL build'i GitHub Pages'e konuldu: iPhone'da Safari'de
+açılıyor, dokunmatik girdiyi gerçekten alıyor, yani "parmakla nasıl hissettiriyor"
+sorusu gerçek cihazda cevaplanabiliyor. Yan faydası portföy için indirilen bir
+dosya yerine tıklanır bir link.
+
+**Bitmeyen ne kaldı — dürüst liste:**
+
+- Android APK gerçek cihazda çalıştırılmadı. "Telefonda çalışıyor" demiyorum,
+  çünkü denemedim.
+- WebGL'in iPhone Safari'deki performansı ölçülmedi. Unity, WebGL'i mobil
+  tarayıcıda resmî olarak desteklenen saymıyor; gerekirse `devicePixelRatio`
+  düşürmek için özel bir WebGL şablonu gerekecek.
+- Kamera sabit: kule yükseldikçe kadrajdan çıkıyor. Beş kutuda sorun olmuyor ama
+  oynanabilirliğin önündeki en büyük engel bu.
+- Ekran yönü yatay kilitli. Bu oyunun doğal yönü portre; kamera yeniden
+  kurulmadan portreye geçilemezdi.
+- Ses, menü, skor kaydı yok — bunlar bilinçli olarak kapsam dışıydı.
+
+Son üçü Faz 2'nin ilk günü. Bkz. [FAZ2.md](FAZ2.md).

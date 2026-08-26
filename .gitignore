@@ -59,3 +59,10 @@ desktop.ini
 
 # ---- Kural: Assets altındaki her dosyanın .meta'sı commit'lenir ----
 # .meta dosyaları asla ignore edilmez; GUID kaybı sahne referanslarını kırar.
+
+# ---- Build sirasinda repo kokune dusen gecici ciktilar ----
+# Burst ve IL2CPP, WebGL build'inde bunlari calisma dizinine birakiyor.
+# Bastaki / onemli: Assets/_Project/Data commit'lenmeye devam etsin diye
+# sadece kokteki Data klasoru yok sayiliyor.
+/.utmp/
+/Data/
