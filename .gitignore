@@ -1,0 +1,61 @@
+# ---- Unity üretimi, commit'lenmez ----
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Unity 6 paket önbelleği (Packages/manifest.json commit'lenir, bu edilmez)
+/Packages/packages-lock.json.bak
+
+# ---- Yerel calisma notlari, repoya girmez ----
+CLAUDE.md
+.claude/
+
+# ---- IDE / araç çıktıları ----
+# .csproj ve .sln'i Unity her açılışta yeniden üretir
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.idea/
+# .vscode: template'in verdigi ayarlar commit'lenir, gerisi degil
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ---- Build artefaktları ----
+*.apk
+*.aab
+*.unitypackage
+*.app
+ExportedObj/
+.consulo/
+crashlytics-build.properties
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ---- İşletim sistemi ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Kural: Assets altındaki her dosyanın .meta'sı commit'lenir ----
+# .meta dosyaları asla ignore edilmez; GUID kaybı sahne referanslarını kırar.
