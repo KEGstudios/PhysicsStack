@@ -1,7 +1,9 @@
 {
     "name": "PhysicsStack.Runtime",
     "rootNamespace": "PhysicsStack",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

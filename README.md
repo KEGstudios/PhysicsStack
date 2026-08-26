@@ -43,6 +43,12 @@ rb.linearVelocity = Vector3.ClampMagnitude(delta / Time.fixedDeltaTime * takipGu
 - **Fırlatma** — bırakma anında rigidbody'nin üstünde zaten doğru hız var. Ayrıca
   bir "fırlat" kodu yazmaya gerek kalmıyor.
 
+**Sonradan öğrenilen:** `takipGucu` ile `maxHiz` bağımsız iki his kolu değil.
+Hız `delta * 50 * takipGucu` olduğu için, gerçek bir sürüklemede delta zaten büyük
+ve sonuç neredeyse hep `maxHiz` sınırına takılıyor — yani hissedilen gecikmenin
+tamamını `maxHiz` belirliyor, `takipGucu` ancak `maxHiz` yüksekken devreye giriyor.
+Bunu değerleri çevirip hiçbir fark hissetmeyince fark ettim.
+
 ### Hedef nokta: kameraya bakan bir düzlem üzerinde raycast
 
 Parmağın ekran koordinatını dünya koordinatına çevirmek gerekiyor.

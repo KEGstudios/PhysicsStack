@@ -1,3 +1,4 @@
+using PhysicsStack;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -30,10 +31,13 @@ namespace PhysicsStack.EditorTools
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            CreateCamera();
+            var camera = CreateCamera();
             CreateLight();
             CreateGround(groundMaterial);
-            CreateBoxPrefab(boxMaterial);
+
+            var boxPrefab = CreateBoxPrefab(boxMaterial);
+            CreateSystems(camera);
+            CreateTestBoxes(boxPrefab);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -43,7 +47,7 @@ namespace PhysicsStack.EditorTools
             Debug.Log($"[SceneBootstrap] Sahne kuruldu: {ScenePath}");
         }
 
-        static void CreateCamera()
+        static Camera CreateCamera()
         {
             var go = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
             go.tag = "MainCamera";
@@ -56,6 +60,7 @@ namespace PhysicsStack.EditorTools
             camera.fieldOfView = 55f;
             camera.backgroundColor = new Color(0.16f, 0.17f, 0.19f);
             camera.clearFlags = CameraClearFlags.SolidColor;
+            return camera;
         }
 
         static void CreateLight()
@@ -85,7 +90,7 @@ namespace PhysicsStack.EditorTools
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
 
-        static void CreateBoxPrefab(Material material)
+        static GameObject CreateBoxPrefab(Material material)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Box";
@@ -103,8 +108,44 @@ namespace PhysicsStack.EditorTools
             // veya yığından geçmesine yol açıyor.
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-            PrefabUtility.SaveAsPrefabAsset(go, BoxPrefabPath);
+            go.AddComponent<DraggableBody>();
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, BoxPrefabPath);
             Object.DestroyImmediate(go);
+            return prefab;
+        }
+
+        static void CreateSystems(Camera camera)
+        {
+            var go = new GameObject("Systems");
+            var input = go.AddComponent<PointerDragInput>();
+
+            // Camera.main'e Awake'te de düşüyor ama referansı sahnede görünür tutmak
+            // "hangi kamerayı kullanıyor" sorusunu Inspector'da cevaplıyor.
+            var serialized = new SerializedObject(input);
+            serialized.FindProperty("targetCamera").objectReferenceValue = camera;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        static void CreateTestBoxes(GameObject prefab)
+        {
+            // Gün 2 için sürüklenecek bir şey lazım. Gerçek kutu kuyruğu Gün 3'te
+            // geliyor; bunlar sadece his denemesi malzemesi.
+            var positions = new[]
+            {
+                new Vector3(-2.5f, 0.5f, 0f),
+                new Vector3(0f, 0.5f, 0f),
+                new Vector3(2.5f, 0.5f, 0f),
+            };
+
+            var parent = new GameObject("TestBoxes").transform;
+
+            for (int i = 0; i < positions.Length; i++)
+            {
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+                instance.name = $"Box_{i}";
+                instance.transform.position = positions[i];
+            }
         }
 
         static Material CreateLitMaterial(string path, Color color)

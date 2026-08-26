@@ -43,13 +43,66 @@ elenmiş bir denemenin kaydı, hiç denenmemiş olmasından değerlidir.
 
 ## Gün 2 — Sürükleme çekirdeği
 
-**Denenecek:** üç yaklaşım (doğrudan position set / MovePosition / hız tabanlı takip).
+**Yapılan:** İki script. `PointerDragInput` parmağı/fareyi okuyup hedef noktayı
+besliyor, `DraggableBody` fiziği uyguluyor.
 
-**Yapılan:** _(doldurulacak)_
+**Kararlar:**
 
-**Karar ve gerekçe:** _(doldurulacak)_
+- *Girdi ve fizik ayrı sınıflarda.* Girdi platforma bağlı ve kare hızında, takip
+  mantığı platformdan bağımsız ve sabit adımda çalışıyor. Aynı sınıfa koysaydım
+  telefonda bozulan şeyin hangisi olduğunu ayırt edemezdim.
+- *Üç yaklaşım da kodda, `FollowMode` enum'ıyla seçilebilir.* Elenenleri silmedim:
+  hangisinin neden elendiği okuyarak değil, sırayla denenerek anlaşılıyor.
+- *Sürükleme düzlemi orijinden geçen sabit bir düzlem*, kutunun yakalandığı
+  noktadan geçen bir düzlem değil. Tek yığın var; kutu başına ayrı düzlem olsaydı
+  yığın derinlemesine dağılır, kule kameradan "duruyor" görünüp aslında kutular
+  birbirine değmezdi.
+- *Yakalanan kutunun merkezi parmağa gidiyor*, yakalama offset'i korunmuyor
+  (CLAUDE.md'deki formülün doğrudan karşılığı). Alternatif: kutunun neresinden
+  tuttuysan orası parmakta kalsın — daha "gerçek" ama kule dizerken merkeze
+  hizalamak zorlaşıyor. Gün 4'te his ayarında tekrar bakılacak.
+- *`Pointer.current` kullanıldı* (proje Input System New'e ayarlı). Fareyi ve
+  dokunmatiği aynı kod yolundan geçiriyor: editörde test ettiğim şey telefonda
+  çalışan şeyle aynı.
 
-**His notu:** _(sürüklerken ne yanlış hissettirdi, hangi değeri çevirince düzeldi)_
+**Elenenler ve neden (üçü de sahnede denendi):**
+
+En net ayrım **bırakma anında** ortaya çıkıyor. Kutuyu hızlıca yana sürükleyip
+hareket hâlindeyken bırakınca:
+
+| Mod | Bırakınca | Çarpışma |
+|-----|-----------|----------|
+| DirectPosition | Olduğu yerde taş gibi düşüyor | Kutu diğerinin içinden geçip öbür tarafta beliriyor, sonra ikisi birbirini itip fırlıyor |
+| KinematicMovePosition | Yine taş gibi düşüyor | Diğerlerini savuruyor ama kendisi hiç zorlanmıyor — sürüklenen şeyin ağırlığı yok |
+| **VelocityFollow** | **Sürüklendiği yöne savruluyor** | Çarptığı şeye gerçekten çarpıyor, kendisi de yavaşlıyor |
+
+Fırlatma için tek satır kod yazmadım; bırakma anında rigidbody'nin üstünde zaten
+doğru hız olduğu için bedavaya geldi. Elenen iki yaklaşımda bu hız hiç oluşmuyor,
+fırlatmayı ayrıca yazmak gerekirdi — ve o yazılan şey fizik değil taklit olurdu.
+
+**Tünelleme notu:** DirectPosition'ın zeminden geçmesini bekliyordum, geçmedi.
+Sebep sahneye özel: zemin 1 birim kalınlığında, kutu da 1 birim. Kutu zemine
+ışınlanıyor, çözücü bir sonraki adımda dışarı itiyor — tam geçiş yerine gömülüp
+zıplama oluyor. Tünelleme ince collider'larda görünür hale geliyor. Kusur duruyor,
+sadece bu sahnede kendini başka türlü gösteriyor.
+
+**His notu — iki kolun birbirine bağlı olduğunu geç fark ettim:**
+
+`hız = (delta / fixedDeltaTime) * followStrength`, yani `delta * 50 * strength`.
+`followStrength = 0.35` iken delta 0.8 birimi geçtiği anda sonuç `maxSpeed = 14`
+sınırına takılıyor; strength 1'de bu eşik 0.28 birime iniyor. Gerçek sürüklemede
+kutu zaten parmağın gerisinde kaldığı için delta neredeyse hep bu eşiklerin
+üstünde — sonuç: kutu sürekli clamp'lenmiş halde gidiyor ve `followStrength`'i
+çevirmek hiçbir şeyi değiştirmiyor.
+
+Yani **şu an hissedilen gecikmenin tamamı `maxSpeed`'ten geliyor.**
+`followStrength` ancak `maxSpeed` yüksekken (ör. 40) bir işe yarıyor.
+İki değeri birbirinden bağımsız iki his kolu sanmak yanlıştı; `maxSpeed` baskın olan.
+
+**Gün 4'e devreden:** Hız atamak yerine kuvvet uygulamak (`AddForce`) denenecek.
+Şu anki halde her fizik adımında hızın üzerine yazdığımız için kutu çarpmaya
+takılıp kalamıyor; direnç hissi bu yüzden zayıf. Kuvvet gerçek direnç verir ama
+takip hassasiyetini düşürür, kule dizmek zorlaşır. Ölçülecek.
 
 ---
 
