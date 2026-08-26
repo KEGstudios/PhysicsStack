@@ -59,8 +59,8 @@ namespace PhysicsStack.EditorTools
             var dragSettings = LoadOrCreateDragSettings();
             var boxPhysics = LoadOrCreateBoxPhysicsMaterial();
             var boxPrefab = CreateBoxPrefab(boxMaterial, boxPhysics, dragSettings);
-            CreateTargetLine(groundMaterial, TargetHeight);
-            CreateSystems(camera, boxPrefab, dragSettings);
+            var targetLine = CreateTargetLine(groundMaterial, TargetHeight);
+            CreateSystems(camera, boxPrefab, dragSettings, targetLine);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -155,7 +155,7 @@ namespace PhysicsStack.EditorTools
             return prefab;
         }
 
-        static void CreateSystems(Camera camera, GameObject boxPrefab, DragSettings settings)
+        static void CreateSystems(Camera camera, GameObject boxPrefab, DragSettings settings, Renderer targetLine)
         {
             var go = new GameObject("Systems");
 
@@ -174,6 +174,13 @@ namespace PhysicsStack.EditorTools
             var overlay = go.AddComponent<DebugOverlay>();
             SetReference(overlay, "controller", controller);
             SetReference(overlay, "settings", settings);
+
+            var indicator = go.AddComponent<ResultIndicator>();
+            SetReference(indicator, "controller", controller);
+            SetReference(indicator, "targetLine", targetLine);
+
+            var restart = go.AddComponent<RestartOnTap>();
+            SetReference(restart, "controller", controller);
         }
 
         /// <summary>
@@ -232,7 +239,7 @@ namespace PhysicsStack.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void CreateTargetLine(Material material, float height)
+        static Renderer CreateTargetLine(Material material, float height)
         {
             // Hedef yüksekliği görünmeden oynamak, kaç kutu kaldığını sayarak
             // oynamak demek. İnce bir çizgi bunu tek bakışta çözüyor.
@@ -243,7 +250,12 @@ namespace PhysicsStack.EditorTools
 
             // Collider'ı yok: kulenin ona çarpması saçma olurdu.
             Object.DestroyImmediate(go.GetComponent<Collider>());
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+
+            // Oyun bittiğinde rengi değişecek olan nesne bu; referansı dışarı veriyoruz.
+            return renderer;
         }
 
         static Material CreateLitMaterial(string path, Color color)

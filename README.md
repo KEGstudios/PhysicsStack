@@ -165,6 +165,27 @@ okunsun diye).
 Asıl kazancı telefonda: konsol logunu göremediğim yerde "kutu neden yerleşmiş
 sayılmıyor" sorusunu ancak oturma sayacını gözümle görerek cevaplayabiliyorum.
 
+### Bitişi ekranda göstermek — ama menü kurmadan
+
+Beş kutuyu üst üste koyup kazandığımda oyunun bittiğini anlamadım; yeni kutu
+gelmeyince "takıldı mı" diye düşündüm. Kural doğru çalışıyordu, sadece kimseye
+söylemiyordu. Debug panelinde tek kelime olarak yazıyordu ama oynarken oraya
+bakılmıyor — bitişin **oyuncunun zaten baktığı yerde**, kulenin tepesinde olması
+gerekiyordu.
+
+Menü kapsam dışı, o yüzden sahnede zaten duran bir nesneyi kullandım: hedef
+çizgisi kazanınca yeşile, kaybedince kırmızıya dönüyor. Rengi
+`MaterialPropertyBlock` ile veriyorum, `renderer.material` ile değil — ikincisi
+materyalin çalışma zamanı kopyasını çıkarır, hem paylaşılan varlığa dokunmuş
+oluruz hem de kopya ayrı bir draw call'a düşer.
+
+Yanına dokununca yeniden başlatma koydum. Bu da menü değil: telefonda kazandıktan
+sonra yapılabilecek tek şey uygulamayı kapatmaktı ve bu prototipin çıktısı 30
+saniyelik bir kayıt. "Durumu sıfırla" fonksiyonu yazmak yerine sahneyi yeniden
+yüklüyorum — unutulan bir alan, silinmeyen bir olay aboneliği ya da sahnede kalan
+bir kutu ihtimali kalmıyor. Tek sahnelik bir prototipte yükleme maliyeti yok
+denecek kadar az; büyük bir projede bu tercih tersine dönerdi.
+
 ### Assembly definition kullanıldı
 
 `_Project` altındaki kod ayrı bir assembly (`PhysicsStack.Runtime`). İki sebep:
@@ -222,7 +243,7 @@ Sahne: `Assets/_Project/Scenes/Main.unity`.
 - [x] Gün 1 — Proje şablonu, .gitignore, klasör yapısı, ilk commit
 - [x] Gün 2 — Sürükleme çekirdeği
 - [x] Gün 3 — Kazanma/kaybetme, yerleşme tespiti, kutu kuyruğu
-- [ ] Gün 4 — His ayarı, değerlerin SO'ya taşınması, debug overlay
+- [x] Gün 4 — His ayarı, değerlerin SO'ya taşınması, debug overlay
 - [ ] Gün 5 — Telefonda build, 30 sn kayıt, README kapanışı
 
 ## Kapsam dışı
