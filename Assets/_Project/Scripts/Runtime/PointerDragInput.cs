@@ -23,17 +23,22 @@ namespace PhysicsStack
         DraggableBody held;
 
         /// <summary>
-        /// Sürükleme düzlemi: kameraya bakan, dünya orijininden geçen sabit bir düzlem.
+        /// Sürükleme düzlemi: yığının durduğu dünya düzlemi (z = 0).
         ///
         /// Neden ScreenToWorldPoint + sabit uzaklık değil? O yöntem kameranın konumuna
         /// ve FOV'una bağlı; kamerayı bir santim oynattığım anda ayarladığım his bozulur.
         /// Düzlem + Plane.Raycast ise kamera nereye giderse gitsin sürüklemeyi hep aynı
         /// dünya düzleminde tutuyor.
         ///
-        /// Düzlemin sabit olması (kutunun yakalandığı noktadan değil, orijinden geçmesi)
-        /// bu oyun için ayrıca isabetli: tek bir yığın var, bütün kutuların aynı derinlikte
-        /// kalması gerekiyor. Kutu başına ayrı düzlem kullansaydım yığın derinlemesine
-        /// dağılır, kule kamera açısından "duruyor" görünüp aslında birbirine değmezdi.
+        /// Önce düzlemi kameraya baktırmıştım (<c>-camera.forward</c> normali). Kamera
+        /// 8° aşağı baktığı için o düzlem de 8° yatıktı: parmağı yukarı sürüklemek
+        /// kutuyu yukarı **ve arkaya** taşıyordu. Kutular farklı yüksekliklerde
+        /// bırakıldığı için her biri farklı derinlikte kalıyor, kule kameradan düzgün
+        /// görünürken aslında derinlemesine kayıyor ve arkaya deviriliyordu.
+        ///
+        /// Düzlemi dünyanın XY düzlemine sabitlemek bunu kökünden kesiyor: derinlik
+        /// girdiyle hiç değişmiyor. Tek yığın var, bütün kutuların aynı derinlikte
+        /// kalması zaten gereken şeydi.
         /// </summary>
         Plane dragPlane;
 
@@ -44,7 +49,8 @@ namespace PhysicsStack
                 targetCamera = Camera.main;
             }
 
-            dragPlane = new Plane(-targetCamera.transform.forward, Vector3.zero);
+            // Normal +z'ye bakıyor, düzlem orijinden geçiyor: yani z = 0 düzlemi.
+            dragPlane = new Plane(Vector3.back, Vector3.zero);
         }
 
         void Update()

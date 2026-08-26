@@ -22,10 +22,31 @@ namespace PhysicsStack.EditorTools
         const string BoxPrefabPath = "Assets/_Project/Prefabs/Box.prefab";
         const string BoxMaterialPath = "Assets/_Project/Art/Materials/M_Box.mat";
         const string GroundMaterialPath = "Assets/_Project/Art/Materials/M_Ground.mat";
+        const string DragSettingsPath = "Assets/_Project/Data/DragSettings.asset";
+        // Uzantı bilerek ".asset": Unity, PhysicsMaterial'ı CreateAsset ile
+        // ".physicsMaterial" olarak yazmaya "bu ileride hata olacak" uyarısı
+        // veriyor ve kendi çözümü olarak ".asset"i öneriyor. Dosya türü değişse
+        // de içerik aynı PhysicsMaterial; Inspector da aynı arayüzü açıyor.
+        const string BoxPhysicsMaterialPath = "Assets/_Project/Settings/PM_Box.asset";
 
-        [MenuItem("PhysicsStack/Sahneyi Kur (Gun 1)")]
+        /// <summary>Kulenin geçmesi gereken yükseklik. Controller'ın varsayılanıyla aynı tutuluyor.</summary>
+        const float TargetHeight = 4f;
+
+        [MenuItem("PhysicsStack/Sahneyi Sifirdan Kur")]
         public static void Build()
         {
+            // Bu komut sahneyi sıfırdan kuruyor: elle yapılmış her düzenleme gider.
+            // Batchmode'da soru sorulamaz, orada doğrudan çalışıyor.
+            if (!Application.isBatchMode &&
+                !EditorUtility.DisplayDialog(
+                    "Sahneyi sıfırdan kur",
+                    "Main.unity yeniden oluşturulacak. Sahnede elle yaptığın değişiklikler kaybolur.",
+                    "Kur",
+                    "Vazgeç"))
+            {
+                return;
+            }
+
             var boxMaterial = CreateLitMaterial(BoxMaterialPath, new Color(0.62f, 0.62f, 0.62f));
             var groundMaterial = CreateLitMaterial(GroundMaterialPath, new Color(0.30f, 0.30f, 0.32f));
 
@@ -35,9 +56,11 @@ namespace PhysicsStack.EditorTools
             CreateLight();
             CreateGround(groundMaterial);
 
-            var boxPrefab = CreateBoxPrefab(boxMaterial);
-            CreateSystems(camera);
-            CreateTestBoxes(boxPrefab);
+            var dragSettings = LoadOrCreateDragSettings();
+            var boxPhysics = LoadOrCreateBoxPhysicsMaterial();
+            var boxPrefab = CreateBoxPrefab(boxMaterial, boxPhysics, dragSettings);
+            CreateTargetLine(groundMaterial, TargetHeight);
+            CreateSystems(camera, boxPrefab, dragSettings);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -90,14 +113,21 @@ namespace PhysicsStack.EditorTools
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
 
-        static GameObject CreateBoxPrefab(Material material)
+        static GameObject CreateBoxPrefab(Material material, PhysicsMaterial physics, DragSettings settings)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Box";
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
+            go.GetComponent<BoxCollider>().sharedMaterial = physics;
 
             var rb = go.AddComponent<Rigidbody>();
             rb.mass = 1f;
+
+            // Varsayılan 0.05 neredeyse sıfır: kutu bir kere dönmeye başlayınca
+            // durmuyor ve üst üste konan her kutu yığını biraz daha sallıyor.
+            // Sürtünmenin dönme karşılığı bu; yükseltince kule oturuyor ama
+            // kutular hâlâ devrilebiliyor.
+            rb.angularDamping = 0.35f;
 
             // Fizik sabit adımda çalışıyor, çizim kare hızında. Interpolate olmadan
             // hızlı sürüklenen kutu titriyor.
@@ -108,44 +138,112 @@ namespace PhysicsStack.EditorTools
             // veya yığından geçmesine yol açıyor.
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-            go.AddComponent<DraggableBody>();
+            // Görüntü 3D, simülasyon 2D. Oyuncu kutuyu yalnızca XY düzleminde
+            // hareket ettirebiliyor; derinlikte serbest bırakılan fizik, oyuncunun
+            // hiç erişemediği bir eksende kuleyi deviriyordu. Zorluk değil,
+            // adaletsizlik olduğu için kilitlendi: z'de konum, x/y'de dönüş kapalı;
+            // kutular hâlâ devrilir ve yuvarlanır, ama görünen düzlemde.
+            rb.constraints = RigidbodyConstraints.FreezePositionZ |
+                             RigidbodyConstraints.FreezeRotationX |
+                             RigidbodyConstraints.FreezeRotationY;
+
+            var draggable = go.AddComponent<DraggableBody>();
+            SetReference(draggable, "settings", settings);
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, BoxPrefabPath);
             Object.DestroyImmediate(go);
             return prefab;
         }
 
-        static void CreateSystems(Camera camera)
+        static void CreateSystems(Camera camera, GameObject boxPrefab, DragSettings settings)
         {
             var go = new GameObject("Systems");
+
             var input = go.AddComponent<PointerDragInput>();
+            var queue = go.AddComponent<BoxQueue>();
+            var tracker = go.AddComponent<StackTracker>();
+            var controller = go.AddComponent<StackGameController>();
 
             // Camera.main'e Awake'te de düşüyor ama referansı sahnede görünür tutmak
             // "hangi kamerayı kullanıyor" sorusunu Inspector'da cevaplıyor.
-            var serialized = new SerializedObject(input);
-            serialized.FindProperty("targetCamera").objectReferenceValue = camera;
+            SetReference(input, "targetCamera", camera);
+            SetReference(queue, "boxPrefab", boxPrefab);
+            SetReference(controller, "queue", queue);
+            SetReference(controller, "tracker", tracker);
+
+            var overlay = go.AddComponent<DebugOverlay>();
+            SetReference(overlay, "controller", controller);
+            SetReference(overlay, "settings", settings);
+        }
+
+        /// <summary>
+        /// Varlık zaten varsa dokunmuyoruz. Bu bilerek: sahneyi sıfırdan kurmak
+        /// his ayarlarını da silseydi, "sahneyi tazele" hareketi her seferinde
+        /// bir günlük ayar çalışmasını çöpe atardı.
+        /// </summary>
+        static DragSettings LoadOrCreateDragSettings()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<DragSettings>(DragSettingsPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            var settings = ScriptableObject.CreateInstance<DragSettings>();
+            AssetDatabase.CreateAsset(settings, DragSettingsPath);
+            return settings;
+        }
+
+        static PhysicsMaterial LoadOrCreateBoxPhysicsMaterial()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(BoxPhysicsMaterialPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            // PhysX'in varsayılanı 0.6/0.6 ve bu kutular için az: üst üste konan
+            // kutular en ufak temasta yatay kayıyordu. Statik sürtünmeyi dinamikten
+            // yüksek tutmak "duran kutuyu kaydırmak, kayan kutuyu durdurmaktan
+            // zordur" demek — kule bir kere oturunca yerinde kalıyor.
+            var material = new PhysicsMaterial("PM_Box")
+            {
+                staticFriction = 0.85f,
+                dynamicFriction = 0.6f,
+
+                // Sıfır zıplama: gri kutu prototipinde en ufak sekme bile kuleyi
+                // yıkıyor ve oyuncuya "ben mi yanlış yaptım" dedirtiyor.
+                bounciness = 0f,
+
+                // İki cismin sürtünmesi farklıysa büyüğü kazansın: kutunun zemine
+                // ve birbirine tutunması, ortalamayla zayıflatılmasın.
+                frictionCombine = PhysicsMaterialCombine.Maximum,
+                bounceCombine = PhysicsMaterialCombine.Minimum,
+            };
+
+            AssetDatabase.CreateAsset(material, BoxPhysicsMaterialPath);
+            return material;
+        }
+
+        static void SetReference(Object target, string propertyName, Object value)
+        {
+            var serialized = new SerializedObject(target);
+            serialized.FindProperty(propertyName).objectReferenceValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        static void CreateTestBoxes(GameObject prefab)
+        static void CreateTargetLine(Material material, float height)
         {
-            // Gün 2 için sürüklenecek bir şey lazım. Gerçek kutu kuyruğu Gün 3'te
-            // geliyor; bunlar sadece his denemesi malzemesi.
-            var positions = new[]
-            {
-                new Vector3(-2.5f, 0.5f, 0f),
-                new Vector3(0f, 0.5f, 0f),
-                new Vector3(2.5f, 0.5f, 0f),
-            };
+            // Hedef yüksekliği görünmeden oynamak, kaç kutu kaldığını sayarak
+            // oynamak demek. İnce bir çizgi bunu tek bakışta çözüyor.
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "TargetLine";
+            go.transform.position = new Vector3(0f, height, 0f);
+            go.transform.localScale = new Vector3(16f, 0.04f, 0.04f);
 
-            var parent = new GameObject("TestBoxes").transform;
-
-            for (int i = 0; i < positions.Length; i++)
-            {
-                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
-                instance.name = $"Box_{i}";
-                instance.transform.position = positions[i];
-            }
+            // Collider'ı yok: kulenin ona çarpması saçma olurdu.
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.GetComponent<MeshRenderer>().sharedMaterial = material;
         }
 
         static Material CreateLitMaterial(string path, Color color)

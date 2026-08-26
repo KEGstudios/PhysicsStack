@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace PhysicsStack
@@ -24,15 +25,17 @@ namespace PhysicsStack
 
         [SerializeField] FollowMode mode = FollowMode.VelocityFollow;
 
-        [Header("Hız tabanlı takip")]
-        [Tooltip("1 = parmağa tam yetişmeye çalışır, 0.2 = ağır ve gecikmeli hisseder.")]
-        [SerializeField, Range(0.05f, 1f)] float followStrength = 0.35f;
-
-        [Tooltip("Kutunun ulaşabileceği en yüksek hız. Ağırlık hissi buradan geliyor.")]
-        [SerializeField] float maxSpeed = 14f;
+        [Tooltip("His ayarları. Boş bırakılırsa kod içindeki varsayılanlarla çalışır ama uyarı basar.")]
+        [SerializeField] DragSettings settings;
 
         Rigidbody rb;
         bool isDragged;
+
+        /// <summary>
+        /// Kuyruktaki kutu sırasını beklerken havada asılı duruyor: kinematik ve
+        /// yerçekimsiz. İlk dokunuşta kendini serbest bırakıyor.
+        /// </summary>
+        bool isWaiting;
 
         /// <summary>
         /// Parmağın son pozisyonu. Update'te yazılır, FixedUpdate'te okunur.
@@ -45,15 +48,51 @@ namespace PhysicsStack
 
         public bool IsDragged => isDragged;
 
+        /// <summary>Yerleşme tespiti rigidbody'nin kendisine bakıyor; dışarı açıyoruz.</summary>
+        public Rigidbody Body => rb;
+
+        public event Action<DraggableBody> Grabbed;
+        public event Action<DraggableBody> Released;
+
         void Awake()
         {
             rb = GetComponent<Rigidbody>();
+
+            if (settings == null)
+            {
+                // Sessizce çalışmasındansa bağırarak çalışsın: varlığı prefab'a
+                // vermeyi unutmak, "değeri değiştiriyorum ama hiçbir şey olmuyor"
+                // diye yarım saat harcanacak türden bir hata.
+                Debug.LogWarning($"[DraggableBody] {name}: DragSettings atanmamış, varsayılan değerlerle çalışıyorum.", this);
+                settings = ScriptableObject.CreateInstance<DragSettings>();
+            }
+        }
+
+        /// <summary>
+        /// Kuyrukta sırasını bekleyen kutuyu havada tutar. Dinamik bırakırsak
+        /// oyuncu dokunmadan düşer; kinematik yapmak "sıradaki kutu" fikrini
+        /// ayrı bir bekleme nesnesi icat etmeden veriyor.
+        /// </summary>
+        public void HoldInPlace()
+        {
+            isWaiting = true;
+            rb.isKinematic = true;
+            rb.useGravity = false;
         }
 
         public void BeginDrag(Vector3 point)
         {
+            if (isWaiting)
+            {
+                isWaiting = false;
+                rb.isKinematic = false;
+                rb.useGravity = true;
+            }
+
             targetPoint = point;
             isDragged = true;
+
+            Grabbed?.Invoke(this);
 
             if (mode == FollowMode.KinematicMovePosition)
             {
@@ -86,11 +125,18 @@ namespace PhysicsStack
                     break;
 
                 case FollowMode.VelocityFollow:
-                    // Hiçbir şey yapmıyoruz — ve bu yaklaşımın en güzel tarafı bu.
                     // Bırakma anında rigidbody'nin üstünde zaten doğru hız var,
-                    // fırlatma ayrı bir kod yazmadan geliyor.
+                    // fırlatma ayrı bir kod yazmadan geliyor — bu yaklaşımın en güzel
+                    // tarafı buydu. Ama tamamen serbest bırakınca sorun çıkıyordu:
+                    // kuleye yaklaşırken parmağı hızlı oynatıp bırakınca kutu maksimum
+                    // hızla kulenin içine giriyor ve altındaki her şeyi süpürüyordu.
+                    // Kırpma fırlatmayı öldürmüyor, sadece üst sınırını "kuleyi
+                    // yıkmayacak" seviyeye çekiyor.
+                    rb.linearVelocity = Vector3.ClampMagnitude(rb.linearVelocity, settings.releaseSpeedClamp);
                     break;
             }
+
+            Released?.Invoke(this);
         }
 
         void FixedUpdate()
@@ -127,12 +173,27 @@ namespace PhysicsStack
             // delta / fixedDeltaTime = "tek fizik adımında oraya varmak için gereken hız".
             // followStrength bunun ne kadarını uygulayacağımızı söylüyor; 1'e yaklaştıkça
             // kutu parmağa yapışıyor, düşük değerlerde arkadan sürüklenen bir ağırlık gibi.
-            Vector3 desired = delta / Time.fixedDeltaTime * followStrength;
+            Vector3 desired = delta / Time.fixedDeltaTime * settings.followStrength;
 
-            // Asıl his buradan geliyor: parmağı hızlı çekince kutu yetişemiyor ve geride
-            // kalıyor. Bu gecikme "ağır cisim" olarak okunuyor. Aynı zamanda kutunun
-            // çılgın hızlara çıkıp sahneden fırlamasını da engelliyor.
-            rb.linearVelocity = Vector3.ClampMagnitude(desired, maxSpeed);
+            // Parmağı hızlı çekince kutu yetişemiyor ve geride kalıyor; bu gecikme
+            // "ağır cisim" olarak okunuyor. Aynı zamanda kutunun çılgın hızlara
+            // çıkıp sahneden fırlamasını da engelliyor.
+            desired = Vector3.ClampMagnitude(desired, settings.maxSpeed);
+
+            // Hızı doğrudan atamak yerine ona doğru yürüyoruz. Doğrudan atama fiziğin
+            // karşı koyma hakkını elinden alıyordu: kutu kulenin üstündeki kutuya
+            // değdiği anda çözücü hızı sıfırlıyor, biz bir sonraki adımda aynı
+            // hızı geri yazıyoruz — yani her fizik adımında kuleye yeni bir darbe.
+            // Adım başına değişimi sınırlayınca kutu engele dayandığında hız
+            // birikemiyor: itiş sertliğinin üst sınırı artık maxAcceleration.
+            //
+            // Bu, AddForce(ForceMode.Acceleration) ile aynı hesabın açık yazılmış hali.
+            // AddForce'u tercih etmememin sebebi şu: kuvvet uygulayıp sonucu fiziğe
+            // bırakınca kutunun ne kadar hızlanacağını kütle, sürtünme ve temas
+            // belirliyor, dolayısıyla "parmağa ne kadar yetişecek" sorusunun cevabı
+            // elimden çıkıyor. Burada hedef hız benim, ona ulaşma sertliği fiziğin.
+            rb.linearVelocity = Vector3.MoveTowards(
+                rb.linearVelocity, desired, settings.maxAcceleration * Time.fixedDeltaTime);
         }
     }
 }

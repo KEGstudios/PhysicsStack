@@ -108,17 +108,121 @@ takip hassasiyetini düşürür, kule dizmek zorlaşır. Ölçülecek.
 
 ## Gün 3 — Kazanma / kaybetme
 
-**Yapılan:** _(doldurulacak)_
+**Yapılan:** Üç sınıf — `BoxQueue` (üretim), `StackTracker` (ölçüm),
+`StackGameController` (kural). `DraggableBody`'ye `Grabbed`/`Released` olayları
+ve `HoldInPlace()` bekleme durumu eklendi.
 
-**Karar ve gerekçe:** _(doldurulacak)_
+**Kararlar:**
+
+- *Ölçüm ile kural ayrı sınıflarda.* `StackTracker` sadece ölçüyor: her şey durdu
+  mu, tepe nerede, bir şey düştü mü. Kazanma kararını controller veriyor. Gün 4'te
+  eşikleri kurcalayacağım; ölçüm ile kural iç içe olsaydı her his denemesi kuralı
+  da riske atardı.
+- *Sıradaki kutu kinematik ve yerçekimsiz bekliyor*, ilk dokunuşta kendini serbest
+  bırakıyor. Alternatif ayrı bir "bekleyen kutu" nesnesi tutmaktı — iki farklı kutu
+  tipi, iki farklı kod yolu demekti. Tek tip kutu, iki durum daha ucuz.
+- *Yerleşme tespitinde önce `IsSleeping()`, sonra kendi hız eşiğimiz.* Fizik motoru
+  bir cismi uykuya aldıysa "bu artık hareket etmiyor" demiş oluyor; bu, elle
+  seçilmiş bir eşikten güvenilir. Eşik yalnızca uykuya hiç girmeyen ama pratikte
+  duran cisimler için yedekte.
+- *Tek kare "duruyor" görmek yetmiyor.* Sallanan kule hız sıfırdan geçiyor ve o
+  karede yanlışlıkla "oturdu" diyorduk. `settleGraceTime` (0.3 sn) kesintisiz
+  durma şartı bu yanlış pozitifi eledi.
+- *Kazanma sorusu "tepe hedefi geçti mi" değil, "oturduktan sonra hedefin üstünde mi".*
+  Sallanan kule bir kare için hedefi geçip sonra devrilebiliyor; o kazanma değil.
+- *Yükseklik collider sınırlarından ölçülüyor*, transform pozisyonundan değil.
+  Kutu yan yattığında merkezi alçalır ama üst kenarı yükselir; kule yüksekliği
+  dediğimiz şey ikincisi.
+- *Kutu kaydı bırakıldığında değil yakalandığında yapılıyor.* Oyuncu kutuyu havada
+  tutup zeminin altına sürüklerse bu da bir kayıp; yığının parçası sayılmalı.
+- *Havuz (pooling) yok.* Bir turda üretilen kutu iki haneli sayıda. Erken
+  optimizasyon burada okunabilirlikten çalardı; gerekirse yeri belli.
+- *`TargetLine`:* y = 4'te ince, collider'sız gri çizgi. Hedef görünmeden oynamak,
+  kaç kutu kaldığını sayarak oynamak olurdu.
+
+**Oyun testinden çıkan iki düzeltme:**
+
+İlk oynanışta kutular üst üste binince arkaya devriliyordu ve oyuncunun buna
+müdahale şansı yoktu. İki ayrı kusur üst üste binmiş:
+
+1. *Sürükleme düzlemi eğikti.* Kamera 8° aşağı baktığı için `-camera.forward`
+   normaliyle kurulan düzlem de 8° yatıktı: parmağı yukarı sürüklemek kutuyu
+   yukarı **ve arkaya** taşıyordu. Kutular farklı yüksekliklerde bırakıldığı için
+   her biri farklı derinlikte kalıyor, kule kameradan düzgün görünürken aslında
+   derinlemesine kayıyordu. Düzlem dünyanın XY düzlemine (z = 0) sabitlendi.
+   "Kameraya bakan sabit düzlem" kararı yanlış değildi; kamera eğik olduğu anda
+   o düzlemin yığın düzlemi olmaktan çıktığını hesaba katmamıştım.
+
+2. *Kontrol 2D, simülasyon 3D idi.* Oyuncunun hiç erişemediği bir eksende fizik
+   serbest çalışıyordu. Kule derinlemesine devrildiğinde yapılabilecek hiçbir şey
+   yok — bu zorluk değil, adaletsizlik. Rigidbody kısıtı eklendi: z'de konum,
+   x/y'de dönüş kilitli. Görüntü 3D kalıyor, simülasyon 2D oluyor; kutular hâlâ
+   devriliyor, yuvarlanıyor, birbirini itiyor, ama yalnızca görünen düzlemde.
+
+Karar şu cümlede toplanıyor: **kontrol 2D ise simülasyon da 2D olmalı.**
+Serbest bıraktığın her eksen, oyuncunun kaybedebileceği ama kazanamayacağı bir eksen.
+
+**Açık kalan — oynandı, cevap geldi:** Hedef yükseklik 4 birim (≈4 kutu) tahminî
+bir başlangıçtı. İlk oturumda **4'ten fazlasını üst üste koymak çok zor** çıktı.
+
+Gün 4'te önce sebebi aranacak, hedef küçültülerek kaçılmayacak. İlk şüpheli fizik
+malzemesi: kutuların statik/dinamik sürtünmesi ayarlanmadı, şu an varsayılan
+değerlerle kaygan duruyorlar. İkinci şüpheli sürükleme hassasiyeti — `maxSpeed`
+baskın olduğu için kutuyu tam istediğim noktaya bırakmak zor olabilir.
+
+**Yol boyunca öğrenilen:** Editör açıkken `-batchmode` aynı projeyi açamıyor;
+süreç hiçbir şey yapmadan `return code 1` ile çıkıyor. Sahneyi kod üretiyorsa
+editörün kapalı olması gerekiyor — ya da komutu editörün kendi menüsünden
+çalıştırmak.
 
 ---
 
 ## Gün 4 — His ayarı, SO'ya taşıma, debug overlay
 
-**Yapılan:** _(doldurulacak)_
+**Yapılan:** Gün 3'ün açık sorusuyla başladım: dörtten fazla kutu neden
+konulamıyor. Hedefi düşürmek yerine sebebini aradım, üç ayrı yerde birikiyormuş.
 
-**Bulunan değerler:** _(takip gücü / maks hız / yerleşme eşiği — ve neden bu değerler)_
+1. **Çözücü iterasyonu az.** `Default Solver Iterations` 6 → 12,
+   `Velocity Iterations` 1 → 2. Üst üste duran cisimlerde çözücünün her adımda
+   bıraktığı hata birikip kuleyi kendiliğinden sallıyordu.
+2. **Sürtünme hiç ayarlanmamış.** Collider'da fizik malzemesi yoktu; PhysX
+   varsayılanı (0.6 / 0.6) ile kutular temasta yatay kayıyordu. `PM_Box`:
+   statik 0.85, dinamik 0.6, zıplama 0, `Friction Combine = Maximum`.
+   Yanına açısal sönüm 0.05 → 0.35.
+3. **Asıl sebep — sürüklenen kutu kuleye her fizik adımında yeniden vuruyordu.**
+   Hızı doğrudan atadığım için, temas anında çözücü hızı sıfırlıyor, ben bir
+   sonraki adımda aynı hızı geri yazıyordum: saniyede elli darbe. Çözüm hızı
+   atamak yerine `MoveTowards` ile hedefe doğru yürümek — adım başına değişimi
+   `maxAcceleration` sınırlıyor, yani itişin sertliğinin üst sınırı var.
+   Bırakma anına da `releaseSpeedClamp` koydum; hızlı bırakış kuleyi süpürüyordu.
+
+Ayrıca his değerleri `DragSettings` ScriptableObject'ine taşındı ve ekranın
+köşesine OnGUI ile durum paneli eklendi (durum / kule / kutu / oturma sayacı).
+
+**Neden AddForce değil:** `ForceMode.Acceleration` birebir aynı hesap. Kuvvet
+uygulayıp sonucu fiziğe bırakınca hızlanmayı kütle, sürtünme ve temas belirliyor;
+"parmağa ne kadar yetişecek" sorusunun cevabı elimden çıkıyor. Bu haliyle hedef
+hız benim, ona ulaşma sertliği fiziğin.
+
+**Neden her ayar SO'ya girmedi:** Yerleşme eşiği `StackTracker`'da, hedef yükseklik
+ve oturma süresi `StackGameController`'da kaldı. Onlar hisle değil kuralla ilgili;
+hepsini tek varlığa doldurmak "ayarlar" adında bir çöp kutusu üretirdi.
+
+**Bulunan değerler:** takip gücü 0.35 · maks hız 14 → **10** · maks ivme **90** ·
+bırakma kırpması **5**. Maks hızı düşürdüm çünkü hissedilen gecikmenin tamamını o
+belirliyor (Gün 2 notu) ve 14'te kutuyu istediğim noktaya bırakmak zordu.
+İvme sınırı 90: 10 birim/sn hıza yaklaşık 0.11 saniyede çıkıyor — boşlukta fark
+edilmiyor, temasta darbeyi kesiyor.
+
+**Oynandı, cevap geldi:** Beş kutu üst üste kondu — Gün 3'te dört sınırdı, üç
+düzeltme birlikte işe yaradı. Değerleri elle kurcalamama gerek kalmadı.
+
+**Bu turda çıkan yeni gözlem:** Beşinciden sonra kutu gelmeyince "oyun takıldı mı"
+diye düşündüm; halbuki kazanmıştım. Kural doğru çalışıyor (tepe hedefi geçti, yığın
+oturdu, kuyruk durdu) ama **kazanma ekranda duyulmuyor** — köşedeki panelde tek
+kelime olarak yazıyor, oynarken oraya bakmıyorsun. Prototipin menüsü olmayacak,
+ama Gün 5'te telefonda kayıt alırken bitişin görülmesi lazım: hedef çizgisinin
+rengini değiştirmek gibi kod tarafında ucuz bir işaret yeter.
 
 ---
 
