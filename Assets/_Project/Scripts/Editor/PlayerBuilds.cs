@@ -36,7 +36,9 @@ namespace PhysicsStack.EditorTools
             // Sideload için APK; AAB Play Store'a yükleme formatı, burada işe yaramaz.
             EditorUserBuildSettings.buildAppBundle = false;
 
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+            // Unity 6 artik en dusuk API 26 (Android 8.0) istiyor; 24 yazmak
+            // gelecek surumde derleme hatasi olacakti.
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
             PlayerSettings.Android.bundleVersionCode = 1;
             PlayerSettings.bundleVersion = "1.0";

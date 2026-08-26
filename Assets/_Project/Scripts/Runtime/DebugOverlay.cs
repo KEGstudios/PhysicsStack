@@ -21,17 +21,19 @@ namespace PhysicsStack
     {
         [SerializeField] StackGameController controller;
         [SerializeField] DragSettings settings;
+        [SerializeField] StackCamera stackCamera;
 
         [Tooltip("Kapatınca hiçbir şey çizilmiyor. Build'e bu kapalı gitmeli mi diye Gün 5'te karar vereceğim.")]
         [SerializeField] bool visible = true;
 
         GUIStyle style;
+        GUIStyle boxStyle;
 
         void Awake()
         {
             if (controller == null)
             {
-                controller = FindFirstObjectByType<StackGameController>();
+                controller = FindAnyObjectByType<StackGameController>();
             }
         }
 
@@ -42,42 +44,64 @@ namespace PhysicsStack
                 return;
             }
 
-            // Stil ilk çizimde kuruluyor: OnGUI'de new GUIStyle() her karede
-            // çağrılırsa çöp toplayıcıyı boş yere meşgul ediyor.
-            if (style == null)
-            {
-                style = new GUIStyle(GUI.skin.label)
-                {
-                    // Telefonun piksel yoğunluğu masaüstünün üç katı olabiliyor;
-                    // sabit punto orada okunmaz hale geliyor. Ekran yüksekliğine
-                    // oranlamak tek satırla bunu çözüyor.
-                    fontSize = Mathf.RoundToInt(Screen.height * 0.028f),
-                    normal = { textColor = Color.white },
-                };
-            }
+            EnsureStyles();
 
             var tracker = controller.Tracker;
             float height = tracker != null ? tracker.HighestPointY() : 0f;
             int count = tracker != null ? tracker.Count : 0;
 
-            float pad = Screen.height * 0.02f;
-            var rect = new Rect(pad, pad, Screen.width - pad * 2f, Screen.height * 0.4f);
+            float pad = Screen.height * 0.012f;
 
-            // Arkasına koyu bir zemin: gri kutunun üstünde beyaz yazı okunmuyor.
-            GUI.Box(new Rect(pad * 0.5f, pad * 0.5f, Screen.width * 0.52f, style.fontSize * 6.4f), GUIContent.none);
+            // Kutunun genişliği içeriğe göre belirlensin: sabit oran verdiğimde
+            // portre ekranda yazı kutunun dışına taşıyordu. ExpandWidth(false)
+            // ile GUILayout kutuyu en uzun satıra göre ölçüyor.
+            GUILayout.BeginArea(new Rect(pad, pad, Screen.width - pad * 2f, Screen.height * 0.5f));
+            GUILayout.BeginVertical(boxStyle, GUILayout.ExpandWidth(false));
 
-            GUILayout.BeginArea(rect);
-            GUILayout.Label($"durum   : {Describe(controller.State)}", style);
-            GUILayout.Label($"kule    : {height:0.00} / {controller.TargetHeight:0.00}", style);
-            GUILayout.Label($"kutu    : {count}", style);
-            GUILayout.Label($"oturma  : {controller.RestTimer:0.00} sn", style);
+            GUILayout.Label($"{Describe(controller.State)} · {count} kutu · {controller.RestTimer:0.0} sn", style);
+            GUILayout.Label($"kule {height:0.00} / {controller.TargetHeight:0.00}", style);
+
+            if (stackCamera != null)
+            {
+                GUILayout.Label($"kadraj {stackCamera.FrameBottomY:0.0} → {stackCamera.FrameTopY:0.0} · {(float)Screen.width / Screen.height:0.00}", style);
+            }
 
             if (settings != null)
             {
-                GUILayout.Label($"takip   : {settings.followStrength:0.00} · hız {settings.maxSpeed:0} · ivme {settings.maxAcceleration:0}", style);
+                GUILayout.Label($"takip {settings.followStrength:0.00} · hız {settings.maxSpeed:0} · ivme {settings.maxAcceleration:0}", style);
             }
 
+            GUILayout.EndVertical();
             GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// Stiller ilk çizimde kuruluyor: OnGUI'de her karede new GUIStyle()
+        /// çağırmak çöp toplayıcıyı boş yere meşgul ediyor.
+        /// </summary>
+        void EnsureStyles()
+        {
+            if (style != null)
+            {
+                return;
+            }
+
+            // Telefonun piksel yoğunluğu masaüstünün üç katı olabiliyor; sabit
+            // punto orada okunmaz hale geliyor. Ekran yüksekliğine oranlamak
+            // bunu tek satırla çözüyor. Oran bilerek küçük: bu bir ölçü aleti,
+            // oyunun önüne geçmemeli — ilk denemede panel kadrajın altıda birini
+            // kaplıyor ve sıradaki kutuyu örtüyordu.
+            style = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(Screen.height * 0.017f),
+                normal = { textColor = new Color(0.88f, 0.88f, 0.9f) },
+                padding = new RectOffset(0, 0, 1, 1),
+            };
+
+            boxStyle = new GUIStyle(GUI.skin.box)
+            {
+                padding = new RectOffset(8, 8, 6, 6),
+            };
         }
 
         /// <summary>Durum adını enum yazımıyla değil oynarken anladığım dille yazıyorum.</summary>

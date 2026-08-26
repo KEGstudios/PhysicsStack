@@ -70,14 +70,30 @@ namespace PhysicsStack
         /// kullanılıyor: kutu yan yattığında merkezi alçalır ama üst kenarı
         /// yükselir, kule yüksekliği dediğimiz şey ikincisi.
         /// </summary>
-        public float HighestPointY()
+        public float HighestPointY() => Highest(skipDragged: false);
+
+        /// <summary>
+        /// Elde tutulan kutuyu saymayan tepe noktası. Kamera bunu kullanıyor:
+        /// yeni kutu kadrajın üstünde belirdiği için, oyuncu ona dokunduğu anda
+        /// "yığının tepesi" birden tavana fırlıyordu ve kamera boşuna yukarı
+        /// zıplıyordu. Kule yüksekliği, oyuncunun elindeki kutu değil,
+        /// yerleştirdiği kutular demek.
+        /// </summary>
+        public float HighestRestingPointY() => Highest(skipDragged: true);
+
+        float Highest(bool skipDragged)
         {
             float highest = 0f;
 
             for (int i = 0; i < bodies.Count; i++)
             {
                 var body = bodies[i];
-                if (body == null || !body.TryGetComponent(out Collider collider))
+                if (body == null || (skipDragged && body.IsDragged))
+                {
+                    continue;
+                }
+
+                if (!body.TryGetComponent(out Collider collider))
                 {
                     continue;
                 }

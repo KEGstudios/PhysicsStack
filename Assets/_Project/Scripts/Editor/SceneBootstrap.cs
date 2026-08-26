@@ -80,7 +80,10 @@ namespace PhysicsStack.EditorTools
             go.transform.SetPositionAndRotation(new Vector3(0f, 4f, -12f), Quaternion.Euler(8f, 0f, 0f));
 
             var camera = go.GetComponent<Camera>();
-            camera.fieldOfView = 55f;
+
+            // FOV burada verilmiyor: StackCamera onu her karede ekran oranından
+            // hesaplıyor. Sabit bir değer yazsaydım dar telefonda oyun alanı
+            // daralır, tablette genişlerdi.
             camera.backgroundColor = new Color(0.16f, 0.17f, 0.19f);
             camera.clearFlags = CameraClearFlags.SolidColor;
             return camera;
@@ -181,6 +184,14 @@ namespace PhysicsStack.EditorTools
 
             var restart = go.AddComponent<RestartOnTap>();
             SetReference(restart, "controller", controller);
+
+            // Kamera bileşeni kameranın kendi nesnesinde duruyor ama ölçümü
+            // buradaki tracker'dan alıyor; kuyruk da kutuyu kadrajın üstünde
+            // üretebilmek için kamerayı tanıyor.
+            var stackCamera = camera.gameObject.AddComponent<StackCamera>();
+            SetReference(stackCamera, "tracker", tracker);
+            SetReference(queue, "stackCamera", stackCamera);
+            SetReference(overlay, "stackCamera", stackCamera);
         }
 
         /// <summary>
