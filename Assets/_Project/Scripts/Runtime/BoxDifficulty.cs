@@ -25,10 +25,27 @@ namespace PhysicsStack
         /// </summary>
         public readonly float WidthVariance;
 
-        public BoxDifficulty(float dropGap, float widthVariance)
+        /// <summary>
+        /// Kutunun bırakma çizgisinin ne kadar üstünde belireceği — düşme
+        /// mesafesine eklenmiyor, sadece oyuncunun kutuyu indireceği yolu uzatıyor.
+        ///
+        /// İkisini ayırmak zorunda kaldım. Koridoru uzatmanın doğal yolu bırakma
+        /// mesafesini büyütmekti ama serbest düşüşte hız yükseklikle karekök olarak
+        /// artıyor: 4 birimden düşen kutu yere ~9 m/s ile çarpıyor, 6 birimden
+        /// ~11 m/s. O hızda kutu yerleşmiyor, kuleyi süpürüyor. Yani düşme mesafesi
+        /// oynanabilirlik tavanına dayanmış durumda.
+        ///
+        /// Oysa tehdit koridorunun uzun olması gereken kısmı düşüş değil, oyuncunun
+        /// kutuyu aşağı indirdiği kısım. Onu ayrı bir sayı yapınca koridor
+        /// istediğim kadar uzayabiliyor, düşüş güvenli mesafede kalıyor.
+        /// </summary>
+        public readonly float SpawnLift;
+
+        public BoxDifficulty(float dropGap, float widthVariance, float spawnLift = 0f)
         {
             DropGap = dropGap;
             WidthVariance = widthVariance;
+            SpawnLift = spawnLift;
         }
     }
 }

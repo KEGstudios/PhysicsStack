@@ -25,7 +25,13 @@ namespace PhysicsStack
         [Tooltip("Kazanma kontrolü için sıkı açısal hız eşiği (rad/s). 0.02 rad/s ≈ 1°/sn.")]
         [SerializeField] float steadyAngularThreshold = 0.02f;
 
+        [Tooltip("Kutunun 'oturdu' sayılması için kesintisiz durması gereken süre (sn).")]
+        [SerializeField] float settleDelay = 0.2f;
+
         readonly List<DraggableBody> bodies = new();
+
+        /// <summary>Kutu başına kesintisiz durma süresi; oturma kararı buna bakıyor.</summary>
+        readonly Dictionary<DraggableBody, float> restTimes = new();
 
         /// <summary>
         /// Bir kez yere/kuleye oturmuş kutular. Kule yüksekliği yalnızca bunlara
@@ -161,18 +167,36 @@ namespace PhysicsStack
         /// Havadaki kutuların oturup oturmadığını takip eder. Ölçümü çağrıldığı
         /// anda hesaplamak yerine burada biriktirmemin sebebi, "bir kez oturmuş
         /// olmak"ın bir olay olması: geçmişi bilmeden cevaplanamaz.
+        ///
+        /// Tek kare "durdu" görmek yetmiyor ve bu gerçek bir hataydı. Yukarı
+        /// savrulan kutu tepe noktasında neredeyse sıfır hıza iniyor — yükseliş
+        /// bitip düşüş başlarken hız işaret değiştiriyor. O tek karede kutu
+        /// "oturdu" sayılınca kule birden havadaki kutu kadar uzuyor, kamera ve
+        /// namlu yukarı fırlıyor, kutu düşünce geri iniyorlardı. Kesintisiz süre
+        /// şartı bunu kesiyor: tepe noktası bir kare sürer, gerçekten oturmuş
+        /// kutu ise durmaya devam eder.
         /// </summary>
         void Update()
         {
             for (int i = 0; i < bodies.Count; i++)
             {
                 var body = bodies[i];
-                if (body == null || body.IsDragged || settled.Contains(body))
+                if (body == null || settled.Contains(body))
                 {
                     continue;
                 }
 
-                if (IsBelow(body.Body, restSpeedThreshold, restAngularThreshold))
+                if (body.IsDragged || !IsBelow(body.Body, restSpeedThreshold, restAngularThreshold))
+                {
+                    restTimes[body] = 0f;
+                    continue;
+                }
+
+                float resting = restTimes.TryGetValue(body, out float previous) ? previous : 0f;
+                resting += Time.deltaTime;
+                restTimes[body] = resting;
+
+                if (resting >= settleDelay)
                 {
                     settled.Add(body);
                 }

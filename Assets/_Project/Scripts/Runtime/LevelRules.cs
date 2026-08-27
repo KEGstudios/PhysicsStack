@@ -23,6 +23,8 @@ namespace PhysicsStack
 
         public float HoldTime => level.holdTime;
 
+        public HazardSettings Hazards => level.hazards;
+
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
             // Düşme kontrolü oturmayı beklemiyor: sürükleme sırasında devrilen
@@ -78,7 +80,7 @@ namespace PhysicsStack
 
         /// <summary>Seviye boyunca sabit: zorluk turun içinde değil seviyeler arasında artıyor.</summary>
         public BoxDifficulty NextBox(in StackSnapshot snapshot) =>
-            new(level.dropGap, level.widthVariance);
+            new(level.dropGap, level.widthVariance, level.spawnLift);
 
         public override string ToString() =>
             level.boxLimit > 0

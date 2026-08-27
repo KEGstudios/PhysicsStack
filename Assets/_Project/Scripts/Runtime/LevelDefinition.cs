@@ -26,6 +26,9 @@ namespace PhysicsStack
         [Tooltip("Kutu, kule tepesinin en az bu kadar üstünden bırakılmak zorunda.")]
         public float dropGap = 1f;
 
+        [Tooltip("Kutu, bırakma çizgisinin bu kadar üstünde belirir. Düşme mesafesine eklenmez; tehdit koridorunu uzatır.")]
+        public float spawnLift;
+
         [Tooltip("Kutu genişliğinin oynama payı. Boy hep 1 birim. 0 = bütün kutular aynı.")]
         public float widthVariance;
 
@@ -34,5 +37,8 @@ namespace PhysicsStack
 
         [Tooltip("Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.")]
         public float collapseDrop = 0.6f;
+
+        [Tooltip("Seviyenin çevresel tehditleri. Hepsi yalnızca havadaki kutuya dokunur.")]
+        public HazardSettings hazards;
     }
 }

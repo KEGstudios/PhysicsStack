@@ -43,6 +43,9 @@ namespace PhysicsStack
 
         public DraggableBody Current { get; private set; }
 
+        /// <summary>Son kutunun belirdiği yükseklik. Top atıcı gezinme koridorunun tavanı bu.</summary>
+        public float LastSpawnHeight { get; private set; }
+
         public DraggableBody SpawnNext(in BoxDifficulty difficulty)
         {
             float towerTop = tracker != null ? tracker.HighestSettledPointY() : 0f;
@@ -58,7 +61,15 @@ namespace PhysicsStack
             // ilk karede kendi kuralını çiğnemiş olur.
             float aboveTower = Mathf.Max(
                 spawnAboveTower,
-                difficulty.DropGap + halfHeight + spawnAboveDropLine);
+                difficulty.DropGap + halfHeight + spawnAboveDropLine + difficulty.SpawnLift);
+
+            // Kamera bu kadar tepe boşluğu bırakmazsa spawn kadrajın dışında kalır
+            // ve aşağıdaki kırpma kuralı sessizce gevşetir. Gereken yeri sayıyı
+            // hesaplayan taraf söylüyor: kamera tahmin etmek zorunda kalmıyor.
+            if (stackCamera != null)
+            {
+                stackCamera.ReserveHeadroom(aboveTower + spawnMarginFromTop);
+            }
 
             // Kutu yığının biraz üstünde belirmeli: hem kameranın gördüğü yerde
             // kalıyor hem de düşme mesafesi kule yükseldikçe değişmiyor.
@@ -71,6 +82,8 @@ namespace PhysicsStack
             // belirlemesinden değil. Rastgelelik varken aynı seviyeyi iki kez
             // oynamak iki farklı problem çözmek demekti.
             Vector3 position = new(spawnPosition.x, height, spawnPosition.z);
+
+            LastSpawnHeight = height;
 
             var instance = Instantiate(boxPrefab, position, Quaternion.identity, transform);
             instance.name = $"Box_{transform.childCount - 1}";

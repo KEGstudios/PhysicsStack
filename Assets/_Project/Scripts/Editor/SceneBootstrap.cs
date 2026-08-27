@@ -20,6 +20,7 @@ namespace PhysicsStack.EditorTools
     {
         const string ScenePath = "Assets/_Project/Scenes/Main.unity";
         const string BoxPrefabPath = "Assets/_Project/Prefabs/Box.prefab";
+        const string BallPrefabPath = "Assets/_Project/Prefabs/Ball.prefab";
         const string BoxMaterialPath = "Assets/_Project/Art/Materials/M_Box.mat";
         const string GroundMaterialPath = "Assets/_Project/Art/Materials/M_Ground.mat";
         const string DragSettingsPath = "Assets/_Project/Data/DragSettings.asset";
@@ -61,8 +62,9 @@ namespace PhysicsStack.EditorTools
             var boxPrefab = CreateBoxPrefab(boxMaterial, boxPhysics, dragSettings);
             var targetLine = CreateTargetLine(groundMaterial, TargetHeight);
             var dropLine = CreateDropLine(groundMaterial);
+            var ballPrefab = CreateBallPrefab(groundMaterial);
             var levels = LevelBootstrap.LoadOrCreate();
-            CreateSystems(camera, boxPrefab, dragSettings, targetLine, dropLine, levels);
+            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -163,6 +165,7 @@ namespace PhysicsStack.EditorTools
         static void CreateSystems(
             Camera camera,
             GameObject boxPrefab,
+            GameObject ballPrefab,
             DragSettings settings,
             Renderer targetLine,
             Renderer dropLine,
@@ -207,12 +210,28 @@ namespace PhysicsStack.EditorTools
             var restart = go.AddComponent<RestartOnTap>();
             SetReference(restart, "controller", controller);
 
+            // Tehditler: ikisi de seviyenin verisinden kendi ayarlarını okuyor,
+            // kapalıysa hiç görünmüyorlar.
+            var wind = go.AddComponent<Wind>();
+            SetReference(wind, "controller", controller);
+            SetReference(wind, "queue", queue);
+
+            SetReference(overlay, "wind", wind);
+
+            var windIndicator = go.AddComponent<WindIndicator>();
+            SetReference(windIndicator, "wind", wind);
+            SetReference(windIndicator, "bar", CreateWindPart(boxPrefab, "WindBar", 0f));
+            SetReference(windIndicator, "head", CreateWindPart(boxPrefab, "WindHead", 45f));
+
+            CreateCannon(boxPrefab, ballPrefab, controller, tracker);
+
             // Kamera bileşeni kameranın kendi nesnesinde duruyor ama ölçümü
             // buradaki tracker'dan alıyor; kuyruk da kutuyu kadrajın üstünde
             // üretebilmek için kamerayı tanıyor.
             var stackCamera = camera.gameObject.AddComponent<StackCamera>();
             SetReference(stackCamera, "tracker", tracker);
             SetReference(queue, "stackCamera", stackCamera);
+            SetReference(windIndicator, "stackCamera", stackCamera);
         }
 
         /// <summary>
@@ -288,6 +307,84 @@ namespace PhysicsStack.EditorTools
 
             // Oyun bittiğinde rengi değişecek olan nesne bu; referansı dışarı veriyoruz.
             return renderer;
+        }
+
+        /// <summary>
+        /// Rüzgâr göstergesinin parçaları: kadrajın üstünde esme yönüne uzayan bir
+        /// çubuk ve ucunda 45° döndürülmüş bir küp — eşkenar dörtgen olarak
+        /// okunuyor ve yönü tek bakışta veriyor. Görünmeyen bir kuvvet zorluk
+        /// değil kafa karışıklığı üretir; oyuncu kendi hatasını arar.
+        /// </summary>
+        static Renderer CreateWindPart(GameObject boxPrefab, string name, float roll)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.rotation = Quaternion.Euler(0f, 0f, roll);
+            go.transform.localScale = Vector3.one * 0.2f;
+
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = boxPrefab.GetComponent<MeshRenderer>().sharedMaterial;
+            renderer.enabled = false;
+            return renderer;
+        }
+
+        static GameObject CreateCannon(
+            GameObject boxPrefab,
+            GameObject ballPrefab,
+            StackGameController controller,
+            StackTracker tracker)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Cannon";
+            go.transform.localScale = new Vector3(0.55f, 0.45f, 0.45f);
+
+            // Collider yok: mermi namludan çıkarken kendi gövdesine çarpıp
+            // anında yok olurdu, ve namlunun kuleye fiziksel olarak dokunması
+            // zaten istenmeyen bir şey.
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+
+            go.GetComponent<MeshRenderer>().sharedMaterial =
+                boxPrefab.GetComponent<MeshRenderer>().sharedMaterial;
+
+            var cannon = go.AddComponent<Cannon>();
+            SetReference(cannon, "controller", controller);
+            SetReference(cannon, "tracker", tracker);
+            SetReference(cannon, "ballPrefab", ballPrefab);
+            SetReference(cannon, "body", go.GetComponent<MeshRenderer>());
+
+            return go;
+        }
+
+        static GameObject CreateBallPrefab(Material material)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "Ball";
+            go.transform.localScale = Vector3.one * 0.45f;
+            go.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            var rb = go.AddComponent<Rigidbody>();
+
+            // Yerçekimsiz: mermi düz gidiyor. Parabol çizen bir mermi, oyuncudan
+            // tehdidi okumak için ayrı bir sezgi isterdi.
+            rb.useGravity = false;
+
+            // Kutuyu saptıracak kadar var, fırlatacak kadar değil. Kutunun kütlesi
+            // 1 civarında; bu oran itiyor ama süpürmüyor.
+            rb.mass = 0.35f;
+
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+            // Küçük ve hızlı: Discrete çarpışmayla kutunun içinden geçerdi.
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            rb.constraints = RigidbodyConstraints.FreezePositionZ;
+
+            go.AddComponent<CannonBall>();
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, BallPrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab;
         }
 
         static Renderer CreateDropLine(Material material)

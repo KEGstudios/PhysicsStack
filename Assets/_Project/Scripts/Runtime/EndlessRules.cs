@@ -35,6 +35,13 @@ namespace PhysicsStack
         /// <summary>Hedef yoksa tutunma şartı da yok: sonsuz modda tur kule çökene kadar sürüyor.</summary>
         public float HoldTime => 0f;
 
+        /// <summary>
+        /// Sonsuz modda tehdit yok. Bilinçli: buradaki zorluk eğrisi bırakma
+        /// mesafesi üzerinden yürüyor ve tek bir şeyin sürekli artması, üst üste
+        /// binen üç şeyden daha okunur bir tırmanış veriyor.
+        /// </summary>
+        public HazardSettings Hazards => HazardSettings.None;
+
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
             if (snapshot.AnyFallen)

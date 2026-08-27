@@ -16,6 +16,17 @@ MonoBehaviour:
   targetHeight: 4
   boxLimit: 0
   dropGap: 3
+  spawnLift: 0
   widthVariance: 0
   holdTime: 1.5
   collapseDrop: 0.6
+  hazards:
+    windSpeed: 0
+    windResponse: 0
+    windPeriod: 0
+    cannon: 0
+    cannonInterval: 0
+    cannonBallSpeed: 0
+    cannonPatrolSpeed: 0
+    cannonBottomGap: 0
+    cannonPatrolSpan: 0

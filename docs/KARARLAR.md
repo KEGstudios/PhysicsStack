@@ -488,3 +488,129 @@ sadece mesafe ve sınırla zorlaşıyor. Mod ve seviye seçimi hâlâ Inspector'
 Tutunma süresi bütün seviyelerde 1.5 sn — bilerek: bu bir zorluk kolu değil,
 oyunun kuralı, seviyeye göre değişseydi her seviyede yeniden öğrenilmesi
 gerekirdi.
+
+## Gün 9 — Tehditler: rüzgâr ve top atıcı
+
+**Ortak kural: tehdit yalnızca havadaki kutuya dokunur.** Duran kuleyi bozan bir
+tehlike, oyuncu hiçbir hata yapmadan kaybettirir — bu ceza değil haksızlıktır.
+Rüzgâr sadece bırakılmış ve henüz oturmamış kutuya kuvvet uyguluyor; top atıcının
+namlusu da kulenin tepesinin altına hiç inmiyor.
+
+Bunu çarpışma katmanıyla değil **geometriyle** sağladım: namlu fiziksel olarak
+kuleye ateş edemeyecek bir koridorda geziniyor. Filtre unutulur, geometri
+unutulmaz.
+
+**Rüzgâr kütleden bağımsız.** Fiziksel olarak rüzgâr yüzey alanıyla iter, yani
+geniş kutu daha çok sürüklenmeli. Ama bizim geniş kutumuz aynı zamanda ağır ve iki
+etki birbirini götürünce ortaya "bazı kutular neden daha çok savruluyor" diye
+açıklanamayan bir düzensizlik çıkıyordu. Sabit ivme öngörülebilir; öngörülebilir
+olan öğrenilebilir. 6. seviyede sabit yön (bir kez öğrenip telafi ediyorsun),
+7'de salınan yön (telafi zamanlamaya bağlanıyor).
+
+**Engel çubuğu yerine top atıcı.** Plandaki "hareketli engel çizgisi" fikrinden
+vazgeçtim. Çubuk tek seferlik bir nişan alma problemi: bir kez çözülür, her
+seferinde aynı şekilde çözülür. Kenarda gezinen ve aralıklarla ateş eden bir namlu
+ise ritim problemi — aynı seviyeyi ikinci kez oynadığında da beklemek zorundasın.
+
+Mermi yerçekimsiz ve düz gidiyor. Parabol çizen bir mermi, oyuncudan tehdidi
+okumak için ayrı bir sezgi isterdi; tehdidin adil olması görülebilir olmasından
+geçiyor. İlk çarpışmada yok oluyor, yoksa sahnede biriken mermiler kuleye yeni bir
+zemin olurdu.
+
+**Namlu her kutuda ışınlanıyordu.** İlk hâlinde bant "kule tepesi ile kutunun
+beliriş yüksekliği arası" idi ve gezinme `PingPong(gidilen yol, bant yüksekliği)`
+ile hesaplanıyordu. İkisi de her kutuda değişiyor: kutu oturunca taban, yeni kutu
+belirince tavan zıplıyor. `PingPong`'un çıktısı aralık değişince sıçrıyor,
+dolayısıyla namlu da sıçrıyordu.
+
+Bant artık sabit yükseklikte ve kule tepesinin hemen üstünden başlıyor; tabanı da
+kameranınkiyle aynı ilaçla, `SmoothDamp` ile yumuşatılıyor. Ölçüm ani değişiyorsa
+gösterim ona yumuşayarak gitmeli.
+
+Sabit bant aynı zamanda daha iyi bir tasarım: namlu ekranın altına da üstüne de
+inmiyor, oyuncu nereye kadar çıkacağını biliyor. Öngörülemeyen tehdit zorlaştırmaz,
+sadece sinirlendirir.
+
+**Koridor uzunluğu düşme mesafesinden ayrıldı — asıl teknik karar bu.** Topun
+gezineceği koridoru uzatmanın doğal yolu bırakma mesafesini büyütmekti. Olmuyor:
+serbest düşüşte hız yükseklikle karekök olarak artıyor, 4 birimden düşen kutu yere
+~9 m/s ile çarpıyor, 6 birimden ~11 m/s. O hızda kutu yerleşmiyor, kuleyi
+süpürüyor. Yani düşme mesafesi oynanabilirlik tavanına dayanmış durumda.
+
+Oysa koridorun uzun olması gereken kısmı düşüş değil, oyuncunun kutuyu aşağı
+indirdiği kısım. Ayrı bir sayı yaptım (`spawnLift`): kutu bırakma çizgisinin epey
+üstünde beliriyor, oyuncu onu topun arasından indiriyor, ama bıraktıktan sonraki
+düşüş güvenli mesafede kalıyor.
+
+**Kameranın tepe boşluğu artık sabit değil.** Uzun koridorlu seviyede kutu çok
+yukarıda beliriyor; kamera onu göremezse spawn kırpılıyor ve kural sessizce
+gevşiyor. Ama aynı boşluğu bütün seviyelere vermek kuleyi her seviyede lüzumsuz
+yere kadrajın dibine iterdi. Gereken boşluğu, sayıyı zaten hesaplayan kuyruk
+söylüyor; kamera tabanla istenenin büyüğünü kullanıyor. Dün 7'ye çıkardığım taban
+6'ya geri döndü.
+
+**Oynayınca üç şey daha çıktı.**
+
+**Rüzgârın görünen hiçbir işareti yokmuş.** Kutu savruluyordu ama ortada rüzgâr
+olduğunu söyleyen bir şey yoktu. Görünmeyen kuvvet zorluk değil kafa karışıklığı
+üretiyor: oyuncu kendi hatasını arıyor. Kadrajın üstünde, merkezden esme yönüne
+doğru uzayan bir çubuk koydum — uzunluğu şiddet, yönü yön. Dünya nesnesi, arayüz
+değil: sahnedeki diğer iki gösterge de (hedef ve bırakma çizgisi) böyle çalışıyor
+ve aynı dili konuşan üç gösterge, yarısı Canvas'ta duran bir arayüzden okunur.
+
+Göstergenin ilk hâli işe yaramadı ve sebebi görselde değil mantıktaydı: rüzgâr
+yalnızca kuvvet uygulanırken hesaplanıyordu, yani gösterge tam da bakılması gereken
+anda — kutu bırakılmadan önce — sıfır gösteriyordu. Rüzgârı atıştan sonra görmenin
+hiçbir değeri yok; atışı ona göre ayarlamak için önce görmek gerekiyor. Rüzgâr artık
+bir ortam değeri: kutu havada olmasa da esiyor, sadece dokunacak bir şey bulamıyor.
+Çubuğun ucuna da 45° döndürülmüş bir küp koydum, eşkenar dörtgen olarak okunuyor
+ve yönü tek bakışta veriyor.
+
+**Rüzgâr da oynanmaz derecede sertmiş.** 3.0 ve 4.0 yazmıştım; sayı ivme olduğu
+için yerçekimiyle (9.81) aynı birimde, yani 3.0 demek "yerçekiminin %30'u kadar
+yana it" demek. Hesap acımasız: 3.5 birimlik düşüş ~0.85 sn sürüyor, yatay sapma
+½·a·t² = 1.07 birim. Kutu 1 birim geniş — rüzgâr kutuyu kendi genişliğinden fazla
+kaydırıyordu. Bu telafi edilebilir bir bozulma değil, atışı baştan nişanlamak.
+
+1.0 ve 1.4'e indirdim; sapma düzeldi ama bu sefer başka bir şey çıktı: nişan
+tutuyordu, kutu iniş anındaki yatay hızıyla deviriliyordu. İki ayrı sebebi vardı.
+
+**Rüzgâr kutu yere değdikten sonra da esiyordu.** Uygulama koşulu "oturmuş mu" idi
+ve oturmuş sayılmak için 0.2 sn kesintisiz durmak gerekiyor — yani kutu kuleye
+indikten sonra hâlâ yanlamasına itiliyordu. Rüzgârın işi kutu havadayken biter;
+yere değdikten sonrası artık fizik. Kutu ilk temasını `OnCollisionEnter` ile
+işaretliyor ve rüzgâr orada kesiliyor.
+
+**Rüzgâr sınırsız ivme olarak modellenmişti.** Sabit ivme, yatay hızı düşüş boyunca
+büyütmeye devam ediyor ve iniş hızının bir tavanı olmuyor. Gerçek rüzgâr ise
+hareket eden hava: cismi kendi hızına doğru iter, geçirmez. Kuvvet artık bağıl hıza
+orantılı (`(rüzgâr hızı - kutu hızı) × sertlik`). Hem fiziksel olarak doğrusu hem de
+iniş hızına doğal bir tavan koyuyor.
+
+Sayı artık ivme değil **hız**: 0.7 m/s rüzgâr, ~0.38 birim sapma ve inişte 0.65 m/s
+yatay hız demek. Göstergenin ölçeği de büyütüldü, yoksa küçülen sayılarla çubuk
+okunmaz olurdu.
+
+**Namlu kuleye fazla yakındı.** Bandın alt kenarı kule tepesinin 0.9 birim
+üstündeydi; tehdit, kutuyu indirirken değil neredeyse yerleşirken devreye
+giriyordu — yani oyuncunun düzeltme şansı olmayan bir anda. 2.0'a çıktı: bant
+artık kule ile kutunun bırakıldığı yerin arasında. Sayı da seviye verisine taşındı,
+sahne bileşeninde kalmasının bir sebebi yoktu.
+
+**Kamera ve namlu arada bir fırlıyordu — ve bu gerçek bir hataydı.** Sebep şu:
+yukarı savrulan bir kutu tepe noktasında neredeyse sıfır hıza iniyor, çünkü
+yükseliş bitip düşüş başlarken hız işaret değiştiriyor. O tek karede kutu "oturdu"
+sayılınca kule birden havadaki kutu kadar uzuyor, kamera ve namlu yukarı fırlıyor,
+kutu düşünce geri iniyorlardı.
+
+İlginç tarafı: bu hata top atıcıdan önce de vardı, sadece kutuyu yukarı savuracak
+bir şey olmadığı için neredeyse hiç tetiklenmiyordu. Top onu görünür yaptı.
+
+Çözüm, kazanma kontrolündekiyle aynı fikir: tek kare "durdu" görmek yetmiyor.
+Kutunun oturmuş sayılması için 0.2 saniye kesintisiz durması gerekiyor artık.
+Tepe noktası bir kare sürüyor, gerçekten oturmuş kutu ise durmaya devam ediyor.
+
+**Yarım kalan:** Mod ve seviye seçimi, tur sonu ekranı, `PlayerPrefs` ilerlemesi
+Gün 10'a kaldı. Sonsuz modda tehdit yok — bilinçli: oradaki eğri bırakma mesafesi
+üzerinden yürüyor ve tek şeyin sürekli artması, üst üste binen üç şeyden daha
+okunur bir tırmanış veriyor.

@@ -63,5 +63,11 @@ namespace PhysicsStack
         /// sonsuz modda yığdıkça büyüyen bir eğri.
         /// </summary>
         BoxDifficulty NextBox(in StackSnapshot snapshot);
+
+        /// <summary>
+        /// Turun çevresel tehditleri. Kutu başına değil tur başına: rüzgâr ve top
+        /// sahnede duran şeyler, her kutuda yeniden pazarlık edilmiyorlar.
+        /// </summary>
+        HazardSettings Hazards { get; }
     }
 }

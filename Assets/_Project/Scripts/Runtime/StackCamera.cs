@@ -27,7 +27,28 @@ namespace PhysicsStack
         [SerializeField] float visibleWidth = 5f;
 
         [Tooltip("Kulenin tepesiyle kadrajın üst kenarı arasında bırakılan boşluk.")]
-        [SerializeField] float topMargin = 7f;
+        [SerializeField] float topMargin = 6f;
+
+        /// <summary>
+        /// Kuyruğun istediği tepe boşluğu. Sabit bir sayı yerine seviyeye göre
+        /// değişmesinin sebebi: uzun tehdit koridoru olan bir seviyede kutu çok
+        /// yukarıda beliriyor, kamera onu göremezse kural sessizce gevşiyor. Ama
+        /// aynı boşluğu bütün seviyelere vermek de kuleyi her seviyede lüzumsuz
+        /// yere kadrajın dibine iterdi.
+        ///
+        /// Kamera bunu kendi hesaplamıyor: gereken yeri, sayıyı zaten hesaplayan
+        /// <see cref="BoxQueue"/> söylüyor.
+        /// </summary>
+        float reservedHeadroom;
+
+        /// <summary>Yürürlükteki tepe boşluğu: tabanla istenenin büyüğü.</summary>
+        float TopMargin => Mathf.Max(topMargin, reservedHeadroom);
+
+        /// <summary>Kuyruk sıradaki kutuyu üretmeden önce gereken tepe boşluğunu bildiriyor.</summary>
+        public void ReserveHeadroom(float headroom)
+        {
+            reservedHeadroom = headroom;
+        }
 
         [Tooltip("Zeminin kadrajın alt kenarının altında kalma payı.")]
         [SerializeField] float groundMargin = 0.6f;
@@ -113,7 +134,7 @@ namespace PhysicsStack
 
             // Kule büyüdükçe: tepesi üst kenarın altında kalsın.
             float towerTop = tracker != null ? tracker.HighestSettledPointY() : 0f;
-            float followCenter = towerTop + topMargin - half;
+            float followCenter = towerTop + TopMargin - half;
 
             // İstenen merkez bulundu; kameranın y'si eğim payı kadar yukarıda duruyor.
             return Mathf.Max(restingCenter, followCenter) + PitchDrop;

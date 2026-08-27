@@ -252,6 +252,67 @@ Aynı sebeple kutunun beliriş noktasındaki yatay rastgeleliği kaldırdım.
 Rastgelelik zorluğun kaynağı olmamalı: varken aynı seviyeyi iki kez oynamak iki
 farklı problem çözmek demekti.
 
+### Tehditler yalnızca havadaki kutuya dokunuyor
+
+Rüzgâr ve kenarda gezinen top atıcı, ikisi de aynı kurala uyuyor: duran kuleye
+dokunamıyorlar. Sebebi basit — oyuncu hiçbir hata yapmadan kaybediyorsa bu ceza
+değil haksızlıktır.
+
+Rüzgâr sadece bırakılmış ve henüz oturmamış kutuya kuvvet uyguluyor. Top atıcının
+namlusu ise kulenin tepesinin altına hiç inmiyor: bunu çarpışma katmanıyla değil
+geometriyle sağladım, çünkü filtre unutulur, geometri unutulmaz.
+
+Namlu sabit yükseklikte bir bantta geziniyor, ekranın altına da üstüne de inmiyor.
+İlk hâlinde bant kule tepesi ile kutunun beliriş yüksekliği arasındaydı; ikisi de
+her kutuda değiştiği için `PingPong`'un aralığı sürekli değişiyor ve namlu
+ışınlanıyordu. Sabit bant hem o hatayı kökünden kesiyor hem de daha iyi tasarım:
+öngörülemeyen tehdit zorlaştırmaz, sinirlendirir.
+
+Top atıcıyı hareketli bir engel çubuğuna tercih ettim. Çubuk tek seferlik bir nişan
+alma problemi — bir kez çözersin, her seferinde aynı şekilde çözülür. Aralıklarla
+ateş eden bir namlu ise ritim problemi: aynı seviyeyi ikinci kez oynadığında da
+beklemek zorundasın.
+
+Rüzgârın ekranda bir göstergesi var: kadrajın üstünde, esme yönüne doğru uzayan bir
+çubuk ve ucunda bir eşkenar dörtgen. Uzunluğu şiddeti, yönü yönü veriyor. Buna
+ihtiyaç oynarken çıktı — görünmeyen bir kuvvet zorluk değil kafa karışıklığı
+üretiyor, oyuncu kendi hatasını arıyor.
+
+Göstergenin ilk hâli işe yaramadı ve sebebi görselde değil mantıktaydı: rüzgârı
+yalnızca kuvvet uygularken hesaplıyordum, yani gösterge tam da bakılması gereken
+anda — kutu bırakılmadan önce — sıfırdı. Atıştan sonra rüzgârı görmenin bir değeri
+yok. Rüzgâr artık bir ortam değeri: kutu havada olmasa da esiyor, sadece dokunacak
+bir şey bulamıyor.
+
+### Tepe noktasında "durmuş" görünen kutu
+
+Kamera ve namlu arada bir yukarı fırlayıp geri iniyordu. Sebep: yukarı savrulan bir
+kutu tepe noktasında neredeyse sıfır hıza iniyor, çünkü yükseliş bitip düşüş
+başlarken hız işaret değiştiriyor. O tek karede kutu "oturdu" sayılınca kule birden
+havadaki kutu kadar uzuyor, kamera onu takip ediyor, kutu düşünce geri iniyordu.
+
+Hata top atıcıdan önce de vardı; kutuyu yukarı savuracak bir şey olmadığı için
+neredeyse hiç tetiklenmiyordu. Çözüm kazanma kontrolündekiyle aynı fikir: tek kare
+"durdu" görmek yetmez, 0.2 saniye kesintisiz durmak gerekir. Tepe noktası bir kare
+sürer.
+
+### Tehdit koridoru, düşme mesafesinden ayrı bir sayı
+
+Topun gezineceği koridoru uzatmanın doğal yolu bırakma mesafesini büyütmekti.
+Olmuyor: serbest düşüşte hız yükseklikle karekök olarak artıyor, 4 birimden düşen
+kutu yere ~9 m/s ile çarpıyor. O hızda kutu yerleşmiyor, kuleyi süpürüyor — düşme
+mesafesi oynanabilirlik tavanına dayanmış durumda.
+
+Oysa koridorun uzun olması gereken kısmı düşüş değil, oyuncunun kutuyu aşağı
+indirdiği kısım. İkisini ayırdım: kutu bırakma çizgisinin epey üstünde beliriyor,
+oyuncu onu topun arasından indiriyor, bıraktıktan sonraki düşüş güvenli mesafede
+kalıyor.
+
+Kameranın tepe boşluğu da bu yüzden sabit değil artık. Gereken boşluğu, sayıyı
+zaten hesaplayan kuyruk söylüyor; kamera tabanla istenenin büyüğünü kullanıyor.
+Böylece uzun koridorlu seviyede kadraj açılıyor, kısa olanlarda kule kadrajın
+dibine itilmiyor.
+
 ### Bırakılan kutu geri alınmıyor
 
 Yerleştirdiğin kutuyu tekrar tutup yeniden bırakabiliyordun. Bu oyunun bütün
@@ -398,8 +459,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Gün 6 — Kuleyi takip eden kamera, orana göre kadraj, portre yön
 - [x] Gün 7 — Kural katmanı arayüzün arkasına (`LevelRules` / `EndlessRules`)
 - [x] Gün 8 — Bırakma mesafesi mekaniği, 8 seviyelik veri ve zorluk eğrisi
-- [ ] Gün 9 — Rüzgâr, hareketli engel, mod seçimi, ilerleme kaydı
-- [ ] Gün 10 — Telefon testi, his ayarı, kapanış
+- [x] Gün 9 — Rüzgâr ve top atıcı, tehdit koridoru, uyarlanır kadraj
+- [ ] Gün 10 — Mod/seviye seçimi, ilerleme kaydı, telefon testi, kapanış
 
 ## Kapsam dışı
 

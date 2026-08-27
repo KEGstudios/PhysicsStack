@@ -74,6 +74,16 @@ namespace PhysicsStack
 
         bool isPlaced;
 
+        /// <summary>
+        /// Bırakıldıktan sonra ilk temasını yaptı mı?
+        ///
+        /// Rüzgâr bunu soruyor. Önce "oturdu mu" diye soruyordu ama oturmuş
+        /// sayılmak için 0.2 sn kesintisiz durmak gerekiyor: kutu kuleye indikten
+        /// sonra da yanlamasına itilmeye devam ediyor ve devriliyordu. Rüzgârın
+        /// işi kutu havadayken biter — yere değdikten sonrası artık fizik.
+        /// </summary>
+        public bool HasLanded { get; private set; }
+
         public bool IsDragged => isDragged;
 
         /// <summary>Bırakma çizgisinin yüksekliği; ekrandaki çizgi bunu okuyor.</summary>
@@ -194,6 +204,15 @@ namespace PhysicsStack
             }
 
             Released?.Invoke(this);
+        }
+
+        void OnCollisionEnter(Collision collision)
+        {
+            // Sürüklenirken kuleye çarpmak iniş değil; oyuncu hâlâ kontrol ediyor.
+            if (isPlaced && !isDragged)
+            {
+                HasLanded = true;
+            }
         }
 
         void FixedUpdate()

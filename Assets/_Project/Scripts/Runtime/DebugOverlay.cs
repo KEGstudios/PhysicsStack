@@ -24,6 +24,9 @@ namespace PhysicsStack
         [Tooltip("Bırakma çizgisini panele basmak için; kısıtı fiilen taşıyan nesne kutunun kendisi.")]
         [SerializeField] BoxQueue queue;
 
+        [Tooltip("Rüzgâr açıksa o anki değeri panele basmak için.")]
+        [SerializeField] Wind wind;
+
         [Tooltip("Kapatınca hiçbir şey çizilmiyor. Build'e bu kapalı gitmeli mi diye Gün 5'te karar vereceğim.")]
         [SerializeField] bool visible = true;
 
@@ -89,7 +92,10 @@ namespace PhysicsStack
 
             if (current != null)
             {
-                GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}", style);
+                // Rüzgâr ancak açıkken satıra giriyor: kapalı bir tehdidi her
+                // karede "0.0" diye yazmak paneli uzatmaktan başka bir işe yaramaz.
+                string gust = wind != null && wind.Active ? $" · rüzgâr {wind.CurrentForce:+0.0;-0.0}" : "";
+                GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}{gust}", style);
             }
 
             if (settings != null)
