@@ -1,99 +1,102 @@
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace PhysicsStack
 {
     /// <summary>
-    /// Rüzgârı ekranda gösterir: kadrajın üstünde, merkezden esme yönüne doğru
-    /// uzayan bir çubuk. Uzunluğu şiddeti, yönü de yönü veriyor.
+    /// Ruzgari ekranda gosterir: merkezden esme yonune uzayan bir cubuk ve
+    /// ucunda bir baklava dilimi. Uzunlugu siddeti, yonu yonu veriyor.
     ///
-    /// Buna ihtiyaç oynarken çıktı — rüzgârlı seviyede kutu savruluyordu ama
-    /// ortada rüzgâr olduğunu söyleyen hiçbir şey yoktu. Görünmeyen bir kuvvet
-    /// zorluk değil, kafa karışıklığı üretiyor: oyuncu kendi hatasını arıyor.
-    /// Tehdidin adil olması görülebilir olmasından geçiyor; top atıcıda bu
-    /// kendiliğinden var, rüzgârda ayrıca yapmak gerekiyor.
+    /// Once dunya nesnesiydi (kadrajin ust kenarina yakin duran ince bir kutu)
+    /// ve iki sorunu vardi: HUD yazisiyla ust uste biniyordu, ve dunyada duran
+    /// bir nesne oldugu icin kamera hareket ettikce oynuyordu. Oysa bu bir
+    /// bilgi, sahnenin bir parcasi degil. Ekran uzayina tasiyinca ikisi de
+    /// kendiliginden cozuldu.
     ///
-    /// Neden dünya nesnesi, neden arayüz değil: sahnedeki diğer iki çizgi de
-    /// (hedef ve bırakma) böyle çalışıyor. Aynı dili konuşan üç gösterge,
-    /// yarısı Canvas'ta duran bir arayüzden daha okunur.
+    /// Ihtiyac oynarken cikmisti: ruzgarli seviyede kutu savruluyordu ama ortada
+    /// ruzgar oldugunu soyleyen hicbir sey yoktu. Gorunmeyen bir kuvvet zorluk
+    /// degil kafa karisikligi uretiyor - oyuncu kendi hatasini ariyor.
     /// </summary>
     public sealed class WindIndicator : MonoBehaviour
     {
         [SerializeField] Wind wind;
-        [SerializeField] StackCamera stackCamera;
-        [SerializeField] Renderer bar;
+        [SerializeField] Palette palette;
 
-        [Tooltip("Çubuğun ucundaki eşkenar dörtgen: yönü tek bakışta okutuyor.")]
-        [SerializeField] Renderer head;
+        [Tooltip("Birim ruzgar hizi basina cubuk uzunlugu (referans piksel).")]
+        [SerializeField] float pixelsPerSpeed = 300f;
 
-        [Tooltip("Birim kuvvet başına çubuk uzunluğu.")]
-        [SerializeField] float unitsPerForce = 1.2f;
+        [Tooltip("Cubugun kalinligi (referans piksel).")]
+        [SerializeField] float thickness = 14f;
 
-        [Tooltip("Çubuk kadrajın üst kenarının bu kadar altında durur.")]
-        [SerializeField] float marginFromTop = 0.8f;
+        RectTransform bar;
+        RectTransform head;
 
-        [SerializeField] float thickness = 0.16f;
-
-        [SerializeField] Color color = new(0.80f, 0.60f, 0.30f);
-
-        MaterialPropertyBlock block;
-
-        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
-
-        void Awake()
+        /// <summary>
+        /// Gosterge ilk ihtiyac duyuldugunda kuruluyor, <c>Start</c>'ta degil.
+        ///
+        /// Ilk yazisinda <c>Start</c> icinde <c>wind.Active</c>'e bakip ruzgarsiz
+        /// seviyede kendini kapatiyordu. Sonuc: ruzgar hicbir seviyede
+        /// gorunmuyordu. Sebebi Unity'nin ayni nesnedeki bilesenlerin <c>Start</c>
+        /// sirasini garanti etmemesi - gosterge, <see cref="Wind"/> daha
+        /// ayarlarini okumadan calisip "ruzgar yok" sonucuna variyordu.
+        ///
+        /// Tembel kurulum bu bagimliligi tamamen kaldiriyor: karar bir kere degil,
+        /// ruzgar gercekten esmeye basladiginda veriliyor. Ruzgarsiz seviyede de
+        /// hicbir sey kurulmuyor, yani asil kazanc korunuyor.
+        /// </summary>
+        void Build()
         {
-            block = new MaterialPropertyBlock();
+            UIKit.Use(palette);
 
-            Tint(bar);
-            Tint(head);
+            var canvas = UIKit.CreateCanvas("WindCanvas", sortOrder: 4);
+
+            bar = CreatePart(canvas.transform, "WindBar", 0f);
+            head = CreatePart(canvas.transform, "WindHead", 45f);
         }
 
-        void Tint(Renderer renderer)
+        /// <summary>
+        /// Parcalar ekranin ust orta bandina, HUD yazisinin altina yerlesiyor.
+        /// Cubuk merkezden disari dogru buyudugu icin ikisi de ayni noktaya
+        /// sabitleniyor; farki konum ve boyut veriyor.
+        /// </summary>
+        RectTransform CreatePart(Transform parent, string name, float roll)
         {
-            if (renderer == null)
-            {
-                return;
-            }
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            var rect = go.GetComponent<RectTransform>();
 
-            renderer.GetPropertyBlock(block);
-            block.SetColor(BaseColor, color);
-            renderer.SetPropertyBlock(block);
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(0.5f, 0.80f);
+            rect.anchorMax = new Vector2(0.5f, 0.80f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.localRotation = Quaternion.Euler(0f, 0f, roll);
+
+            go.GetComponent<Image>().color = palette != null ? palette.wind : Color.white;
+            return rect;
         }
 
         void LateUpdate()
         {
-            bool visible = wind != null && wind.Active;
-
-            bar.enabled = visible;
-
-            if (head != null)
-            {
-                head.enabled = visible;
-            }
-
-            if (!visible)
+            if (wind == null || !wind.Active)
             {
                 return;
             }
 
-            float force = wind.CurrentForce;
-
-            // Salınan rüzgârda kuvvet sıfırdan geçiyor; çubuk o anda görünmez
-            // olacak kadar kısalıyor ve bu doğru bilgi: yön değiştiriyor.
-            // Ölçeği tam sıfıra indirmemek için küçük bir taban bırakıyorum.
-            float length = Mathf.Max(Mathf.Abs(force) * unitsPerForce, 0.02f);
-            float y = stackCamera != null ? stackCamera.FrameTopY - marginFromTop : 0f;
-
-            bar.transform.localScale = new Vector3(length, thickness, thickness);
-
-            // Çubuk merkezden dışarı doğru büyüyor: konumu uzunluğun yarısı kadar
-            // kaydırınca sol ucu daima x = 0'da kalıyor ve yön tek bakışta okunuyor.
-            float direction = Mathf.Sign(force);
-            bar.transform.position = new Vector3(direction * length * 0.5f, y, 0f);
-
-            if (head != null)
+            if (bar == null)
             {
-                head.transform.position = new Vector3(direction * length, y, 0f);
+                Build();
             }
+
+            float speed = wind.CurrentForce;
+            float length = Mathf.Abs(speed) * pixelsPerSpeed;
+
+            // Salinan ruzgarda hiz sifirdan geciyor; cubuk o anda gorunmez olacak
+            // kadar kisaliyor ve bu dogru bilgi: yon degistiriyor.
+            bar.sizeDelta = new Vector2(Mathf.Max(length, 2f), thickness);
+            bar.anchoredPosition = new Vector2(Mathf.Sign(speed) * length * 0.5f, 0f);
+
+            head.sizeDelta = new Vector2(thickness * 1.7f, thickness * 1.7f);
+            head.anchoredPosition = new Vector2(Mathf.Sign(speed) * length, 0f);
         }
     }
 }

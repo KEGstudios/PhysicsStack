@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using TMPro;
 using UnityEngine.UI;
 
 namespace PhysicsStack
@@ -19,6 +20,7 @@ namespace PhysicsStack
     {
         [SerializeField] StackGameController controller;
         [SerializeField] LevelLibrary levels;
+        [SerializeField] Palette palette;
 
         Canvas canvas;
         UIButton retryButton;
@@ -67,6 +69,10 @@ namespace PhysicsStack
 
         void Build(GameState state)
         {
+            // Menü hiç açılmadan doğrudan tura girilmiş olabilir; paleti burada da
+            // bildiriyoruz, yoksa tur sonu ekranı varsayılan renklerle çizilir.
+            UIKit.Use(palette);
+
             canvas = UIKit.CreateCanvas("ResultCanvas", sortOrder: 20);
 
             // Panel kadrajın tamamını kaplamıyor: altındaki kule görünsün istiyorum,
@@ -79,13 +85,13 @@ namespace PhysicsStack
 
             string headline = state == GameState.Won ? "KAZANDIN" : "KAYBETTIN";
 
-            var title = UIKit.Label(panel, headline, 84, TextAnchor.UpperCenter);
+            var title = UIKit.Label(panel, headline, 84, TextAlignmentOptions.Top);
             title.rectTransform.anchorMin = new Vector2(0f, 0.62f);
             title.rectTransform.anchorMax = new Vector2(1f, 0.95f);
             title.rectTransform.offsetMin = Vector2.zero;
             title.rectTransform.offsetMax = Vector2.zero;
 
-            var score = UIKit.Label(panel, Describe(state), 44, TextAnchor.UpperCenter);
+            var score = UIKit.Label(panel, Describe(state), 44, TextAlignmentOptions.Top);
             score.color = UIKit.DimTextColor;
             score.rectTransform.anchorMin = new Vector2(0f, 0.44f);
             score.rectTransform.anchorMax = new Vector2(1f, 0.62f);

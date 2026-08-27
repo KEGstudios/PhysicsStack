@@ -1,5 +1,7 @@
 using PhysicsStack;
 using UnityEditor;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -23,6 +25,13 @@ namespace PhysicsStack.EditorTools
         const string BallPrefabPath = "Assets/_Project/Prefabs/Ball.prefab";
         const string BoxMaterialPath = "Assets/_Project/Art/Materials/M_Box.mat";
         const string GroundMaterialPath = "Assets/_Project/Art/Materials/M_Ground.mat";
+        const string CannonMaterialPath = "Assets/_Project/Art/Materials/M_Cannon.mat";
+        const string BallMaterialPath = "Assets/_Project/Art/Materials/M_Ball.mat";
+        const string PalettePath = "Assets/_Project/Data/Palette.asset";
+        const string SkyMaterialPath = "Assets/_Project/Art/Materials/M_Sky.mat";
+        const string LineMaterialPath = "Assets/_Project/Art/Materials/M_Line.mat";
+        const string DustMaterialPath = "Assets/_Project/Art/Materials/M_Dust.mat";
+        const string VolumeProfilePath = "Assets/_Project/Settings/PostProcess.asset";
         const string DragSettingsPath = "Assets/_Project/Data/DragSettings.asset";
         // Uzantı bilerek ".asset": Unity, PhysicsMaterial'ı CreateAsset ile
         // ".physicsMaterial" olarak yazmaya "bu ileride hata olacak" uyarısı
@@ -48,23 +57,43 @@ namespace PhysicsStack.EditorTools
                 return;
             }
 
-            var boxMaterial = CreateLitMaterial(BoxMaterialPath, new Color(0.62f, 0.62f, 0.62f));
-            var groundMaterial = CreateLitMaterial(GroundMaterialPath, new Color(0.30f, 0.30f, 0.32f));
+            ApplyRenderSettings();
+
+            var palette = LoadOrCreatePalette();
+
+            // Malzemelerin rengi palet varlığından geliyor: sahne kurulumu paletin
+            // çıktısı, kaynağı değil. Renk denemek isteyince paleti değiştirip
+            // sahneyi yeniden kurmak yetiyor, altı ayrı yerde renk aramak değil.
+            var boxMaterial = CreateLitMaterial(BoxMaterialPath, palette.BoxColor(0));
+            var groundMaterial = CreateLitMaterial(GroundMaterialPath, palette.ground);
+            var cannonMaterial = CreateLitMaterial(CannonMaterialPath, palette.cannon);
+            var ballMaterial = CreateLitMaterial(BallMaterialPath, palette.ball);
+            var lineMaterial = CreateUnlitMaterial(LineMaterialPath, palette.targetIdle);
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var camera = CreateCamera();
-            CreateLight();
+            CreateLight(palette);
+            CreateSky(palette);
+            CreatePostProcessing(camera);
             CreateGround(groundMaterial);
 
             var dragSettings = LoadOrCreateDragSettings();
             var boxPhysics = LoadOrCreateBoxPhysicsMaterial();
             var boxPrefab = CreateBoxPrefab(boxMaterial, boxPhysics, dragSettings);
-            var targetLine = CreateTargetLine(groundMaterial, TargetHeight);
-            var dropLine = CreateDropLine(groundMaterial);
-            var ballPrefab = CreateBallPrefab(groundMaterial);
+            var targetLine = CreateTargetLine(lineMaterial, TargetHeight);
+            var dropLine = CreateDropLine(lineMaterial);
+            var ballPrefab = CreateBallPrefab(ballMaterial);
+            var dust = CreateDust(palette);
             var levels = LevelBootstrap.LoadOrCreate();
-            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels);
+
+            // Palet referansi bilerek yeniden okunuyor. Yukarida yeni varlik
+            // uretilmis olabilir (ornegin toz malzemesi) ve varlik uretmek
+            // AssetDatabase'i tazeliyor: elimizdeki palet nesnesi gecersizlesiyor,
+            // atandiginda da sessizce bos yaziliyor. Bu hata iki kez isirdi ve
+            // ikisinde de tek belirtisi renklerin yanlis olmasiydi.
+            palette = LoadOrCreatePalette();
+            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels, palette, cannonMaterial, lineMaterial, dust);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -88,22 +117,134 @@ namespace PhysicsStack.EditorTools
             // FOV burada verilmiyor: StackCamera onu her karede ekran oranından
             // hesaplıyor. Sabit bir değer yazsaydım dar telefonda oyun alanı
             // daralır, tablette genişlerdi.
-            camera.backgroundColor = new Color(0.16f, 0.17f, 0.19f);
-            camera.clearFlags = CameraClearFlags.SolidColor;
+            // Arka planı gradyan gökyüzü dolduruyor; düz renk yerine geçiş,
+            // kadrajın üst yarısı boş kaldığında sahneyi ölü göstermiyor.
+            camera.clearFlags = CameraClearFlags.Skybox;
             return camera;
         }
 
-        static void CreateLight()
+        static void CreateLight(Palette palette)
         {
             var go = new GameObject("Directional Light", typeof(Light));
-            go.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            go.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
 
             var light = go.GetComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.1f;
-            // Gölge tek başına derinlik bilgisi taşıyor: gri kutuların birbirine göre
+
+            // Hafif sıcak anahtar ışık. Beyaz ışık pastel renkleri soluklaştırıyor;
+            // azıcık sarıya kaçan bir ışık onları "boyanmış" değil "aydınlatılmış"
+            // gösteriyor.
+            light.color = new Color(1f, 0.97f, 0.92f);
+            light.intensity = 1.15f;
+
+            // Gölge tek başına derinlik bilgisi taşıyor: kutuların birbirine göre
             // yüksekliği başka türlü okunmuyor.
             light.shadows = LightShadows.Soft;
+            light.shadowStrength = 0.55f;
+
+            // Ortam ışığı gökyüzünün gradyanını takip ediyor: üstten açık, alttan
+            // zemin rengi. Tek renk ortam ışığı kutuların alt yüzlerini ölü gri
+            // yapıyor, bu ise onları sahnenin içine oturtuyor.
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            // Gökyüzü ortam ışığı kısılıyor: tam şiddette verince zemin yukarıdan
+            // hem yönlü ışık hem ortam ışığı alıp beyaza yaklaşıyor ve arka planla
+            // ayrımı kayboluyor. Zeminin koyu kalması gereken bir yüzey olması
+            // renk seçiminden çok aydınlatma meselesiymiş.
+            RenderSettings.ambientSkyColor = palette.skyTop * 0.8f;
+            RenderSettings.ambientEquatorColor = palette.skyBottom;
+            RenderSettings.ambientGroundColor = palette.ground * 0.7f;
+        }
+
+        /// <summary>
+        /// Post-process yigini: tonemapping, bloom, vignette, renk ayari.
+        ///
+        /// Bunlar bir prototipte "sus" gibi gorunuyor ama sanatcisi olmayan bir
+        /// projede en cok isi bunlar yapiyor: duz renkli kutulardan olusan bir
+        /// sahne, tonemapping ve hafif bloom olmadan bilgisayar ciktisi gibi
+        /// duruyor. Hicbiri varlik gerektirmiyor, hepsi birkac sayi.
+        ///
+        /// Profil varsa dokunulmuyor - bu degerler gozle ayarlanan seyler ve
+        /// sahneyi tazelemek onlari cope atmamali.
+        /// </summary>
+        static void CreatePostProcessing(Camera camera)
+        {
+            camera.GetUniversalAdditionalCameraData().renderPostProcessing = true;
+
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumeProfilePath);
+
+            if (profile == null)
+            {
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, VolumeProfilePath);
+
+                // Neutral secildi, ACES degil: ACES koyu ve doygun goruntude iyi
+                // ama pastel tonlari eziyor, acik renkleri birbirine yaklastiriyor.
+                var tonemapping = AddOverride<Tonemapping>(profile);
+                tonemapping.mode.Override(TonemappingMode.Neutral);
+
+                // Esik yuksek, siddet dusuk: parlak yuzeylerin kenarina hafif bir
+                // yumusaklik katiyor, sahneyi sisletmiyor.
+                var bloom = AddOverride<Bloom>(profile);
+                bloom.threshold.Override(0.95f);
+                bloom.intensity.Override(0.35f);
+                bloom.scatter.Override(0.6f);
+
+                // Kadrajin koselerini hafifce karartmak, dikkatin ortadaki kuleye
+                // toplanmasini sagliyor.
+                var vignette = AddOverride<Vignette>(profile);
+                vignette.intensity.Override(0.24f);
+                vignette.smoothness.Override(0.45f);
+                vignette.color.Override(new Color(0.25f, 0.22f, 0.24f));
+
+                var color = AddOverride<ColorAdjustments>(profile);
+                color.postExposure.Override(0.1f);
+                color.contrast.Override(8f);
+                color.saturation.Override(6f);
+
+                AssetDatabase.SaveAssets();
+            }
+
+            var go = new GameObject("Post Process", typeof(Volume));
+            var volume = go.GetComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 1f;
+            volume.sharedProfile = profile;
+        }
+
+        /// <summary>
+        /// Etki profile eklenirken alt varlik olarak da kaydedilmesi gerekiyor;
+        /// yoksa profil dosyasi referansi kaybediyor ve ayarlar sessizce sifirlaniyor.
+        /// </summary>
+        static T AddOverride<T>(VolumeProfile profile) where T : VolumeComponent
+        {
+            var component = profile.Add<T>(true);
+            component.name = typeof(T).Name;
+            AssetDatabase.AddObjectToAsset(component, profile);
+            return component;
+        }
+
+        /// <summary>
+        /// Gradyan gökyüzü. Elle yazılmış shader kullanılıyor: ihtiyaç duyulan tek
+        /// şey iki renk arasında dikey geçiş, ve doku kullanmak hem birkaç
+        /// megabaytlık varlık hem de palet değişince yeniden üretilmesi gereken
+        /// bir şey demekti.
+        /// </summary>
+        static void CreateSky(Palette palette)
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(SkyMaterialPath);
+
+            if (material == null)
+            {
+                material = new Material(Shader.Find("PhysicsStack/GradientSky"));
+                AssetDatabase.CreateAsset(material, SkyMaterialPath);
+            }
+
+            material.SetColor("_TopColor", palette.skyTop);
+            material.SetColor("_BottomColor", palette.skyBottom);
+            material.SetFloat("_Exponent", 1.1f);
+            EditorUtility.SetDirty(material);
+
+            RenderSettings.skybox = material;
         }
 
         static void CreateGround(Material material)
@@ -114,7 +255,10 @@ namespace PhysicsStack.EditorTools
             // Üst yüzey tam y = 0'da olsun: yığın yüksekliğini ölçerken referans
             // noktasının ondalıklı olmaması ileride her hesabı sadeleştiriyor.
             go.transform.position = new Vector3(0f, -0.5f, 0f);
-            go.transform.localScale = new Vector3(14f, 1f, 14f);
+
+            // Geniş ekranda kadraj yanlara doğru açılıyor; zemin oyun alanından
+            // belirgin şekilde geniş olmazsa kenarlarda boşluk görünüyor.
+            go.transform.localScale = new Vector3(30f, 1f, 14f);
 
             go.isStatic = true;
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
@@ -122,10 +266,20 @@ namespace PhysicsStack.EditorTools
 
         static GameObject CreateBoxPrefab(Material material, PhysicsMaterial physics, DragSettings settings)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Box";
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            go.GetComponent<BoxCollider>().sharedMaterial = physics;
+            // Gorsel govde ayri bir cocuk nesnede duruyor. Sebebi ezilme
+            // animasyonu: olcegi rigidbody'nin kendisinde oynatmak collider'i da
+            // oynatirdi, yani gorsel bir susleme fizigi degistirmis olurdu.
+            var go = new GameObject("Box");
+
+            var collider = go.AddComponent<BoxCollider>();
+            collider.sharedMaterial = physics;
+
+            var mesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mesh.name = "Mesh";
+            Object.DestroyImmediate(mesh.GetComponent<Collider>());
+            mesh.GetComponent<MeshRenderer>().sharedMaterial = material;
+            mesh.AddComponent<BoxVisual>();
+            mesh.transform.SetParent(go.transform, false);
 
             var rb = go.AddComponent<Rigidbody>();
             rb.mass = 1f;
@@ -169,7 +323,11 @@ namespace PhysicsStack.EditorTools
             DragSettings settings,
             Renderer targetLine,
             Renderer dropLine,
-            LevelLibrary levels)
+            LevelLibrary levels,
+            Palette palette,
+            Material cannonMaterial,
+            Material lineMaterial,
+            ParticleSystem dust)
         {
             var go = new GameObject("Systems");
 
@@ -182,6 +340,7 @@ namespace PhysicsStack.EditorTools
             // "hangi kamerayı kullanıyor" sorusunu Inspector'da cevaplıyor.
             SetReference(input, "targetCamera", camera);
             SetReference(queue, "boxPrefab", boxPrefab);
+            SetReference(queue, "palette", palette);
             SetReference(controller, "queue", queue);
             SetReference(controller, "tracker", tracker);
             SetReference(controller, "levelLibrary", levels);
@@ -202,19 +361,39 @@ namespace PhysicsStack.EditorTools
             SetReference(indicator, "controller", controller);
             SetReference(indicator, "targetLine", targetLine);
 
+            // Görsel bileşenlerin renkleri paletten sahneye işleniyor. Her birine
+            // paletin referansını vermek yerine değeri yazmayı seçtim: renk
+            // çalışma zamanında değişen bir şey değil, sahnenin bir özelliği.
+            SetColor(indicator, "idleColor", palette.targetIdle);
+            SetColor(indicator, "holdingColor", palette.targetHolding);
+            SetColor(indicator, "wonColor", palette.targetWon);
+            SetColor(indicator, "lostColor", palette.targetLost);
+
             var dropLineView = go.AddComponent<DropLineView>();
             SetReference(dropLineView, "controller", controller);
             SetReference(dropLineView, "queue", queue);
             SetReference(dropLineView, "line", dropLine);
+            SetColor(dropLineView, "color", palette.dropLine);
+
+            var effects = go.AddComponent<ImpactEffects>();
+            SetReference(effects, "controller", controller);
+            SetReference(effects, "queue", queue);
+            SetReference(effects, "dust", dust);
 
             // Arayüz: menü ve tur sonu. İkisi de kanvasını çalışma zamanında
             // kendisi kuruyor, o yüzden sahnede tek bir bileşenden ibaretler.
             var menu = go.AddComponent<MenuUI>();
             SetReference(menu, "levels", levels);
+            SetReference(menu, "palette", palette);
+
+            var hud = go.AddComponent<HudUI>();
+            SetReference(hud, "controller", controller);
+            SetReference(hud, "palette", palette);
 
             var result = go.AddComponent<ResultUI>();
             SetReference(result, "controller", controller);
             SetReference(result, "levels", levels);
+            SetReference(result, "palette", palette);
 
             // Tehditler: ikisi de seviyenin verisinden kendi ayarlarını okuyor,
             // kapalıysa hiç görünmüyorlar.
@@ -226,10 +405,9 @@ namespace PhysicsStack.EditorTools
 
             var windIndicator = go.AddComponent<WindIndicator>();
             SetReference(windIndicator, "wind", wind);
-            SetReference(windIndicator, "bar", CreateWindPart(boxPrefab, "WindBar", 0f));
-            SetReference(windIndicator, "head", CreateWindPart(boxPrefab, "WindHead", 45f));
+            SetReference(windIndicator, "palette", palette);
 
-            CreateCannon(boxPrefab, ballPrefab, controller, tracker);
+            CreateCannon(cannonMaterial, ballPrefab, controller, tracker);
 
             // Kamera bileşeni kameranın kendi nesnesinde duruyor ama ölçümü
             // buradaki tracker'dan alıyor; kuyruk da kutuyu kadrajın üstünde
@@ -237,7 +415,7 @@ namespace PhysicsStack.EditorTools
             var stackCamera = camera.gameObject.AddComponent<StackCamera>();
             SetReference(stackCamera, "tracker", tracker);
             SetReference(queue, "stackCamera", stackCamera);
-            SetReference(windIndicator, "stackCamera", stackCamera);
+            SetReference(effects, "stackCamera", stackCamera);
         }
 
         /// <summary>
@@ -289,11 +467,142 @@ namespace PhysicsStack.EditorTools
             return material;
         }
 
+        /// <summary>
+        /// Palet varlığı: varsa dokunulmuyor. Renkler oynayarak ayarlanan şeyler
+        /// ve sahneyi tazelemek bir günlük renk çalışmasını çöpe atmamalı.
+        /// </summary>
+        /// <summary>
+        /// URP ayarlarini sahne kurulumunun parcasi yapiyorum.
+        ///
+        /// Bunlar Inspector'dan tiklanabilir seyler ama proje iki makine arasinda
+        /// tasiniyor ve tiklamalarin bir kismi tasinmiyor. Daha kotusu: kenar
+        /// yumusatma kapaliyken oyun "biraz kaba" gorunuyor ve sebebini aramak
+        /// icin once akla kod geliyor, ayar dosyasi degil.
+        ///
+        /// Projedeki butun URP varliklarina uygulaniyor: hangi kalite seviyesinin
+        /// hangi platformda secildigi ayri bir ayar ve birini atlamak "PC'de
+        /// duzgun, telefonda tirtikli" gibi acikcasi bulmasi zor bir fark yaratir.
+        /// </summary>
+        static void ApplyRenderSettings()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:UniversalRenderPipelineAsset"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var asset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(path);
+
+                if (asset == null)
+                {
+                    continue;
+                }
+
+                var serialized = new SerializedObject(asset);
+
+                // Sahne birkac yuz ucgenden ibaret; MSAA'nin bedeli burada
+                // neredeyse yok, kazanci ise dogrudan gorunuyor: kutu kenarlari
+                // duz renk oldugu icin merdivenlenme en cok orada okunuyor.
+                serialized.FindProperty("m_MSAA").intValue = 4;
+
+                // Mobil profilinde yumusak golge kapali geliyordu; sert golge
+                // pastel yonde yamalik gibi duruyor.
+                serialized.FindProperty("m_SoftShadowsSupported").boolValue = true;
+
+                // Golge mesafesi kucultuldu: ayni golge haritasi daha dar bir
+                // alana dagildigi icin golgeler keskinlesiyor. Oyun alani zaten
+                // otuz birim genisliginde.
+                serialized.FindProperty("m_ShadowDistance").floatValue = 28f;
+
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(asset);
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+
+        [MenuItem("PhysicsStack/Paleti Yeniden Kur")]
+        public static void RebuildPalette()
+        {
+            if (!Application.isBatchMode &&
+                !EditorUtility.DisplayDialog(
+                    "Paleti yeniden kur",
+                    "Bütün renkler koddaki varsayılanlara döner. Elle yaptığın renk ayarları kaybolur.",
+                    "Kur",
+                    "Vazgeç"))
+            {
+                return;
+            }
+
+            var palette = LoadOrCreatePalette();
+
+            // Taze bir örnek koddaki varsayılanları taşıyor; onu varlığın üstüne
+            // kopyalamak, varsayılanları ikinci bir yerde tekrar yazmaktan iyi.
+            var defaults = ScriptableObject.CreateInstance<Palette>();
+            EditorUtility.CopySerialized(defaults, palette);
+            Object.DestroyImmediate(defaults);
+
+            // CopySerialized varlığın **adını da** kopyalıyor ve taze örneğin adı
+            // boş. Adsız kalan bir ana varlığı AssetDatabase artık bulamıyor:
+            // sahnedeki bütün palet referansları sessizce boşa düşüyor, oyun da
+            // varsayılan renklerle çalışıyor. Hiçbir yerde hata görünmüyor,
+            // sadece renkler yanlış — bulması en pahalı hata türü.
+            palette.name = System.IO.Path.GetFileNameWithoutExtension(PalettePath);
+
+            EditorUtility.SetDirty(palette);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[SceneBootstrap] Palet koddaki varsayılanlara döndürüldü.");
+        }
+
+        static Palette LoadOrCreatePalette()
+        {
+            var palette = AssetDatabase.LoadAssetAtPath<Palette>(PalettePath);
+
+            if (palette == null)
+            {
+                palette = ScriptableObject.CreateInstance<Palette>();
+                AssetDatabase.CreateAsset(palette, PalettePath);
+            }
+            else if (string.IsNullOrEmpty(palette.name))
+            {
+                // Eski bir hatadan kalma adsız varlığı onar.
+                palette.name = System.IO.Path.GetFileNameWithoutExtension(PalettePath);
+                EditorUtility.SetDirty(palette);
+            }
+
+            return palette;
+        }
+
+        static void SetColor(Object target, string propertyName, Color value)
+        {
+            var serialized = new SerializedObject(target);
+            serialized.FindProperty(propertyName).colorValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Referansi yazar ve yazildigini dogrular.
+        ///
+        /// Dogrulama sonradan eklendi: gecersizlesmis bir varlik nesnesi
+        /// atandiginda Unity hata vermiyor, alani sessizce bos birakiyor. Sahne
+        /// kuruluyor, derleme temiz, log sessiz - ve oyun yanlis calisiyor.
+        /// Bulmasi en pahali hata turu bu, o yuzden artik bagiriyor.
+        /// </summary>
         static void SetReference(Object target, string propertyName, Object value)
         {
             var serialized = new SerializedObject(target);
-            serialized.FindProperty(propertyName).objectReferenceValue = value;
+            var property = serialized.FindProperty(propertyName);
+
+            if (property == null)
+            {
+                Debug.LogError($"[SceneBootstrap] {target.GetType().Name} uzerinde '{propertyName}' alani yok.");
+                return;
+            }
+
+            property.objectReferenceValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            if (value != null && new SerializedObject(target).FindProperty(propertyName).objectReferenceValue == null)
+            {
+                Debug.LogError($"[SceneBootstrap] {target.GetType().Name}.{propertyName} referansi yazilamadi: kaynak nesne gecersiz.");
+            }
         }
 
         static Renderer CreateTargetLine(Material material, float height)
@@ -303,41 +612,17 @@ namespace PhysicsStack.EditorTools
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "TargetLine";
             go.transform.position = new Vector3(0f, height, 0f);
-            go.transform.localScale = new Vector3(16f, 0.04f, 0.04f);
+            go.transform.localScale = new Vector3(30f, 0.09f, 0.09f);
 
             // Collider'ı yok: kulenin ona çarpması saçma olurdu.
             Object.DestroyImmediate(go.GetComponent<Collider>());
 
-            var renderer = go.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = material;
-
             // Oyun bittiğinde rengi değişecek olan nesne bu; referansı dışarı veriyoruz.
-            return renderer;
-        }
-
-        /// <summary>
-        /// Rüzgâr göstergesinin parçaları: kadrajın üstünde esme yönüne uzayan bir
-        /// çubuk ve ucunda 45° döndürülmüş bir küp — eşkenar dörtgen olarak
-        /// okunuyor ve yönü tek bakışta veriyor. Görünmeyen bir kuvvet zorluk
-        /// değil kafa karışıklığı üretir; oyuncu kendi hatasını arar.
-        /// </summary>
-        static Renderer CreateWindPart(GameObject boxPrefab, string name, float roll)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = name;
-            go.transform.rotation = Quaternion.Euler(0f, 0f, roll);
-            go.transform.localScale = Vector3.one * 0.2f;
-
-            Object.DestroyImmediate(go.GetComponent<Collider>());
-
-            var renderer = go.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial = boxPrefab.GetComponent<MeshRenderer>().sharedMaterial;
-            renderer.enabled = false;
-            return renderer;
+            return MakeIndicator(go, material);
         }
 
         static GameObject CreateCannon(
-            GameObject boxPrefab,
+            Material cannonMaterial,
             GameObject ballPrefab,
             StackGameController controller,
             StackTracker tracker)
@@ -351,8 +636,11 @@ namespace PhysicsStack.EditorTools
             // zaten istenmeyen bir şey.
             Object.DestroyImmediate(go.GetComponent<Collider>());
 
-            go.GetComponent<MeshRenderer>().sharedMaterial =
-                boxPrefab.GetComponent<MeshRenderer>().sharedMaterial;
+            // Namlu havada duruyor; gölgesi kulenin üstüne düşünce oyuncu onu
+            // yanlışlıkla bir nesne sanıyor. Gölge almaya devam ediyor, düşürmüyor.
+            var cannonRenderer = go.GetComponent<MeshRenderer>();
+            cannonRenderer.sharedMaterial = cannonMaterial;
+            cannonRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             var cannon = go.AddComponent<Cannon>();
             SetReference(cannon, "controller", controller);
@@ -402,28 +690,136 @@ namespace PhysicsStack.EditorTools
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "DropLine";
             go.transform.position = new Vector3(0f, 2f, 0f);
-            go.transform.localScale = new Vector3(16f, 0.025f, 0.025f);
+            go.transform.localScale = new Vector3(30f, 0.06f, 0.06f);
 
             Object.DestroyImmediate(go.GetComponent<Collider>());
 
+            return MakeIndicator(go, material);
+        }
+
+        /// <summary>
+        /// Malzeme yoksa üretiliyor, varsa rengi güncelleniyor.
+        ///
+        /// Diğer varlıklarda (his ayarları, seviyeler) kural "varsa dokunma"ydı,
+        /// çünkü onlar oynayarak ayarlanan şeyler. Malzeme öyle değil: rengi
+        /// paletten türetiliyor, yani elle ayarlanmış bir değeri yok. Dokunmasaydım
+        /// palet değişince malzeme eski rengiyle kalırdı.
+        /// </summary>
+        /// <summary>
+        /// Göstergelerin malzemesi: ışıksız.
+        ///
+        /// Çizgiler ve rüzgâr oku dünyanın nesneleri değil, oyuncuya bilgi veren
+        /// işaretler. Işık alan bir gösterge sahnenin aydınlatmasına göre renk
+        /// değiştiriyor ve "şu an yeşil mi sarı mı" sorusunu belirsizleştiriyor.
+        /// Işıksız malzeme rengi olduğu gibi gösteriyor, üstelik gölge de almıyor.
+        /// </summary>
+        /// <summary>
+        /// Carpma tozu. Doku yok: parcaciklar kucuk kareler olarak ciziliyor ve
+        /// bu, oyunun geometrik diline zaten uyuyor. Bir toz dokusu eklemek hem
+        /// varlik hem de "hangi yumusaklikta olmali" diye ayarlanacak bir sey
+        /// daha demekti.
+        ///
+        /// Tek sistem uretiliyor ve her carpmada yerine tasinip Emit ediliyor.
+        /// Carpma basina ayri sistem uretmek bir turda onlarca Instantiate/Destroy
+        /// demek olurdu.
+        /// </summary>
+        static ParticleSystem CreateDust(Palette palette)
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(DustMaterialPath);
+
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+                AssetDatabase.CreateAsset(material, DustMaterialPath);
+            }
+
+            material.color = Color.white;
+            EditorUtility.SetDirty(material);
+
+            var go = new GameObject("Dust", typeof(ParticleSystem));
+            var system = go.GetComponent<ParticleSystem>();
+
+            var main = system.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.30f, 0.55f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1.1f, 2.6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.07f, 0.16f);
+            main.startColor = palette.ground * 1.6f;
+            main.gravityModifier = 0.8f;
+            main.maxParticles = 300;
+
+            // Dunya uzayinda: sistem carpma noktasina tasindiginda havadaki eski
+            // parcaciklar da onunla birlikte gitmemeli.
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            // Kendiliginden hic parcacik uretmiyor; sistem sadece calisiyor ki
+            // Emit ile atilanlar simule edilsin.
+            var emission = system.emission;
+            emission.rateOverTime = 0f;
+
+            var shape = system.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.12f;
+
+            // Kuculerek kayboluyor: aniden yok olan parcacik goze carpiyor.
+            var sizeOverLifetime = system.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0f));
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            return system;
+        }
+
+        static Material CreateUnlitMaterial(string path, Color color)
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.color = color;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Göstergeyi sahnenin ışık hesabından çıkarır: gölge düşürmüyor, gölge
+        /// almıyor. Havada duran ince bir çizginin kulenin üstüne gölge düşürmesi
+        /// bilgi değil gürültü.
+        /// </summary>
+        static Renderer MakeIndicator(GameObject go, Material material)
+        {
             var renderer = go.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
             return renderer;
         }
 
         static Material CreateLitMaterial(string path, Color color)
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (existing != null)
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+
+            if (material == null)
             {
-                return existing;
+                material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(material, path);
             }
 
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
-            var material = new Material(shader) { color = color };
-            material.SetFloat("_Smoothness", 0.15f); // Parlak gri kutu, kenarları okunmuyor.
+            material.color = color;
 
-            AssetDatabase.CreateAsset(material, path);
+            // Pastel yön mat yüzey istiyor: parlaklık yükseldikçe düz renk
+            // kayboluyor ve her kutu ışığın rengine dönüyor.
+            material.SetFloat("_Smoothness", 0.12f);
+            EditorUtility.SetDirty(material);
             return material;
         }
     }

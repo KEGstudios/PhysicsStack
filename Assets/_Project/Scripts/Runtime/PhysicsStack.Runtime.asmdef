@@ -2,6 +2,7 @@
     "name": "PhysicsStack.Runtime",
     "rootNamespace": "PhysicsStack",
     "references": [
+        "Unity.TextMeshPro",
         "Unity.InputSystem",
         "UnityEngine.UI"
     ],

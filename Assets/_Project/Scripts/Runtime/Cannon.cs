@@ -24,8 +24,8 @@ namespace PhysicsStack
         [Tooltip("Namlunun görünen gövdesi; tehdit kapalıyken gizleniyor.")]
         [SerializeField] Renderer body;
 
-        [Tooltip("Namlunun x konumu. Kadraj genişliğinin içinde ama kulenin dışında kalmalı.")]
-        [SerializeField] float sideX = -2.2f;
+        [Tooltip("Namlunun x konumu. Oyun alanının hemen dışında: BoxQueue'daki playHalfWidth + kutu yarısı + pay.")]
+        [SerializeField] float sideX = -2.25f;
 
         [Tooltip("Seviye verisi bir değer vermezse kullanılan alt kenar payı.")]
         [SerializeField] float defaultBottomGap = 2f;

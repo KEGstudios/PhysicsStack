@@ -27,8 +27,8 @@ namespace PhysicsStack
         [Tooltip("Rüzgâr açıksa o anki değeri panele basmak için.")]
         [SerializeField] Wind wind;
 
-        [Tooltip("Kapatınca hiçbir şey çizilmiyor. Build'e bu kapalı gitmeli mi diye Gün 5'te karar vereceğim.")]
-        [SerializeField] bool visible = true;
+        [Tooltip("Varsayılan olarak kapalı: oyuncunun göreceği bilgiler artık HudUI'de. Burası geliştirici aracı.")]
+        [SerializeField] bool visible;
 
         GUIStyle style;
         GUIStyle boxStyle;

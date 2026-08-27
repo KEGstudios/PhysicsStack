@@ -10,7 +10,8 @@ Sanat, ses, müzik yok — hepsi gri kutu.
 
 - Unity 6 (6000.5.10f1) · URP · Android + WebGL
 - **Faz 1 (5 gün):** dokunmatik girdiyi fiziğe bağlamak. `v1-prototype` olarak donduruldu.
-- **Faz 2 (5 gün):** onu oynanabilir bir oyuna çevirmek. Bu belge ikisini de anlatıyor.
+- **Faz 2 (5 gün):** onu oynanabilir bir oyuna çevirmek. `v2-playable`.
+- **Faz 3:** bitmiş gibi görünmesini ve hissettirmesini sağlamak.
 
 Faz 1'in sonunda elimde bir teknik gösterim vardı: beş kutu koyuyordun, bitiyordu.
 Çekirdeğin üstüne gerçek bir oyun döngüsü koymanın maliyeti, sıfırdan yeni bir
@@ -258,6 +259,55 @@ Aynı sebeple kutunun beliriş noktasındaki yatay rastgeleliği kaldırdım.
 Rastgelelik zorluğun kaynağı olmamalı: varken aynı seviyeyi iki kez oynamak iki
 farklı problem çözmek demekti.
 
+### Gri kutudan çıkış
+
+Gri kutu kuralı Faz 1 için konmuştu ve orada doğruydu: soru "dokunmatik girdiyi
+fiziğe nasıl bağlarım"dı, sanat o sorunun cevabını gizlerdi. Faz 3'te bağlam
+değişti — bu repo bir portföy parçası olarak açılıyor ve açanların çoğu koda
+bakmadan önce ekran görüntüsüne bakıyor.
+
+Yön pastel ve düz renk. Estetik tercih kadar teknik bir seçim: kutuların
+birbirinden ve zeminden ayrılması gerekiyor ve pastel palette her kutu farklı ton
+alabiliyor. Sanatçı da gerektirmiyor — düz renk, ışık ve post-process; doku ve
+model yok. Yan faydası, aynı sade formların artık kaza değil kasıtlı görünmesi.
+
+Bütün renkler tek bir varlıkta. Dağıtılmış renkler hızlı ilerletiyor ama bütünü
+görmeyi imkânsızlaştırıyor. Kutulara renk sırayla dağıtılıyor, rastgele değil:
+rastgelede yan yana aynı renk gelebiliyor ve o an palet bozuk değil, kod bozukmuş
+gibi görünüyor.
+
+Zeminin arka planla karışması bir renk sorunu değil **aydınlatma** sorunu çıktı:
+zemin hem yönlü ışığı hem gökyüzü ortam ışığını alıp beyaza yaklaşıyordu.
+
+### Ezilme-uzama fiziğe dokunmuyor
+
+Kutunun görsel gövdesi ayrı bir çocuk nesnede. Ölçeği rigidbody'de oynatmak
+collider'ı da oynatır — görsel bir süsleme fiziği değiştirir ve kule kendi kendine
+sallanmaya başlar.
+
+Ezilme sönümlü bir sinüs: tek yönlü ezilip açılma "lastik" gibi duruyor, genliği
+azalan salınım sert cismin çarpma anındaki titremesini taklit ediyor. Hacim
+korunuyor, yoksa kutu bir an küçülüyor ve çarpma değil uzaklaşma gibi okunuyor.
+
+Düşüşte uzama sonradan eklendi: ezilme tek başına çarpmayı anlatıyor ama
+öncesindeki düşüş "hiçbir şey olmuyor" gibi duruyordu. Çarpma anında uzama
+sıfırlanıyor — geçiş ne kadar keskin olursa çarpma o kadar sert okunuyor.
+
+### "0 hata" bir doğrulama değil
+
+Faz 3'te üç hata çıktı ve üçünde de derleme temizdi, sahne kuruluyordu, log
+sessizdi; yalnızca oyun yanlış çalışıyordu.
+
+Bileşenlerin `Start` sırası garanti değil — rüzgâr göstergesi, rüzgâr daha
+ayarlarını okumadan "rüzgâr yok" deyip kendini kapatıyordu. `CopySerialized`
+varlığın adını da kopyalıyor; adsız kalan bir varlığı `AssetDatabase` bulamıyor ve
+sahnedeki bütün palet referansları sessizce boşa düşüyor. Ve yeni bir varlık
+üretmek elde tutulan varlık referansını geçersizleştiriyor; atandığında Unity hata
+vermeden alanı boş bırakıyor.
+
+Üçünün ortak sonucu aynı: sahne kurulum aracı artık yazdığı her referansı geri
+okuyup doğruluyor ve yazamadığında bağırıyor.
+
 ### Arayüz sahnede değil, kodda
 
 Menü ve tur sonu ekranı kanvaslarını çalışma zamanında kendileri kuruyor. Arayüzde
@@ -461,10 +511,21 @@ deposu var; `gh-pages` dalına bağlı ve GitHub Pages o dalın kökünden servi
 ediyor. Build alındıktan sonra o klasörde `git add -A && git commit && git push`
 yeterli. `Build/` ana depoda `.gitignore`'da olduğu için ikisi birbirine karışmıyor.
 
-İki tuzak var. Birincisi, o klasördeki depo ana depodan **hiçbir şey miras
-almıyor** — kullanıcı adı/e-posta ana depoda local olarak ayarlıysa oradaki
-commit'ler makine kimliğiyle atılıyor ve GitHub hesabıyla eşleşmiyor. İkincisi,
-build boyutunu ölçerken o `.git` klasörü de sayılıyordu; ölçüm artık onu ve
+Üç tuzak var.
+
+**Push'tan hemen sonra siteyi yargılama.** Pages yeni commit'i işlerken bir süre
+eski ve yeni dosyaları karışık servis ediyor; Unity çalışma zamanı o aralıkta
+uyumsuz parçalarla açılıp "Maximum call stack size exceeded" gibi tamamen alakasız
+bir JS hatası veriyor. Bir kez buna kodda hata arayarak vakit harcadım. Hatanın
+iki farklı cihazda **aynı anda** çıkması teşhisin kendisiymiş: kod hatası olsaydı
+cihazdan bağımsız olarak kalıcı olurdu, yayılma sorunu ise birkaç dakikada
+kendiliğinden geçiyor.
+
+**Gömülü depo ana depodan hiçbir şey miras almıyor.** Kullanıcı adı/e-posta ana
+depoda local olarak ayarlıysa oradaki commit'ler makine kimliğiyle atılıyor ve
+GitHub hesabıyla eşleşmiyor.
+
+**Build boyutu ölçümü.** O `.git` klasörü de sayılıyordu; ölçüm artık onu ve
 Burst'ün `_DoNotShip` klasörünü atlıyor.
 
 Sahneyi ve seviyeleri de kod kuruyor: `PhysicsStack > Sahneyi Sifirdan Kur` ve

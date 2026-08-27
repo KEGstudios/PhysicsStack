@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,11 +24,25 @@ namespace PhysicsStack
     /// </summary>
     public static class UIKit
     {
-        public static readonly Color PanelColor = new(0.12f, 0.12f, 0.14f, 0.92f);
-        public static readonly Color ButtonColor = new(0.26f, 0.26f, 0.30f, 1f);
-        public static readonly Color LockedColor = new(0.18f, 0.18f, 0.20f, 1f);
-        public static readonly Color TextColor = new(0.92f, 0.92f, 0.94f, 1f);
-        public static readonly Color DimTextColor = new(0.55f, 0.55f, 0.58f, 1f);
+        /// <summary>
+        /// Arayüz renkleri de sahnenin geri kalanıyla aynı paletten geliyor.
+        /// Ekranlar kendi kanvaslarını çalışma zamanında kurduğu için renkleri
+        /// sahneye işlemek mümkün değil; bunun yerine ilk kurulan ekran paleti
+        /// buraya bırakıyor.
+        /// </summary>
+        static Palette palette;
+
+        public static void Use(Palette value)
+        {
+            palette = value;
+        }
+
+        public static Color PanelColor => palette != null ? palette.uiPanel : new Color(0.98f, 0.96f, 0.94f, 0.96f);
+        public static Color ButtonColor => palette != null ? palette.uiButton : new Color(0.88f, 0.84f, 0.80f);
+        public static Color LockedColor => palette != null ? palette.uiButtonLocked : new Color(0.91f, 0.89f, 0.88f);
+        public static Color AccentColor => palette != null ? palette.uiAccent : new Color(0.66f, 0.84f, 0.73f);
+        public static Color TextColor => palette != null ? palette.uiText : new Color(0.23f, 0.23f, 0.26f);
+        public static Color DimTextColor => palette != null ? palette.uiTextDim : new Color(0.55f, 0.54f, 0.58f);
 
         /// <summary>
         /// Referans çözünürlük portre telefon. <c>ScaleWithScreenSize</c> ve
@@ -46,7 +61,15 @@ namespace PhysicsStack
             var scaler = go.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
-            scaler.matchWidthOrHeight = 1f;
+            // Genişlik ve yükseklik yarı yarıya eşleniyor. Yalnızca yüksekliğe
+            // eşlemek portrede doğruydu ama geniş ekranda her şeyi küçültüyordu:
+            // 810 piksel yüksekliğinde bir tarayıcı penceresinde ölçek 0.42'ye
+            // düşüyor ve 48 puntoluk yazı 20 piksele iniyor.
+            scaler.matchWidthOrHeight = 0.5f;
+
+            // Dinamik yazı tipi varsayılanda ekran ölçeğiyle değil bu değerle
+            // rasterleniyor; 1'de büyütülmüş yazı bulanık çıkıyor.
+            scaler.dynamicPixelsPerUnit = 3f;
 
             return canvas;
         }
@@ -70,7 +93,7 @@ namespace PhysicsStack
         /// Dikdörtgen bir düğme. Konum normalize koordinatlarla veriliyor
         /// (0-1 aralığı), böylece düzen çözünürlükten bağımsız kalıyor.
         /// </summary>
-        public static UIButton Button(Transform parent, Rect area, string text, int fontSize, float inset = 0.01f)
+        public static UIButton Button(Transform parent, Rect area, string text, float fontSize, float inset = 0.01f)
         {
             var background = Panel(
                 parent,
@@ -84,13 +107,22 @@ namespace PhysicsStack
             {
                 Rect = background,
                 Background = background.GetComponent<Image>(),
-                Label = Label(background, text, fontSize, TextAnchor.MiddleCenter),
+                Label = Label(background, text, fontSize, TextAlignmentOptions.Center),
             };
         }
 
-        public static Text Label(Transform parent, string text, int fontSize, TextAnchor alignment)
+        /// <summary>
+        /// Yazı TextMeshPro ile çiziliyor, eski <c>Text</c> ile değil.
+        ///
+        /// Sebep ölçeklenebilirlik: eski bileşen yazıyı piksel haritası olarak
+        /// rasterliyor, yani kanvas büyüdüğünde yazı bulanıklaşıyor. Telefon ve
+        /// masaüstü arasında üç kat ölçek farkı olan bir oyunda bu doğrudan
+        /// görünüyordu. TMP mesafe alanı (SDF) kullanıyor: aynı varlık her
+        /// boyutta keskin.
+        /// </summary>
+        public static TMP_Text Label(Transform parent, string text, float fontSize, TextAlignmentOptions alignment)
         {
-            var go = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
             var rect = go.GetComponent<RectTransform>();
 
             rect.SetParent(parent, false);
@@ -99,30 +131,17 @@ namespace PhysicsStack
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
-            var label = go.GetComponent<Text>();
+            var label = go.GetComponent<TextMeshProUGUI>();
             label.text = text;
-            label.font = BuiltinFont();
             label.fontSize = fontSize;
             label.alignment = alignment;
             label.color = TextColor;
-            label.horizontalOverflow = HorizontalWrapMode.Overflow;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Overflow;
 
             return label;
         }
 
-        /// <summary>
-        /// Yazı tipi olarak motorun içindeki eski çalışma zamanı fontu kullanılıyor.
-        /// TextMeshPro daha iyi görünürdü ama projeye ayrıca "TMP Essentials"
-        /// içe aktarmayı gerektiriyor — sahneyi tek komutla kurabilme kuralını
-        /// bozan bir elle adım. Gri kutu prototipinde yazının güzel olması
-        /// gerekmiyor, okunması yetiyor.
-        /// </summary>
-        static Font BuiltinFont()
-        {
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            return font != null ? font : Resources.GetBuiltinResource<Font>("Arial.ttf");
-        }
     }
 
     /// <summary>
@@ -133,7 +152,7 @@ namespace PhysicsStack
     {
         public RectTransform Rect;
         public Image Background;
-        public Text Label;
+        public TMP_Text Label;
 
         public bool Enabled { get; private set; } = true;
 

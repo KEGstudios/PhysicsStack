@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b3690ed7fd980d46bf74e2f2dd531fc, type: 3}
+  m_Name: Palette
+  m_EditorClassIdentifier: PhysicsStack.Runtime::PhysicsStack.Palette
+  boxColors:
+  - {r: 0.9490196, g: 0.6509804, b: 0.6039216, a: 1}
+  - {r: 0.9607843, g: 0.79607844, b: 0.5568628, a: 1}
+  - {r: 0.65882355, g: 0.8352941, b: 0.7294118, a: 1}
+  - {r: 0.6117647, g: 0.77254903, b: 0.8784314, a: 1}
+  - {r: 0.7254902, g: 0.654902, b: 0.85882354, a: 1}
+  - {r: 0.9372549, g: 0.65882355, b: 0.76862746, a: 1}
+  ground: {r: 0.2901961, g: 0.32941177, b: 0.3764706, a: 1}
+  skyTop: {r: 0.8627451, g: 0.9137255, b: 0.9490196, a: 1}
+  skyBottom: {r: 0.9843137, g: 0.93333334, b: 0.8901961, a: 1}
+  cannon: {r: 0.43137255, g: 0.41568628, b: 0.47058824, a: 1}
+  ball: {r: 0.8509804, g: 0.3882353, b: 0.2901961, a: 1}
+  wind: {r: 0.8784314, g: 0.6431373, b: 0.34509805, a: 1}
+  uiPanel: {r: 0.98039216, g: 0.9647059, b: 0.9411765, a: 0.9607843}
+  uiButton: {r: 0.8784314, g: 0.8392157, b: 0.8, a: 1}
+  uiButtonLocked: {r: 0.9098039, g: 0.89411765, b: 0.8784314, a: 1}
+  uiAccent: {r: 0.65882355, g: 0.8352941, b: 0.7294118, a: 1}
+  uiText: {r: 0.22745098, g: 0.22745098, b: 0.25882354, a: 1}
+  uiTextDim: {r: 0.54901963, g: 0.5411765, b: 0.5803922, a: 1}
+  dropLine: {r: 0.49803922, g: 0.6509804, b: 0.76862746, a: 1}
+  targetIdle: {r: 0.7254902, g: 0.69803923, b: 0.6666667, a: 1}
+  targetHolding: {r: 0.9137255, g: 0.7254902, b: 0.28627452, a: 1}
+  targetWon: {r: 0.43529412, g: 0.7490196, b: 0.4509804, a: 1}
+  targetLost: {r: 0.8509804, g: 0.3254902, b: 0.30980393, a: 1}

@@ -26,6 +26,9 @@ namespace PhysicsStack
         [Tooltip("Her cihazda görünmesi garanti edilen yatay alan (dünya birimi).")]
         [SerializeField] float visibleWidth = 5f;
 
+        [Tooltip("Kadrajda en az bu kadar dünya yüksekliği görünür. Kule buna sığmalı.")]
+        [SerializeField] float minVisibleHeight = 11f;
+
         [Tooltip("Kulenin tepesiyle kadrajın üst kenarı arasında bırakılan boşluk.")]
         [SerializeField] float topMargin = 6f;
 
@@ -63,6 +66,46 @@ namespace PhysicsStack
         float followVelocity;
 
         /// <summary>Kutular z = 0 düzleminde; kameranın o düzleme uzaklığı bu.</summary>
+        /// <summary>
+        /// Kameranin sarsintisiz mantiksal yuksekligi.
+        ///
+        /// Ayri tutulmasi sart: sarsinti dogrudan transform'a yazilsaydi bir
+        /// sonraki karede o sarsinti "hedefe olan mesafe" olarak okunur ve
+        /// yumusatmaya geri beslenirdi - kamera kendi titremesini kovalamaya
+        /// baslardi. Kadraj hesaplari da bu degeri kullaniyor, yoksa sarsinti
+        /// sirasinda birakma cizgisi ve spawn yuksekligi titrerdi.
+        /// </summary>
+        float height;
+
+        float shake;
+        float shakeSeed;
+
+        /// <summary>
+        /// Kameranin sarsintisiz x/z konumu.
+        ///
+        /// Yukseklikle ayni sebep, ama bunu ilk yazista kacirdim: yatay sarsintiyi
+        /// <c>transform.position.x</c>'e ekliyordum ve o deger zaten onceki
+        /// karenin sarsintisini iceriyordu. Offset birikince kamera her carpmada
+        /// biraz daha yana kayiyor ve bir daha geri donmuyordu.
+        /// </summary>
+        Vector2 basePlane;
+
+        [Header("Sarsinti")]
+        [Tooltip("Sarsintinin sonme hizi (birim/sn).")]
+        [SerializeField] float shakeDecay = 0.9f;
+
+        [Tooltip("Sarsintinin titresim sikligi.")]
+        [SerializeField] float shakeFrequency = 26f;
+
+        [Tooltip("Tek seferde izin verilen en buyuk sarsinti (dunya birimi).")]
+        [SerializeField] float maxShake = 0.16f;
+
+        /// <summary>Carpma ya da cokus aninda cagriliyor; sertlik dunya birimi.</summary>
+        public void Shake(float amount)
+        {
+            shake = Mathf.Min(Mathf.Max(shake, amount), maxShake);
+        }
+
         float PlaneDistance => Mathf.Abs(transform.position.z);
 
         /// <summary>Kadrajın z = 0 düzlemindeki yarı yüksekliği.</summary>
@@ -77,7 +120,7 @@ namespace PhysicsStack
         float PitchDrop => PlaneDistance * Mathf.Tan(transform.eulerAngles.x * Mathf.Deg2Rad);
 
         /// <summary>Kadrajın z = 0 düzlemindeki dikey merkezi.</summary>
-        float FrameCenterY => transform.position.y - PitchDrop;
+        float FrameCenterY => height - PitchDrop;
 
         /// <summary>Kadrajın z = 0 düzlemindeki üst kenarı. Debug paneli okuyor.</summary>
         public float FrameTopY => FrameCenterY + HalfHeight;
@@ -88,11 +131,20 @@ namespace PhysicsStack
         void Awake()
         {
             cam = GetComponent<Camera>();
+
+            // Mantıksal yükseklik kadraj hesaplarının girdisi; ApplyFraming'den
+            // önce doldurulması gerekiyor, yoksa ilk kare sıfırdan hesaplanır.
+            height = transform.position.y;
+            basePlane = new Vector2(transform.position.x, transform.position.z);
+            shakeSeed = Random.value * 100f;
+
             ApplyFraming();
 
             // İlk karede kameranın süzülerek yerine gitmesini istemiyoruz.
+            height = DesiredHeight();
+
             var position = transform.position;
-            transform.position = new Vector3(position.x, DesiredHeight(), position.z);
+            transform.position = new Vector3(position.x, height, position.z);
         }
 
         /// <summary>
@@ -107,22 +159,62 @@ namespace PhysicsStack
             ApplyFraming();
 
             float target = DesiredHeight();
-            float current = transform.position.y;
+            float smoothTime = target > height ? riseSmoothTime : fallSmoothTime;
+            height = Mathf.SmoothDamp(height, target, ref followVelocity, smoothTime);
 
-            float smoothTime = target > current ? riseSmoothTime : fallSmoothTime;
-            float next = Mathf.SmoothDamp(current, target, ref followVelocity, smoothTime);
-
-            transform.position = new Vector3(transform.position.x, next, transform.position.z);
+            transform.position = new Vector3(
+                basePlane.x + ShakeOffset(out float verticalShake),
+                height + verticalShake,
+                basePlane.y);
         }
 
+        /// <summary>
+        /// Sarsinti offseti. Her karede rastgele bir nokta secmek ucuz ama
+        /// "bozuk goruntu" gibi okunuyor; Perlin gurultusu surekli oldugu icin
+        /// hareket sarsinti gibi hissediliyor.
+        /// </summary>
+        float ShakeOffset(out float vertical)
+        {
+            shake = Mathf.MoveTowards(shake, 0f, shakeDecay * Time.deltaTime);
+
+            if (shake <= 0f)
+            {
+                vertical = 0f;
+                return 0f;
+            }
+
+            float t = Time.time * shakeFrequency;
+            vertical = (Mathf.PerlinNoise(shakeSeed, t) - 0.5f) * 2f * shake;
+            return (Mathf.PerlinNoise(t, shakeSeed) - 0.5f) * 2f * shake;
+        }
+
+        /// <summary>
+        /// Kadrajı iki kısıt belirliyor: en az <see cref="visibleWidth"/> kadar
+        /// genişlik **ve** en az <see cref="minVisibleHeight"/> kadar yükseklik.
+        /// Hangisi daha geniş açı istiyorsa o kazanıyor.
+        ///
+        /// Başta yalnızca genişlik kısıtı vardı ve portrede doğru çalışıyordu.
+        /// Geniş ekranda ise aynı kural tersine dönüyor: 5 birimlik genişliği
+        /// 16:10 bir ekrana sabitlemek görünür yüksekliği 3.1 birime düşürüyor —
+        /// hedef yüksekliği 4.0 olan bir oyunda kule hedefe varmadan kadrajın
+        /// dışına çıkıyor. Yani "oyunun çoğu görünmüyor" değil, oyun oraya
+        /// sığmıyordu.
+        ///
+        /// İki kısıtla artık dar ekranda genişlik, geniş ekranda yükseklik
+        /// belirleyici oluyor; ikisinde de oynanan alan kadrajda kalıyor.
+        /// Geniş ekranda yanlarda fazladan dünya görünüyor, bu yüzden zemin ve
+        /// çizgiler oyun alanından belirgin şekilde geniş tutuluyor.
+        /// </summary>
         void ApplyFraming()
         {
             // tan(yatayYarıAçı) = ekranOranı * tan(dikeyYarıAçı)
             // Yatay yarı açıyı istediğim genişlikten buluyorum, dikeyi ondan çözüyorum.
             float halfHorizontal = Mathf.Atan(visibleWidth * 0.5f / PlaneDistance);
-            float halfVertical = Mathf.Atan(Mathf.Tan(halfHorizontal) / cam.aspect);
+            float halfFromWidth = Mathf.Atan(Mathf.Tan(halfHorizontal) / cam.aspect);
 
-            cam.fieldOfView = halfVertical * 2f * Mathf.Rad2Deg;
+            float halfFromHeight = Mathf.Atan(minVisibleHeight * 0.5f / PlaneDistance);
+
+            cam.fieldOfView = Mathf.Max(halfFromWidth, halfFromHeight) * 2f * Mathf.Rad2Deg;
         }
 
         float DesiredHeight()

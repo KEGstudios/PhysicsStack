@@ -18,6 +18,9 @@ namespace PhysicsStack
     {
         [SerializeField] GameObject boxPrefab;
 
+        [Tooltip("Kutulara sırayla dağıtılan renkler.")]
+        [SerializeField] Palette palette;
+
         [Tooltip("Kule tepesini okumak için. Hem spawn yüksekliği hem bırakma çizgisi buna bağlı.")]
         [SerializeField] StackTracker tracker;
 
@@ -36,12 +39,28 @@ namespace PhysicsStack
         [Tooltip("Kadrajın üst kenarına bu kadar yaklaşabilir; kule hızlı büyürse ekran dışına taşmasın diye.")]
         [SerializeField] float spawnMarginFromTop = 1f;
 
+        [Tooltip("Oyun alanının yarı genişliği. Kutu bu bandın dışına sürüklenemiyor.")]
+        [SerializeField] float playHalfWidth = 1.7f;
+
         [Tooltip("Kutunun beliriş noktası. Yüksekliği kule ve kadraj belirliyor, x/z buradan.")]
         [SerializeField] Vector3 spawnPosition = new(0f, 7f, 0f);
 
         public event Action<DraggableBody> BoxSpawned;
 
         public DraggableBody Current { get; private set; }
+
+        /// <summary>
+        /// Renk <see cref="MaterialPropertyBlock"/> ile veriliyor, kutuya kendi
+        /// malzemesi verilerek değil. İkincisi her kutu için malzemenin çalışma
+        /// zamanı kopyasını çıkarır: on kutuluk bir kulede on ayrı malzeme, on
+        /// ayrı draw call. PropertyBlock aynı malzemeyi paylaşan nesnelerin
+        /// tek tek rengini değiştiriyor ve gruplamayı bozmuyor.
+        /// </summary>
+        MaterialPropertyBlock colorBlock;
+
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+
+        int spawnCount;
 
         /// <summary>Son kutunun belirdiği yükseklik. Top atıcı gezinme koridorunun tavanı bu.</summary>
         public float LastSpawnHeight { get; private set; }
@@ -89,12 +108,17 @@ namespace PhysicsStack
             instance.name = $"Box_{transform.childCount - 1}";
 
             ApplyScale(instance, scale);
+            ApplyColor(instance, spawnCount++);
 
             var body = instance.GetComponent<DraggableBody>();
 
             // Kadraj kırpması spawn'ı aşağı çekmiş olabilir; çizgi kutunun
             // üstünde kalmasın diye alt sınırı da kırpıyoruz.
             body.SetDropLine(Mathf.Min(dropLineY, height - halfHeight));
+
+            // Oyun alanı ekrandan bağımsız: geniş ekranda daha çok dünya görünüyor
+            // ama oynanan bant aynı kalıyor.
+            body.SetHorizontalBounds(-playHalfWidth, playHalfWidth);
 
             // Oyuncu dokunana kadar havada assın. Dinamik bıraksaydım kutu
             // daha oyuncu bakmadan zemine düşerdi.
@@ -103,6 +127,23 @@ namespace PhysicsStack
             Current = body;
             BoxSpawned?.Invoke(body);
             return body;
+        }
+
+        void ApplyColor(GameObject instance, int index)
+        {
+            // Renderer artik kok nesnede degil, gorsel cocuk nesnede.
+            var renderer = instance.GetComponentInChildren<Renderer>();
+
+            if (palette == null || renderer == null)
+            {
+                return;
+            }
+
+            colorBlock ??= new MaterialPropertyBlock();
+
+            renderer.GetPropertyBlock(colorBlock);
+            colorBlock.SetColor(BaseColor, palette.BoxColor(index));
+            renderer.SetPropertyBlock(colorBlock);
         }
 
         /// <summary>

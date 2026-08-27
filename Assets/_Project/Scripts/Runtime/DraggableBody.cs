@@ -29,6 +29,7 @@ namespace PhysicsStack
         [SerializeField] DragSettings settings;
 
         Rigidbody rb;
+        BoxVisual visual;
         bool isDragged;
 
         /// <summary>
@@ -60,6 +61,27 @@ namespace PhysicsStack
         /// aşağı itilebilir, sadece oyuncu tarafından indirilemez.
         /// </summary>
         float minDragHeight = float.NegativeInfinity;
+
+        /// <summary>
+        /// Oyun alaninin yatay siniri.
+        ///
+        /// Buna ihtiyac top aticiyla ortaya cikti: surukleme yatayda sinirsiz
+        /// oldugu icin oyuncu kutuyu namlunun disina goturup tehdidi tamamen
+        /// atlatabiliyordu. Namluyu daha kenara tasimak cozmuyor, cunku "kenar"
+        /// ekran genisligine gore degisen bir sey - genis ekranda oyun alani
+        /// kendiliginden buyuyor ve oyun ekran boyutuna gore kolaylasiyordu.
+        ///
+        /// Sinir koyunca oyun alani ekrandan bagimsiz hale geliyor: namlu o
+        /// bandin hemen disinda duruyor ve ulasilabilir her noktayi vurabiliyor.
+        /// </summary>
+        float minDragX = float.NegativeInfinity;
+        float maxDragX = float.PositiveInfinity;
+
+        public void SetHorizontalBounds(float min, float max)
+        {
+            minDragX = min;
+            maxDragX = max;
+        }
 
         /// <summary>
         /// Kutu bir kez bırakıldıysa artık yığının parçası; tekrar alınamıyor.
@@ -114,9 +136,24 @@ namespace PhysicsStack
         public event Action<DraggableBody> Grabbed;
         public event Action<DraggableBody> Released;
 
+        /// <summary>
+        /// Birakilmis kutu bir seye carpti. Temas noktasi ve carpma hizi ile
+        /// birlikte veriliyor; sahne efektleri (toz, kamera sarsintisi) bunu
+        /// dinliyor.
+        ///
+        /// Carpismayi burada yakalamamin sebebi: temas bilgisi yalnizca burada
+        /// var. Disaridan her karede "acaba carpti mi" diye hiz farkina bakmak
+        /// hem daha pahali hem de temas noktasini vermiyor.
+        /// </summary>
+        public event Action<DraggableBody, Vector3, float> Landed;
+
         void Awake()
         {
             rb = GetComponent<Rigidbody>();
+
+            // Görsel gövde ayrı bir çocuk nesnede; ezilme animasyonu orada
+            // çalışıyor ki collider'a dokunmasın.
+            visual = GetComponentInChildren<BoxVisual>();
 
             if (settings == null)
             {
@@ -168,6 +205,7 @@ namespace PhysicsStack
 
         Vector3 Clamp(Vector3 point)
         {
+            point.x = Mathf.Clamp(point.x, minDragX, maxDragX);
             point.y = Mathf.Max(point.y, minDragHeight);
             return point;
         }
@@ -209,10 +247,19 @@ namespace PhysicsStack
         void OnCollisionEnter(Collision collision)
         {
             // Sürüklenirken kuleye çarpmak iniş değil; oyuncu hâlâ kontrol ediyor.
-            if (isPlaced && !isDragged)
+            if (!isPlaced || isDragged)
             {
-                HasLanded = true;
+                return;
             }
+
+            HasLanded = true;
+
+            if (visual != null)
+            {
+                visual.Impact(collision.relativeVelocity.magnitude);
+            }
+
+            Landed?.Invoke(this, collision.GetContact(0).point, collision.relativeVelocity.magnitude);
         }
 
         void FixedUpdate()

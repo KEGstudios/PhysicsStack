@@ -694,3 +694,129 @@ ekranı ve `PlayerPrefs` ilerlemesi.
 - Ses, sanat, partikül, çoklu dil, IAP: kapsam dışıydı, öyle kaldı.
 
 Faz 2 oyunu **oynanabilir** yaptı, **yayınlanabilir** değil. Baştaki söz buydu.
+
+---
+
+# Faz 3
+
+## Görünüş — palet, ışık, post-process
+
+**Gri kutu kuralı neden kalktı.** O kural Faz 1 için konmuştu ve orada doğruydu:
+soru "dokunmatik girdiyi fiziğe nasıl bağlarım"dı, sanat o sorunun cevabını
+gizlerdi. Şimdiki bağlam farklı — bu repo bir portföy parçası olarak açılacak ve
+açan kişilerin çoğu koda bakmadan önce ekran görüntüsüne bakıyor. Gri küpler,
+kodun kalitesinden bağımsız olarak "yarım kalmış teknik demo" diye okunuyor.
+
+**Yön: pastel ve düz renk.** Üç sebeple. Kutuların birbirinden ve zeminden
+ayrılması gerekiyor, pastel palette her kutu farklı ton alabiliyor. Sanatçı
+gerektirmiyor — düz renk, ışık ve post-process; doku yok. Ve hâlâ mobil tarayıcıda
+çalışıyoruz. Yan faydası: aynı sade formlar artık kaza değil kasıtlı görünüyor.
+
+**Bütün renkler tek varlıkta.** Dağıtılmış renkler hızlı ilerletiyor ama bütünü
+görmeyi imkânsızlaştırıyor: kutunun rengi prefab'da, zemin bootstrap'ta, çizgiler
+kendi bileşenlerinde duruyordu. Renk denemesi artık sahneyi yeniden kurmayı
+gerektirmiyor. Kutulara renk **sırayla** dağıtılıyor, rastgele değil — rastgelede
+yan yana aynı renk gelebiliyor ve palet bozuk değil, kod bozukmuş gibi görünüyor.
+
+**Zeminin arka planla karışması bir renk sorunu değil aydınlatma sorunuymuş.**
+Zemin hem yönlü ışığı hem de gökyüzü ortam ışığını alıp beyaza yaklaşıyordu.
+Albedo belirgin şekilde koyulaştırıldı ve ortam ışığının gökyüzü katkısı kısıldı.
+
+**Gradyan gökyüzü elle yazılmış bir shader.** İhtiyaç duyulan tek şey iki renk
+arasında dikey geçiş; doku kullanmak hem birkaç megabaytlık varlık hem de palet
+değişince yeniden üretilmesi gereken bir şey olurdu.
+
+**Tonemapping Neutral, ACES değil.** ACES koyu ve doygun görüntüde iyi ama pastel
+tonları eziyor, açık renkleri birbirine yaklaştırıyor.
+
+**Göstergeler ışıksız malzemede.** Çizgiler ve rüzgâr oku dünyanın nesneleri
+değil, oyuncuya bilgi veren işaretler. Işık alan bir gösterge sahnenin
+aydınlatmasına göre renk değiştiriyor ve "şu an sarı mı yeşil mi" sorusunu
+belirsizleştiriyor. Gölge de düşürmüyorlar: havada duran ince bir çizginin kulenin
+üstüne gölge düşürmesi bilgi değil gürültü.
+
+**Yazı TextMeshPro'ya geçti.** Eski `Text` bileşeni yazıyı piksel haritası olarak
+rasterliyor; telefonla masaüstü arasında üç kat ölçek farkı olan bir oyunda bu
+doğrudan görünüyordu. TMP mesafe alanı kullanıyor, her boyutta keskin.
+
+Kaynak içe aktarma da koddan yapılıyor — normalde menüden elle yapılan bir adım.
+Sebebi projenin kurallarından biri: sahne ve varlıklar tek komutla kurulabilmeli.
+Burada bir tuzak vardı: `AssetDatabase.ImportPackage` asenkron çalışıyor ve
+Unity `-quit` ile import bitmeden çıkıyor — hata da vermiyor.
+
+**Oyun içi yazı ile geliştirici paneli ayrıldı.** Oyuncunun gördüğü üç sayı
+`OnGUI` ile çiziliyordu: bir ölçü aleti, arayüz değil, ve düşük kalitesi bundandı.
+Artık ayrı bir HUD var; debug paneli duruyor ama varsayılan olarak kapalı.
+
+**MSAA, yumuşak gölge ve gölge mesafesi sahne kurulumuna girdi.** Bunlar
+Inspector'dan tıklanabilir şeyler ama proje iki makine arasında taşınıyor ve
+tıklamaların bir kısmı taşınmıyor. Mobil profilinde yumuşak gölge kapalıydı, yani
+"PC'de düzgün, telefonda tırtıklı" gibi bulması zor bir fark oluşuyordu.
+
+## Kadraj ve oyun alanı
+
+**Geniş ekranda oyunun çoğu görünmüyordu.** Gün 6'da koyduğum kural "görünür
+genişliği 5 birimde sabitle"ydi ve portrede doğruydu. Geniş ekranda aynı kural
+tersine dönüyor: 16:10'da görünür yükseklik 3.1 birime düşüyor ve hedef yüksekliği
+4.0 olan oyunda kule hedefe varmadan kadrajın dışına çıkıyor. Kadrajı artık iki
+kısıt belirliyor — en az 5 birim genişlik **ve** en az 11 birim yükseklik.
+
+**Oyun alanı yatayda sınırlandı.** Bu top atıcıyla ortaya çıktı: sürükleme
+sınırsız olduğu için oyuncu kutuyu namlunun dışına götürüp tehdidi tamamen
+atlatabiliyordu. Daha derin sorun şuydu: oyun alanı ekran genişliğine göre
+büyüyordu, yani **geniş ekranda oyun kendiliğinden kolaylaşıyordu**. Artık kutu
+sabit bir bandın dışına çıkamıyor ve namlu o bandın hemen dışında duruyor.
+
+## His — ezilme, toz, sarsıntı
+
+**Kutunun görseli fizik gövdesinden ayrıldı.** Ölçeği rigidbody'de oynatmak
+collider'ı da oynatır, yani görsel bir süsleme fiziği değiştirir ve kule kendi
+kendine sallanmaya başlar. Mesh ayrı bir çocuk nesnede duruyor artık.
+
+**Ezilme sönümlü sinüs.** Tek yönlü bir ezilip açılma "lastik" gibi duruyor;
+genliği azalan salınım, sert cismin çarpma anındaki titremesini taklit ediyor.
+Salınım sayısı önce 1.6 idi ve oynayınca "ezilme değil jiggle" geri bildirimi
+geldi — 1.0'a indi. Hacim korunuyor: y'de ezilirken x ve z büyüyor, yoksa kutu bir
+an küçülüyor ve çarpma değil uzaklaşma gibi okunuyor.
+
+**Düşüşte uzama sonradan eklendi.** Ezilme tek başına çarpmayı anlatıyor ama
+öncesindeki düşüş "hiçbir şey olmuyor" gibi duruyordu. Çarpma anında uzama
+sıfırlanıyor: geçiş ne kadar keskin olursa çarpma o kadar sert okunuyor. Sürükleme
+sırasında uygulanmıyor — orada hız parmağın hızı ve kutunun elde incelmesi
+kontrolü bulanıklaştırıyor.
+
+**Toz tek bir parçacık sisteminden çıkıyor**, her çarpmada oraya taşınıp
+patlatılıyor. Çarpma başına ayrı sistem üretmek bir turda onlarca
+`Instantiate`/`Destroy` demekti. Doku yok: parçacıklar küçük kareler ve bu, oyunun
+geometrik diline zaten uyuyor.
+
+**Zaman yavaşlaması `OnDestroy`'da geri alınıyor.** Sahne yeniden yüklenirken
+coroutine nesneyle birlikte ölüyor ama `Time.timeScale` global: geri yazılmazsa
+oyun kalıcı olarak ağır çekimde açılır.
+
+## Günün asıl dersi: üç sessiz hata
+
+Bugün üç hata çıktı ve üçünde de derleme temizdi, sahne kuruluyordu, log
+sessizdi. Yalnızca oyun yanlış çalışıyordu.
+
+**1. `Start` sırası.** Rüzgâr göstergesi `Start`'ında `wind.Active`'e bakıp
+rüzgârsız seviyede kendini kapatıyordu. Unity aynı nesnedeki bileşenlerin `Start`
+sırasını garanti etmiyor; gösterge, rüzgâr daha ayarlarını okumadan çalışıp
+"rüzgâr yok" sonucuna varıyordu. Çözüm sıralamayı zorlamak değil — o, projeye
+görünmez bir ayar borcu bırakır. Kararı tek seferlik olmaktan çıkardım: gösterge
+rüzgâr esmeye başladığı ilk karede kendini kuruyor.
+
+**2. `CopySerialized` varlığın adını da kopyalıyor.** Paleti koddaki
+varsayılanlara döndürürken kaynak olarak taze bir örnek verdim; onun adı boştu ve
+palet varlığının adı silindi. Adsız kalan bir ana varlığı `AssetDatabase`
+bulamıyor, dolayısıyla sahnedeki bütün palet referansları boşa düştü ve oyun
+varsayılan renklerle çalıştı.
+
+**3. Varlık üretmek eldeki referansı geçersizleştiriyor.** Toz malzemesi yeni bir
+varlık olarak üretilince `AssetDatabase` tazeleniyor ve o an tutulan palet nesnesi
+geçersizleşiyor; atandığında Unity hata vermeden alanı boş bırakıyor. Palet artık
+bağlanmadan hemen önce yeniden okunuyor.
+
+Üçünün ortak dersi: **"0 hata" bir doğrulama değil.** Artık `SetReference`
+yazdığını okuyup doğruluyor ve yazılamazsa bağırıyor, ve sahne kuran her komuttan
+sonra çıktıyı gözle kontrol ediyorum.

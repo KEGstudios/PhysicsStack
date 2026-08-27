@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using TMPro;
 using UnityEngine.UI;
 
 namespace PhysicsStack
@@ -16,6 +17,7 @@ namespace PhysicsStack
     public sealed class MenuUI : MonoBehaviour
     {
         [SerializeField] LevelLibrary levels;
+        [SerializeField] Palette palette;
 
         [Tooltip("Açıkken bütün seviyeler ve sonsuz mod kilitsiz. Kayda yazılmıyor, her açılışta kapalı başlıyor.")]
         [SerializeField] bool unlockEverything;
@@ -30,6 +32,7 @@ namespace PhysicsStack
             // Geliştirici bayrağı Awake'te uygulanıyor: menü çizilmeden önce
             // kilitlerin son hâli belli olmalı.
             Progress.UnlockEverything = unlockEverything;
+            UIKit.Use(palette);
 
             if (RunRequest.HasRequest)
             {
@@ -48,7 +51,7 @@ namespace PhysicsStack
 
             UIKit.Panel(canvas.transform, Vector2.zero, Vector2.one, UIKit.PanelColor);
 
-            var title = UIKit.Label(canvas.transform, "PhysicsStack", 92, TextAnchor.UpperCenter);
+            var title = UIKit.Label(canvas.transform, "PhysicsStack", 92, TextAlignmentOptions.Top);
             title.rectTransform.anchorMin = new Vector2(0f, 0.86f);
             title.rectTransform.anchorMax = new Vector2(1f, 0.96f);
             title.rectTransform.offsetMin = Vector2.zero;

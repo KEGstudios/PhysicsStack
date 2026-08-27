@@ -2,6 +2,9 @@
     "name": "PhysicsStack.Editor",
     "rootNamespace": "PhysicsStack.Editor",
     "references": [
+        "Unity.TextMeshPro",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
         "PhysicsStack.Runtime"
     ],
     "includePlatforms": [
