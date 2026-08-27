@@ -658,3 +658,39 @@ anlamına gelir.
 Gün 5'in "ekrana dokun, sahne yeniden yüklensin" çözümü kalktı. Tek seviyeli bir
 prototip için doğruydu; seviyeler ve iki mod gelince oyuncunun bitişte verebileceği
 karar birden fazla oldu.
+
+## Kapanış — Faz 2 bitti
+
+**Çıktı:** WebGL, 12.5 MB, 5.4 dk. `gh-pages` dalından GitHub Pages ile yayında.
+iPhone'da Safari'de açılıyor, dokunmatik girdiyi alıyor, menü portrede okunuyor ve
+oynanabiliyor.
+
+Build script'in raporladığı boyut da bu turda düzeltildi. "23.6 MB" yazıyordu;
+ölçüme hem Burst'ün `_DoNotShip` klasörü hem de WebGL çıktısının içindeki `.git`
+(yayın o klasörden push edildiği için orada duruyor, eski build'lerin nesneleriyle
+birlikte ~12 MB) giriyordu. Gün 5'teki "667 MB APK" ile aynı aile hata: ölçtüğüm
+sayının "kullanıcının indireceği şey" olmadığı bir ölçüm, ölçüm değil.
+
+**Faz 2 ne getirdi:** Kamera kuleyi takip ediyor ve kadraj cihazdan bağımsız.
+Kural katmanı arayüzün arkasında, iki mod var. Sekiz seviye veri olarak duruyor.
+Kutu artık zorunlu bir mesafeden bırakılıyor — oyunun risk taşıyan tek mekaniği bu
+ve Faz 1'de ayarladığım his değerlerini geriye dönük anlamlı kılan da o. Rüzgâr ve
+top atıcı, ikisi de yalnızca havadaki kutuya dokunacak şekilde. Menü, tur sonu
+ekranı ve `PlayerPrefs` ilerlemesi.
+
+**Bitmeyen ne kaldı — dürüst liste:**
+
+- **Android APK bu fazda hiç alınmadı**, dolayısıyla gerçek Android cihazda hâlâ
+  denenmedi. Faz 1'de alınan APK de denenmemişti. "Telefonda çalışıyor" derken
+  kastettiğim şey iPhone'da tarayıcıda çalışıyor olması.
+- **Performans ölçülmedi.** Telefonda akıcı hissettirdi ama elimde tek bir kare
+  süresi ölçümü yok; "düzgün çalışıyor" bir gözlem, ölçüm değil.
+- **Zorluk eğrisi yalnızca kabaca ayarlandı.** 7. seviye belirgin şekilde zor.
+  Sayıların hepsi veri olduğu için ayarlamak kolay ama oturmuş bir eğri değil.
+- **Seviye başına en iyi skor tutulmuyor**; kayıtta sadece açılan seviye ve sonsuz
+  modun rekoru var.
+- **Sonsuz modda tehdit yok.** Bilinçli bir tercih ama sonsuz modu uzun vadede
+  ilginç kılacak şeyin bu olmadığını da biliyorum.
+- Ses, sanat, partikül, çoklu dil, IAP: kapsam dışıydı, öyle kaldı.
+
+Faz 2 oyunu **oynanabilir** yaptı, **yayınlanabilir** değil. Baştaki söz buydu.

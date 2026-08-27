@@ -456,6 +456,17 @@ Unity.exe -batchmode -quit -projectPath . -buildTarget WebGL           -executeM
 commit'lenmiyor). Editörden almak istersen aynı işler `PhysicsStack > Build`
 menüsünde.
 
+**WebGL nasıl yayına gidiyor:** `Build/WebGL` klasörünün içinde ayrı bir Git
+deposu var; `gh-pages` dalına bağlı ve GitHub Pages o dalın kökünden servis
+ediyor. Build alındıktan sonra o klasörde `git add -A && git commit && git push`
+yeterli. `Build/` ana depoda `.gitignore`'da olduğu için ikisi birbirine karışmıyor.
+
+İki tuzak var. Birincisi, o klasördeki depo ana depodan **hiçbir şey miras
+almıyor** — kullanıcı adı/e-posta ana depoda local olarak ayarlıysa oradaki
+commit'ler makine kimliğiyle atılıyor ve GitHub hesabıyla eşleşmiyor. İkincisi,
+build boyutunu ölçerken o `.git` klasörü de sayılıyordu; ölçüm artık onu ve
+Burst'ün `_DoNotShip` klasörünü atlıyor.
+
 Sahneyi ve seviyeleri de kod kuruyor: `PhysicsStack > Sahneyi Sifirdan Kur` ve
 `PhysicsStack > Seviyeleri Yeniden Kur`. İkincisi mevcut seviye varlıklarının
 üstüne yazıyor, yani oynayarak yaptığım ayarları koddaki eğriye döndürüyor.
@@ -495,7 +506,7 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Gün 8 — Bırakma mesafesi mekaniği, 8 seviyelik veri ve zorluk eğrisi
 - [x] Gün 9 — Rüzgâr ve top atıcı, tehdit koridoru, uyarlanır kadraj
 - [x] Gün 10 — Menü, tur sonu ekranı, ilerleme kaydı
-- [ ] Kapanış — telefon testi, README v2
+- [x] Kapanış — WebGL yayını, telefon testi, README v2
 
 ## Kapsam dışı
 

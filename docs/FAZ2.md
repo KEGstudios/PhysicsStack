@@ -74,8 +74,16 @@ gri kutu prensibi burada da geçerli, süs yok. İlerleme ve en iyi skor
 `PlayerPrefs`'te: kaydedilecek şey üç sayı, dosya formatı tasarlamanın anlamı yok.
 Test edebilmek için kilitleri açan bir geliştirici bayrağı da buraya giriyor.
 
-### Gün 10 — Telefon, his, kapanış
-Gerçek cihazda zorluk eğrisi ayarı, performans ölçümü, README v2 ve kayıt.
+### Gün 10 — Akış ve kapanış
+Menü, tur sonu ekranı, `PlayerPrefs` ilerlemesi, telefon testi, README v2.
+
+---
+
+**Faz 2 kapandı.** Beş günün beşi de kullanıldı, plan tuttu — ama iki günün
+içeriği oynayarak değişti: Gün 8'in seviye eğrisi "hedef yükseklik artıyor"dan
+"bırakma mesafesi artıyor"a döndü, Gün 9'un engel çubuğu yerini gezinen top
+atıcıya bıraktı. İkisi de oynanmadan görülemeyecek şeylerdi. Kapanış notları ve
+bitmeyenlerin dürüst listesi [KARARLAR.md](KARARLAR.md)'de.
 
 ## Kapsam dışı — burada da tartışmaya kapalı
 
