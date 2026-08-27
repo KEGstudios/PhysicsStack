@@ -1,18 +1,25 @@
+using UnityEngine;
+
 namespace PhysicsStack
 {
     /// <summary>
-    /// Sonsuz modun kuralları: hedef yok, kazanma yok. Bir parça düşene kadar
-    /// yığıyorsun, skor yığdığın kutu sayısı.
+    /// Sonsuz modun kuralları: hedef yok, kazanma yok. Kule çökene kadar
+    /// yığıyorsun, skor ulaştığın yükseklik.
     ///
-    /// Sınıf neredeyse boş ve bu bilinçli. Kazancı burada değil karşı tarafta:
-    /// controller artık hedef yüksekliği diye bir şey bilmediği için "hedefi
-    /// olmayan mod"u desteklemek adına tek bir <c>if</c> bile taşımıyor.
-    /// Gün 8'de zorluk artışı (kutu boyut varyansı, spawn salınımı) buraya
-    /// girecek — sonsuz modu ilginç kılan şey o eğri.
+    /// Seviye modunda zorluk seviyeler arasında artıyor; burada turun **içinde**
+    /// artıyor. Sonsuz modu ilginç kılan tek şey bu eğri: sabit zorlukta sonsuz
+    /// bir mod, bir süre sonra oyun değil test ortamı olur.
     /// </summary>
     public sealed class EndlessRules : IStackRules
     {
         readonly float collapseDrop;
+
+        /// <summary>Zorluğun tepeye ulaşması için gereken kutu sayısı.</summary>
+        const int RampBoxes = 15;
+
+        const float StartDropGap = 2.5f;
+        const float EndDropGap = 4f;
+        const float EndWidthVariance = 0.3f;
 
         /// <param name="collapseDrop">Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.</param>
         public EndlessRules(float collapseDrop = 0.6f)
@@ -24,6 +31,9 @@ namespace PhysicsStack
 
         /// <summary>Hedef yok. Sıfır dönmek hedef çizgisini de gizliyor.</summary>
         public float TargetHeight => 0f;
+
+        /// <summary>Hedef yoksa tutunma şartı da yok: sonsuz modda tur kule çökene kadar sürüyor.</summary>
+        public float HoldTime => 0f;
 
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
@@ -49,6 +59,20 @@ namespace PhysicsStack
         public float Score(in StackSnapshot snapshot) => snapshot.PeakHeight;
 
         public string DescribeScore(float score) => $"{score:0.00} birim";
+
+        /// <summary>
+        /// Zorluk ilk 15 kutuda tepeye çıkıyor, sonra sabit kalıyor. Sonsuza kadar
+        /// artan bir eğri, oyuncunun becerisinin değil eğrinin kazandığı bir yer
+        /// yaratırdı; tavanı olan zorluk "nereye kadar dayanabilirim" sorusunu
+        /// oyuncuya bırakıyor.
+        /// </summary>
+        public BoxDifficulty NextBox(in StackSnapshot snapshot)
+        {
+            float t = Mathf.Clamp01((float)snapshot.PlacedCount / RampBoxes);
+            return new BoxDifficulty(
+                Mathf.Lerp(StartDropGap, EndDropGap, t),
+                Mathf.Lerp(0f, EndWidthVariance, t));
+        }
 
         public override string ToString() => "Sonsuz";
     }

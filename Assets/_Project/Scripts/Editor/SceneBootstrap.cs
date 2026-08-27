@@ -60,7 +60,9 @@ namespace PhysicsStack.EditorTools
             var boxPhysics = LoadOrCreateBoxPhysicsMaterial();
             var boxPrefab = CreateBoxPrefab(boxMaterial, boxPhysics, dragSettings);
             var targetLine = CreateTargetLine(groundMaterial, TargetHeight);
-            CreateSystems(camera, boxPrefab, dragSettings, targetLine);
+            var dropLine = CreateDropLine(groundMaterial);
+            var levels = LevelBootstrap.LoadOrCreate();
+            CreateSystems(camera, boxPrefab, dragSettings, targetLine, dropLine, levels);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -158,7 +160,13 @@ namespace PhysicsStack.EditorTools
             return prefab;
         }
 
-        static void CreateSystems(Camera camera, GameObject boxPrefab, DragSettings settings, Renderer targetLine)
+        static void CreateSystems(
+            Camera camera,
+            GameObject boxPrefab,
+            DragSettings settings,
+            Renderer targetLine,
+            Renderer dropLine,
+            LevelLibrary levels)
         {
             var go = new GameObject("Systems");
 
@@ -173,10 +181,16 @@ namespace PhysicsStack.EditorTools
             SetReference(queue, "boxPrefab", boxPrefab);
             SetReference(controller, "queue", queue);
             SetReference(controller, "tracker", tracker);
+            SetReference(controller, "levelLibrary", levels);
+
+            // Kuyruk kule tepesini kendi okuyor: hem kutunun beliriş yüksekliği
+            // hem de bırakma çizgisi aynı sayıya dayanıyor.
+            SetReference(queue, "tracker", tracker);
 
             var overlay = go.AddComponent<DebugOverlay>();
             SetReference(overlay, "controller", controller);
             SetReference(overlay, "settings", settings);
+            SetReference(overlay, "queue", queue);
 
             // Çizginin yüksekliği artık burada değil, kural setinden belirleniyor;
             // aşağıdaki başlangıç yüksekliği sadece Editor'da sahneyi boş
@@ -184,6 +198,11 @@ namespace PhysicsStack.EditorTools
             var indicator = go.AddComponent<TargetLine>();
             SetReference(indicator, "controller", controller);
             SetReference(indicator, "targetLine", targetLine);
+
+            var dropLineView = go.AddComponent<DropLineView>();
+            SetReference(dropLineView, "controller", controller);
+            SetReference(dropLineView, "queue", queue);
+            SetReference(dropLineView, "line", dropLine);
 
             var restart = go.AddComponent<RestartOnTap>();
             SetReference(restart, "controller", controller);
@@ -194,7 +213,6 @@ namespace PhysicsStack.EditorTools
             var stackCamera = camera.gameObject.AddComponent<StackCamera>();
             SetReference(stackCamera, "tracker", tracker);
             SetReference(queue, "stackCamera", stackCamera);
-            SetReference(overlay, "stackCamera", stackCamera);
         }
 
         /// <summary>
@@ -269,6 +287,24 @@ namespace PhysicsStack.EditorTools
             renderer.sharedMaterial = material;
 
             // Oyun bittiğinde rengi değişecek olan nesne bu; referansı dışarı veriyoruz.
+            return renderer;
+        }
+
+        static Renderer CreateDropLine(Material material)
+        {
+            // Kutunun altına inemeyeceği yükseklik. Hedef çizgisinden ince ve
+            // farklı renkte: biri "geçmen gereken yer", diğeri "burada bırak".
+            // İki çizgi aynı görünseydi oyuncu hangisinin ne olduğunu ancak
+            // deneyerek öğrenirdi.
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "DropLine";
+            go.transform.position = new Vector3(0f, 2f, 0f);
+            go.transform.localScale = new Vector3(16f, 0.025f, 0.025f);
+
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
             return renderer;
         }
 

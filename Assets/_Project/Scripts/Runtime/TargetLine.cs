@@ -25,6 +25,9 @@ namespace PhysicsStack
         [SerializeField] Renderer targetLine;
 
         [SerializeField] Color idleColor = new(0.30f, 0.30f, 0.32f);
+        [Tooltip("Hedef geçildi ama tutunma bekleniyor: henüz kazanılmadı.")]
+        [SerializeField] Color holdingColor = new(0.85f, 0.68f, 0.20f);
+
         [SerializeField] Color wonColor = new(0.25f, 0.75f, 0.35f);
         [SerializeField] Color lostColor = new(0.80f, 0.25f, 0.25f);
 
@@ -93,6 +96,10 @@ namespace PhysicsStack
 
         Color ColorFor(GameState state) => state switch
         {
+            // Sarı, "geçtin ama henüz kazanmadın" demenin yazısız yolu. Oyuncunun
+            // zaten baktığı yer burası; tutunma şartını başka nasıl anlatacağımı
+            // bulamadım, menü kurmadan.
+            GameState.Holding => holdingColor,
             GameState.Won => wonColor,
             GameState.Lost => lostColor,
             _ => idleColor,

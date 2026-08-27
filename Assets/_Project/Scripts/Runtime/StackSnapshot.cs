@@ -24,16 +24,33 @@ namespace PhysicsStack
         /// <summary>Tur boyunca ulaşılmış en yüksek oturmuş kule boyu.</summary>
         public readonly float PeakHeight;
 
-        /// <summary>Yığın bırakıldıktan sonra kesintisiz duruyor mu? Karar anı budur.</summary>
+        /// <summary>Yığın bırakıldıktan sonra kesintisiz duruyor mu? Sıradaki kutunun geleceği an budur.</summary>
         public readonly bool Settled;
 
-        public StackSnapshot(float height, float peakHeight, int placedCount, bool anyFallen, bool settled)
+        /// <summary>
+        /// Kulenin **gerçekten** kıpırdamadan geçirdiği kesintisiz süre (sn).
+        ///
+        /// <see cref="Settled"/>'dan ayrı bir ölçü, çünkü ikisi farklı soruya
+        /// cevap veriyor. "Sıradaki kutu gelebilir mi" sorusu gevşek bir eşikle
+        /// cevaplanabilir; "bu kule ayakta kaldı mı" sorusu cevaplanamaz. Yavaşça
+        /// devrilen bir kule gevşek eşiğin altında kalıp duruyormuş gibi görünüyor.
+        /// </summary>
+        public readonly float SteadyTime;
+
+        public StackSnapshot(
+            float height,
+            float peakHeight,
+            int placedCount,
+            bool anyFallen,
+            bool settled,
+            float steadyTime)
         {
             Height = height;
             PeakHeight = peakHeight;
             PlacedCount = placedCount;
             AnyFallen = anyFallen;
             Settled = settled;
+            SteadyTime = steadyTime;
         }
 
         /// <summary>

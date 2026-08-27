@@ -228,6 +228,67 @@ Skoru da kural hesaplıyor, çünkü "skor" iki modda aynı şeyi anlatmıyor: s
 harcadığın kutu sayısı (az olsun), sonsuz modda ulaştığın kule boyu (çok olsun).
 Ters yönler; controller'ın bunu bilmesi için bir sebep yok.
 
+### Oyunun asıl eksiği: risk yokmuş
+
+Seviye tablosunu yazarken fark ettim: kutuyu kulenin üstüne milimetrik yerine
+getirip sıfır hızla bırakabiliyordum. Beceri testi değil sabır testiydi. Böyle bir
+oyunda zorluk ancak kutu sayısıyla artabilir — 5. seviyede 5 kutu, 100. seviyede
+100 kutu. Yükseklik bir *miktar*, seviye ise bir *soru* olmalı.
+
+Çözüm: **kutu, kule tepesinin belirli bir mesafe üstünden bırakılmak zorunda.**
+Parmakla o çizginin altına indirilemiyor. Yerleştirme bir koymadan bir atışa
+dönüşüyor; x'i ve zamanlamayı oyuncu, gerisini fizik belirliyor.
+
+Kısıt hedefe uygulanıyor, cismin kendisine değil: kutu fizikle aşağı itilebilir,
+sadece oyuncu tarafından indirilemez. Çizgi de kutunun **altının** inebileceği yeri
+gösteriyor, merkezinin değil — merkeze göre tanımlasaydım boyut oynayan
+seviyelerde aynı sayı farklı kutular için farklı düşme mesafesi anlamına gelirdi.
+
+Yan etkisi hoşuma gitti: Gün 4'te ayarladığım his değerleri (takip gücü, ivme
+sınırı, bırakma hız kelepçesi) nihayet oyunu etkiliyor. Risk yokken hiçbiri bir
+şey ifade etmiyordu.
+
+Aynı sebeple kutunun beliriş noktasındaki yatay rastgeleliği kaldırdım.
+Rastgelelik zorluğun kaynağı olmamalı: varken aynı seviyeyi iki kez oynamak iki
+farklı problem çözmek demekti.
+
+### Bırakılan kutu geri alınmıyor
+
+Yerleştirdiğin kutuyu tekrar tutup yeniden bırakabiliyordun. Bu oyunun bütün
+zorluğunu siliyor: beğenmediğin her atışı düzeltebiliyorsan bırakma mesafesinin de
+kule dengesinin de bir anlamı kalmıyor, herkes mükemmel kuleyi kuruyor — sadece
+daha uzun sürede. Bir atış bir karardır; geri alınabilen karar karar değildir.
+
+### Kule yüksekliği: havadaki kutu kulenin parçası değil
+
+Kamera her atışta hopluyordu. Kutu bırakıldığı anda yığının parçası sayılıyordu ama
+o an havada ve bırakma mesafesi kadar yukarıda: kamera "kule iki birim uzadı" deyip
+yukarı çıkıyor, kutu iniyor, kamera geri iniyor.
+
+Kule yüksekliği artık yalnızca **bir kez oturmuş** kutuları sayıyor. Etiket kalıcı:
+sonradan sallanan kutu listeden düşmüyor, çünkü düşseydi kule sallandığında
+yükseklik anlık azalır ve kamera bu sefer aşağı hoplardı.
+
+### Geçmek bir an, tutunmak bir süre
+
+İkinci seviyeyi oynarken hedefi geçtim, kule hafifçe kayıyordu, on saniye sonra
+devrildi. Ama kazanmıştım — çünkü kazanma kontrolü "hedefi geçti ve yığın durdu"
+diyordu ve yerleşme eşiği 0.1 rad/s'e izin veriyordu. Saniyede 5.7 derece: duran
+bir kule değil, yavaş devrilen bir kule.
+
+İki ayrı eşik kullanıyorum artık, çünkü iki farklı soru soruluyor. "Sıradaki kutu
+gelebilir mi" gevşek eşikle cevaplanabilir; yanılırsa oyuncu bir saniye erken kutu
+alır. "Bu tur kazanıldı mı" yanılırsa oyun yalan söyler — o soru 0.02 rad/s'lik
+sıkı eşiği hak ediyor.
+
+Eşik tek başına da yetmiyor: kule hedefin üstünde **1.5 saniye kıpırdamadan durmak
+zorunda**. Bunun için kural katmanına üçüncü bir cevap eklendi — `Pending`: "karar
+askıda, ama sıradaki kutuyu da verme". Oyuncunun elinde kutu varken kaybetmesi,
+seyrederken kaybetmesinden başka bir şey olurdu.
+
+Hedef çizgisi o sırada sarıya dönüyor, yeşil ancak tutunduktan sonra geliyor.
+"Geçtin ama henüz kazanmadın"ı menü kurmadan söylemenin yolu bu.
+
 ### Kaybetmek mümkün değilmiş
 
 Sonsuz modun bitiş koşulunu yazarken fark ettim: kaybetme kontrolü "bir parça
@@ -336,8 +397,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 
 - [x] Gün 6 — Kuleyi takip eden kamera, orana göre kadraj, portre yön
 - [x] Gün 7 — Kural katmanı arayüzün arkasına (`LevelRules` / `EndlessRules`)
-- [ ] Gün 8 — Seviye verisi ve zorluk eğrisi
-- [ ] Gün 9 — Mod seçimi, tur sonu, ilerleme kaydı
+- [x] Gün 8 — Bırakma mesafesi mekaniği, 8 seviyelik veri ve zorluk eğrisi
+- [ ] Gün 9 — Rüzgâr, hareketli engel, mod seçimi, ilerleme kaydı
 - [ ] Gün 10 — Telefon testi, his ayarı, kapanış
 
 ## Kapsam dışı

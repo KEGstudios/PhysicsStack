@@ -370,3 +370,121 @@ kapatıyor.
 **Yarım kalan:** Mod seçimi hâlâ Inspector'daki bir enum; gerçek seçim Gün 9'da.
 Sonsuz modun zorluk eğrisi yok, şu an sonsuza kadar aynı zorlukta — onu ilginç
 kılacak şey Gün 8'de geliyor.
+
+## Gün 8 — Seviye verisi, ve oyunun asıl eksiği
+
+**Gün yanlış plandan başladı.** Elimde 12 seviyelik bir tablo vardı ve tek
+büyüyen sayı hedef yükseklikti: 2.5'ten 8'e. Tabloyu yazıp bakınca ilk
+seviyelerin absürt kolay göründüğünü fark ettim, ama asıl sorun oydu sanmıştım.
+Değildi.
+
+Asıl sorun şuydu: **oyunda hiç risk yok.** Kutuyu kulenin üstüne milimetrik
+yerine getirip sıfır hızla bırakabiliyordum. Beceri testi değil sabır testiydi.
+Böyle bir oyunda zorluk ancak kutu sayısıyla artabilir — yani 5. seviyede 5
+kutu, 100. seviyede 100 kutu. Yükseklik bir *miktar*; seviye ise bir *soru*
+olmalı, ve 2.5 birim kolay bir soru değil, soru değil.
+
+**Yeni mekanik: bırakma mesafesi.** Kutu, kule tepesinin belirli bir mesafe
+üstünden bırakılmak zorunda; parmakla o çizginin altına indirilemiyor.
+Yerleştirme bir *koyma* olmaktan çıkıp bir *atış* oluyor: x'i ve zamanlamayı
+oyuncu, gerisini fizik belirliyor.
+
+Üç şeyi birden çözdü:
+
+- Zorluk artık tek bir mesafe. Aynı beş kutuyla çok daha zor bir soru sorabiliyorum.
+- Gün 4'te ayarladığım his değerleri (takip gücü, ivme sınırı, bırakma hız
+  kelepçesi) nihayet oyunu etkiliyor. Risk yokken hiçbiri bir şey ifade etmiyordu.
+- Rüzgâr ve engel gibi sonraki mekaniklerin dayanacağı zemin bu: ikisi de ancak
+  kutu havada yol kat ediyorsa anlamlı.
+
+**Çizgi kutunun altını gösteriyor, merkezini değil.** İlk yazışta kısıtı
+rigidbody merkezine koymuştum. Boyut oynayan seviyelerde bu, aynı sayının farklı
+kutular için farklı düşme mesafesi anlamına geliyordu — zorluk sessizce
+rastgeleleşirdi. Yarım boy üretim anında bir kez ölçülüyor; kutu döndükçe
+yeniden ölçseydim kısıt oyuncunun elinde değişirdi.
+
+**Yatay rastgelelik kaldırıldı.** Kutu artık her seferinde aynı noktada beliriyor.
+Rastgelelik zorluğun kaynağı olmamalı: varken aynı seviyeyi iki kez oynamak iki
+farklı problem çözmek demekti, dolayısıyla seviye tasarlamanın da bir anlamı
+kalmıyordu.
+
+**Seviyeler koddaki bir tablodan üretiliyor.** Sekiz seviyeyi tek bir tabloda yan
+yana görmek, sekiz ayrı Inspector penceresinde görmekten iyi — eğri bir bütün.
+Üretim mevcut varlığın üstüne yazmıyor; oynayarak ayarladığım sayıları sahneyi
+tazelemek çöpe atmamalı. Eğriyi baştan kurmak için ayrı bir menü var.
+
+**Sadece genişlik oynuyor, boy sabit 1 birim.** Önce ikisini birden oynatmıştım;
+daha çeşitli görünüyordu ama seviyenin sorusunu bozuyordu. Kutu boyu değişince
+aynı hedef yüksekliğe bazen beş, bazen altı kutuyla çıkılıyor — yani "bu hedefe
+çıkabilir miyim" sorusunun cevabını kısmen zar veriyor. Genişlik tam tersi: kaç
+kutu gerektiğini değiştirmiyor, sadece üst üste koymayı zorlaştırıyor. Zorluk
+orada olmalı, sayımda değil.
+
+Kütle genişlikle birlikte ölçekleniyor. Sabit kütle bırakılsaydı dar kutu taş gibi
+ağır, geniş kutu köpük gibi hafif olurdu. Sürükleme hissi etkilenmiyor çünkü hızı
+doğrudan atıyoruz; kütle yalnızca çarpışmalarda konuşuyor.
+
+**Eğri.** Hedef yükseklik 3'ten 6'ya çıkıp orada duruyor; artan şey bırakma
+mesafesi (1.0 → 3.5). Önce sadece mesafe (1-3), sonra kutu sınırı (4), sonra
+genişlik oynaması (5). Her kısıt tek başına bir seviyede tanıtılıyor, sonrakiler
+birleştiriyor. Sonsuz modda aynı eğri turun içinde, ilk 15 kutuda tepeye çıkıp
+sabitleniyor — tavanı olmayan zorluk, oyuncunun becerisinin değil eğrinin
+kazandığı bir yer yaratır.
+
+**Reddedilen fikir: oyunu birleştirme (merge) oyununa çevirmek.** İyi bir loop
+ama PhysicsStack'in devamı değil: sürükleme yok, kamera takibi yok, kule ölçümü
+yok. Kendi beş gününü hak ediyor, [FIKIRLER.md](FIKIRLER.md)'ye yazıldı.
+
+**İlk iki seviyeyi oynayınca iki şey çıktı.**
+
+**Mesafeler çok kısaymış.** 1.0 birim, bir kutu boyu kadar düşüş demek — kutu daha
+hızlanmadan yerine oturuyor. Eğri 2.0-4.0'a yükseltildi. Bunun bir yan maliyeti
+var: kutu kendi bırakma çizgisinin üstünde belirmek zorunda olduğu için daha
+yüksekten başlıyor, dolayısıyla kameranın tepe boşluğu 6'dan 7'ye çıktı. Kule
+kadrajda biraz daha aşağıda duruyor artık; mekaniğin bedeli bu.
+
+**Hedefi geçmek kazanmaya yetiyormuş — asıl hata bu.** İkinci seviyede hedefi
+geçtim, kule hafifçe kayıyordu, on saniye sonra devrildi. Ama kazanmıştım.
+
+Sebebi yerleşme eşiğiydi: 0.1 rad/s'in altındaki dönüş "durdu" sayılıyor. Saniyede
+5.7 derece, yani on saniyede 57 derece. Duran bir kule değil o, yavaş devrilen bir
+kule.
+
+Eşiği sıkılaştırıp tek eşikle yürüyebilirdim ama ikisi farklı iş yapıyor: biri
+"sıradaki kutu gelebilir" diyor (yanılırsa oyuncu bir saniye erken kutu alır),
+diğeri "bu tur kazanıldı" diyor (yanılırsa oyun yalan söyler). İkinci soru daha
+sıkı bir eşiği hak ediyor — 0.02 rad/s, saniyede bir derece.
+
+Sadece eşik de yetmiyordu. **Geçmek bir an, tutunmak bir süre:** kule hedefin
+üstünde 1.5 saniye kıpırdamadan durmak zorunda. Bunun için kurala üçüncü bir cevap
+eklendi — `Pending`: "karar askıda, ama sıradaki kutuyu da verme". Oyuncunun elinde
+kutu varken kaybetmesi, seyrederken kaybetmesinden farklı bir şey olurdu.
+
+Ekranda hedef çizgisi o sırada sarıya dönüyor: "geçtin ama henüz kazanmadın"ı menü
+kurmadan söylemenin yolu. Yeşil ancak tutunduktan sonra geliyor.
+
+**Oynayınca iki şey daha çıktı.**
+
+**Bırakılan kutu geri alınabiliyormuş.** Yerleştirdiğin kutuyu tekrar tutup
+yeniden bırakabiliyordun. Bu, oyunun bütün zorluğunu siliyor: beğenmediğin her
+atışı düzeltebiliyorsan bırakma mesafesinin de kule dengesinin de tutunma şartının
+da bir anlamı kalmıyor, herkes mükemmel kuleyi kuruyor — sadece daha uzun sürede.
+Bir atış bir karardır; geri alınabilen karar karar değildir. Kutu bırakıldığı anda
+dokunulmaz oluyor artık.
+
+**Kamera her atışta hoplyordu.** Sebebi şuydu: kutu bırakıldığı anda yığının
+parçası sayılıyordu, ama o an kutu havada ve bırakma mesafesi kadar yukarıda.
+Kamera "kule iki birim uzadı" deyip yukarı çıkıyor, kutu iniyor, kamera geri
+iniyor. Mesafeleri büyütünce zıplama da büyüdü — yani hatayı ben görünür yaptım,
+kendisi baştan vardı.
+
+Kule yüksekliği artık yalnızca **bir kez oturmuş** kutuları sayıyor. Havadaki kutu
+kulenin parçası değil; oturunca oluyor. Bu "bir kez oturmuş olmak" kalıcı bir
+etiket: sonradan sallanan kutu listeden düşmüyor, çünkü düşseydi kule sallandığında
+yükseklik anlık azalır ve kamera bu sefer aşağı hoplardı.
+
+**Yarım kalan:** Rüzgâr ve hareketli engel Gün 9'a kaldı; 6-8. seviyeler şimdilik
+sadece mesafe ve sınırla zorlaşıyor. Mod ve seviye seçimi hâlâ Inspector'da.
+Tutunma süresi bütün seviyelerde 1.5 sn — bilerek: bu bir zorluk kolu değil,
+oyunun kuralı, seviyeye göre değişseydi her seviyede yeniden öğrenilmesi
+gerekirdi.

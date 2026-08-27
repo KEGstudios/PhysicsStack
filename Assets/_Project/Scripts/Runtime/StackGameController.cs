@@ -22,11 +22,11 @@ namespace PhysicsStack
         [Tooltip("Sahne hangi kural setiyle açılacak. Gün 9'da bunu mod seçim ekranı belirleyecek.")]
         [SerializeField] StackMode mode = StackMode.Level;
 
-        [Tooltip("Seviye modunun hedef yüksekliği. Gün 8'de seviye varlığından gelecek.")]
-        [SerializeField] float levelTargetHeight = 4f;
+        [Tooltip("Seviyelerin sırası. Seviye modunda bütün sayılar buradan geliyor.")]
+        [SerializeField] LevelLibrary levelLibrary;
 
-        [Tooltip("Seviye modunda izin verilen kutu sayısı. 0 = sınırsız.")]
-        [SerializeField] int levelBoxLimit;
+        [Tooltip("Kaçıncı seviye oynanıyor (0 tabanlı). Gün 9'da seviye listesi bunu belirleyecek.")]
+        [SerializeField] int levelIndex;
 
         [Tooltip("Bu yüksekliğin altına düşen parça 'düştü' sayılır. Zemin üstü y = 0.")]
         [SerializeField] float killHeight = -1f;
@@ -34,8 +34,8 @@ namespace PhysicsStack
         [Tooltip("Yığın bu kadar süre kesintisiz durursa 'oturdu' sayılır (sn).")]
         [SerializeField] float settleGraceTime = 0.3f;
 
-        [Tooltip("Kule zirvesinin bu kadar altına düşerse çökmüş sayılır. Kutu boyu 1 birim.")]
-        [SerializeField] float collapseDrop = 0.6f;
+        [Tooltip("Sonsuz modda kule zirvesinin bu kadar altına düşerse çökmüş sayılır. Seviye modunda bu sayı seviyenin verisinde.")]
+        [SerializeField] float endlessCollapseDrop = 0.6f;
 
         IStackRules rules;
 
@@ -43,8 +43,14 @@ namespace PhysicsStack
 
         public GameState State { get; private set; } = GameState.WaitingForDrag;
 
-        /// <summary>Debug paneli için: yığın ne kadar süredir kesintisiz duruyor.</summary>
+        /// <summary>Debug paneli için: yığın ne kadar süredir kesintisiz duruyor (gevşek eşik).</summary>
         public float RestTimer { get; private set; }
+
+        /// <summary>Kulenin sıkı eşiğe göre kıpırdamadan geçirdiği süre. Kazanma buna bakıyor.</summary>
+        public float SteadyTimer { get; private set; }
+
+        /// <summary>Tutunma için gereken süre; panel ilerlemeyi bunun üstünden gösteriyor.</summary>
+        public float HoldTime => rules != null ? rules.HoldTime : 0f;
 
         /// <summary>Turun o anki skoru. Neyin sayıldığına kural karar veriyor.</summary>
         public float Score { get; private set; }
@@ -72,14 +78,38 @@ namespace PhysicsStack
             // Kural nesnesi Start'tan önce hazır olmalı: hedef çizgisi kendini
             // hedefe göre yerleştirirken bunu okuyor.
             rules = mode == StackMode.Endless
-                ? new EndlessRules(collapseDrop)
-                : new LevelRules(levelTargetHeight, levelBoxLimit, collapseDrop);
+                ? new EndlessRules(endlessCollapseDrop)
+                : new LevelRules(ResolveLevel());
+        }
+
+        /// <summary>
+        /// Oynanacak seviyeyi bulur. Kütüphane bağlı değilse sessizce çalışmak
+        /// yerine bağırıp varsayılan bir seviye üretiyor: "değeri değiştiriyorum
+        /// ama hiçbir şey olmuyor" diye yarım saat harcanacak türden bir hata bu.
+        /// </summary>
+        LevelDefinition ResolveLevel()
+        {
+            var level = levelLibrary != null ? levelLibrary.Get(levelIndex) : null;
+
+            if (level != null)
+            {
+                return level;
+            }
+
+            Debug.LogWarning($"[StackGameController] Seviye bulunamadı (indeks {levelIndex}), varsayılanla oynuyorum.", this);
+            return ScriptableObject.CreateInstance<LevelDefinition>();
         }
 
         void Start()
         {
             queue.BoxSpawned += OnBoxSpawned;
-            queue.SpawnNext();
+            RequestNextBox();
+        }
+
+        /// <summary>Sıradaki kutuyu ister; nasıl olacağını kural söylüyor.</summary>
+        void RequestNextBox()
+        {
+            queue.SpawnNext(rules.NextBox(Read(settled: false)));
         }
 
         void OnDestroy()
@@ -133,13 +163,17 @@ namespace PhysicsStack
                 return;
             }
 
-            // Tek kare "duruyor" görmek yetmiyor: yığın sallanırken hız sıfırdan
-            // geçtiği anlar oluyor. Kesintisiz süre şartı bu yanlış pozitifi eliyor.
+            // Sayaçlar hem yerleşme hem tutunma sırasında işliyor: Holding, kutu
+            // bırakıldıktan sonraki sürecin devamı, ayrı bir bölüm değil.
+            bool measuring = State is GameState.Settling or GameState.Holding;
             bool settled = false;
 
-            if (State == GameState.Settling)
+            if (measuring)
             {
+                // Tek kare "duruyor" görmek yetmiyor: yığın sallanırken hız sıfırdan
+                // geçtiği anlar oluyor. Kesintisiz süre şartı bu yanlış pozitifi eliyor.
                 RestTimer = tracker.AllResting() ? RestTimer + Time.deltaTime : 0f;
+                SteadyTimer = tracker.AllSteady() ? SteadyTimer + Time.deltaTime : 0f;
                 settled = RestTimer >= settleGraceTime;
             }
 
@@ -155,6 +189,13 @@ namespace PhysicsStack
                 case RunOutcome.Lost:
                     Finish(GameState.Lost, snapshot);
                     return;
+
+                case RunOutcome.Pending:
+                    // Kule hedefin üstünde ama henüz tutunmadı. Sıradaki kutuyu
+                    // vermiyoruz: oyuncunun elinde kutu varken kaybetmek, seyrederken
+                    // kaybetmekten farklı bir şey olurdu.
+                    State = GameState.Holding;
+                    return;
             }
 
             if (!settled)
@@ -164,7 +205,8 @@ namespace PhysicsStack
 
             State = GameState.WaitingForDrag;
             RestTimer = 0f;
-            queue.SpawnNext();
+            SteadyTimer = 0f;
+            RequestNextBox();
         }
 
         /// <summary>
@@ -175,7 +217,7 @@ namespace PhysicsStack
         /// </summary>
         StackSnapshot Read(bool settled)
         {
-            float height = tracker.HighestRestingPointY();
+            float height = tracker.HighestSettledPointY();
 
             // Zirve yalnızca oturmuş ölçümle güncelleniyor. Sallanan kule bir kare
             // için olduğundan yüksek okunabiliyor; o sahte zirve yazılsaydı sonraki
@@ -190,13 +232,15 @@ namespace PhysicsStack
                 peakHeight,
                 tracker.PlacedCount,
                 tracker.AnyBelow(killHeight),
-                settled);
+                settled,
+                SteadyTimer);
         }
 
         void Finish(GameState result, in StackSnapshot snapshot)
         {
             State = result;
             RestTimer = 0f;
+            SteadyTimer = 0f;
             FinalHeight = snapshot.Height;
 
             Debug.Log($"[StackGameController] {rules.Title} · {result} · " +

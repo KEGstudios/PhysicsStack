@@ -21,7 +21,8 @@ namespace PhysicsStack
     {
         [SerializeField] StackGameController controller;
         [SerializeField] DragSettings settings;
-        [SerializeField] StackCamera stackCamera;
+        [Tooltip("Bırakma çizgisini panele basmak için; kısıtı fiilen taşıyan nesne kutunun kendisi.")]
+        [SerializeField] BoxQueue queue;
 
         [Tooltip("Kapatınca hiçbir şey çizilmiyor. Build'e bu kapalı gitmeli mi diye Gün 5'te karar vereceğim.")]
         [SerializeField] bool visible = true;
@@ -52,7 +53,7 @@ namespace PhysicsStack
             // Panelde yerleştirilmiş kule gösteriliyor, eldeki kutu dahil değil:
             // oyuncu kutuyu havada tutarken sayının bir zıplayıp geri düşmesi
             // "kule ne kadar yüksek" sorusunu cevaplamaz, bulandırır.
-            float height = tracker != null ? tracker.HighestRestingPointY() : 0f;
+            float height = tracker != null ? tracker.HighestSettledPointY() : 0f;
             float target = controller.TargetHeight;
 
             float pad = Screen.height * 0.012f;
@@ -68,7 +69,13 @@ namespace PhysicsStack
             // cevaplanabilmeli.
             string title = rules != null ? rules.Title : "-";
 
-            GUILayout.Label($"{title} · {Describe(controller.State)} · {controller.RestTimer:0.0} sn", style);
+            // Tutunurken sayaç geri sayım gibi okunsun: oyuncunun beklediği şey
+            // "durdu mu" değil, "ne kadar daha".
+            string timer = controller.State == GameState.Holding && controller.HoldTime > 0f
+                ? $"{controller.SteadyTimer:0.0}/{controller.HoldTime:0.0} sn"
+                : $"{controller.RestTimer:0.0} sn";
+
+            GUILayout.Label($"{title} · {Describe(controller.State)} · {timer}", style);
 
             GUILayout.Label(
                 target > 0f
@@ -76,9 +83,13 @@ namespace PhysicsStack
                     : $"kule {height:0.00} · {controller.ScoreText}",
                 style);
 
-            if (stackCamera != null)
+            // Kadraj satırı buradan kalktı: portre çerçevesi Gün 6'da oturdu, artık
+            // her karede bakılacak bir sayı değil. Yerini günün asıl kolu aldı.
+            var current = queue != null ? queue.Current : null;
+
+            if (current != null)
             {
-                GUILayout.Label($"kadraj {stackCamera.FrameBottomY:0.0} → {stackCamera.FrameTopY:0.0} · {(float)Screen.width / Screen.height:0.00}", style);
+                GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}", style);
             }
 
             if (settings != null)
@@ -125,6 +136,7 @@ namespace PhysicsStack
             GameState.WaitingForDrag => "bekliyor",
             GameState.Dragging => "sürükleniyor",
             GameState.Settling => "yerleşiyor",
+            GameState.Holding => "tutunuyor",
             GameState.Won => "KAZANDIN",
             GameState.Lost => "KAYBETTIN",
             _ => state.ToString(),

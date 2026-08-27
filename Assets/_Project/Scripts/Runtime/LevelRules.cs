@@ -1,33 +1,27 @@
 namespace PhysicsStack
 {
     /// <summary>
-    /// Seviye modunun kuralları: bir hedef yüksekliğe ulaş, istersen sınırlı
-    /// sayıda kutuyla.
+    /// Seviye modunun kuralları. Bütün sayılar <see cref="LevelDefinition"/>'dan
+    /// geliyor: yeni seviye eklemek kod değil veri işi.
     ///
-    /// Gün 8'de bu sınıfın alanları seviye varlığından (ScriptableObject)
-    /// doldurulacak; kural mantığı orada değişmeyecek. Bu ayrımı şimdiden
-    /// yapmamın sebebi, seviye verisi geldiğinde dokunacağım yerin sadece
-    /// kurucu metot olması.
+    /// Kural sınıfı varlığı sadece okuyor, kendi kopyasını almıyor. Böylece
+    /// Inspector'da bir sayıyı değiştirdiğimde Play Mode'u durdurup başlatmak
+    /// yetiyor, sahneyi yeniden kurmak gerekmiyor.
     /// </summary>
     public sealed class LevelRules : IStackRules
     {
-        readonly float targetHeight;
-        readonly int boxLimit;
-        readonly float collapseDrop;
+        readonly LevelDefinition level;
 
-        /// <param name="targetHeight">Kulenin oturmuş hâlde geçmesi gereken yükseklik.</param>
-        /// <param name="boxLimit">İzin verilen kutu sayısı. Sıfır ya da altı sınırsız demek.</param>
-        /// <param name="collapseDrop">Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.</param>
-        public LevelRules(float targetHeight, int boxLimit = 0, float collapseDrop = 0.6f)
+        public LevelRules(LevelDefinition level)
         {
-            this.targetHeight = targetHeight;
-            this.boxLimit = boxLimit;
-            this.collapseDrop = collapseDrop;
+            this.level = level;
         }
 
-        public string Title => "Seviye";
+        public string Title => level.title;
 
-        public float TargetHeight => targetHeight;
+        public float TargetHeight => level.targetHeight;
+
+        public float HoldTime => level.holdTime;
 
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
@@ -45,23 +39,27 @@ namespace PhysicsStack
                 return RunOutcome.Continue;
             }
 
-            if (snapshot.Height >= targetHeight)
-            {
-                return RunOutcome.Won;
-            }
-
-            // Kule devrildiyse tur biter. Buna kadar seviye modunun kaybetme
-            // koşulu pratikte hiç tetiklenmiyordu: devrilen kutu geniş zemine
-            // oturuyor, oyuncu da enkazın üstüne yığmaya devam edebiliyordu.
-            if (snapshot.Collapsed(collapseDrop))
+            // Çöküş kontrolü hedeften önce: tepeden kutu gittiyse kule hâlâ
+            // hedefin üstünde olsa bile tutunamamış demektir.
+            if (snapshot.Collapsed(level.collapseDrop))
             {
                 return RunOutcome.Lost;
             }
 
+            // Hedefi geçmek yetmiyor, orada durmak da gerekiyor. Geçmek bir an,
+            // tutunmak bir süre — ve bu oyunda ayakta kalan kule ile devrilmek
+            // üzere olan kule arasındaki fark tam olarak o süre.
+            if (snapshot.Height >= level.targetHeight)
+            {
+                return snapshot.SteadyTime >= level.holdTime
+                    ? RunOutcome.Won
+                    : RunOutcome.Pending;
+            }
+
             // Kutu sınırı olan seviyede hedefe ulaşmadan kutular bitince tur kaybedilir.
-            // Sınır kaybettirmenin değil, seviyeye kimlik vermenin yolu: "beş kutuyla
+            // Sınır kaybettirmenin değil, seviyeye kimlik vermenin yolu: "altı kutuyla
             // şu yüksekliğe çık" ile "istediğin kadar kutuyla çık" iki farklı problem.
-            if (boxLimit > 0 && snapshot.PlacedCount >= boxLimit)
+            if (level.boxLimit > 0 && snapshot.PlacedCount >= level.boxLimit)
             {
                 return RunOutcome.Lost;
             }
@@ -78,9 +76,13 @@ namespace PhysicsStack
 
         public string DescribeScore(float score) => $"{score:0} kutu";
 
+        /// <summary>Seviye boyunca sabit: zorluk turun içinde değil seviyeler arasında artıyor.</summary>
+        public BoxDifficulty NextBox(in StackSnapshot snapshot) =>
+            new(level.dropGap, level.widthVariance);
+
         public override string ToString() =>
-            boxLimit > 0
-                ? $"Seviye · hedef {targetHeight:0.0} · {boxLimit} kutu"
-                : $"Seviye · hedef {targetHeight:0.0}";
+            level.boxLimit > 0
+                ? $"{level.title} · hedef {level.targetHeight:0.0} · {level.boxLimit} kutu · mesafe {level.dropGap:0.0}"
+                : $"{level.title} · hedef {level.targetHeight:0.0} · mesafe {level.dropGap:0.0}";
     }
 }

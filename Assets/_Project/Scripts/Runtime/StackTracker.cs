@@ -19,7 +19,28 @@ namespace PhysicsStack
         [Tooltip("Bu açısal hızın altındaki kutu dönmüyor sayılır (rad/s).")]
         [SerializeField] float restAngularThreshold = 0.1f;
 
+        [Tooltip("Kazanma kontrolü için sıkı hız eşiği (m/s).")]
+        [SerializeField] float steadySpeedThreshold = 0.015f;
+
+        [Tooltip("Kazanma kontrolü için sıkı açısal hız eşiği (rad/s). 0.02 rad/s ≈ 1°/sn.")]
+        [SerializeField] float steadyAngularThreshold = 0.02f;
+
         readonly List<DraggableBody> bodies = new();
+
+        /// <summary>
+        /// Bir kez yere/kuleye oturmuş kutular. Kule yüksekliği yalnızca bunlara
+        /// bakıyor.
+        ///
+        /// Sebebi kameranın hoplaması: kutu bırakıldığı anda yığının parçası
+        /// sayılıyordu, ama o an kutu havada ve bırakma mesafesi kadar yukarıda.
+        /// Kamera "kule iki birim uzadı" deyip yukarı çıkıyor, kutu iniyor,
+        /// kamera geri iniyor. Bırakma mesafesini büyüttükçe zıplama da büyüdü.
+        ///
+        /// "Bir kez oturmuş" olmak kalıcı: sonradan sallanan kutu listeden
+        /// düşmüyor. Düşseydi kule sallandığında yükseklik anlık olarak azalır,
+        /// kamera bu kez aşağı hoplardı.
+        /// </summary>
+        readonly HashSet<DraggableBody> settled = new();
 
         /// <summary>Yığına kaydedilmiş toplam kutu sayısı; eldeki kutu da dahil.</summary>
         public int Count => bodies.Count;
@@ -56,15 +77,26 @@ namespace PhysicsStack
             }
         }
 
+        /// <summary>Yığındaki her şey durdu mu? Sıradaki kutunun geleceği an budur.</summary>
+        public bool AllResting() => AllBelow(restSpeedThreshold, restAngularThreshold);
+
         /// <summary>
-        /// Yığındaki her şey durdu mu?
+        /// Yığın **gerçekten** kıpırdamıyor mu? Kazanma kontrolü bunu soruyor.
         ///
-        /// Önce <c>IsSleeping()</c>'e bakıyoruz: fizik motoru bir cismi uykuya
-        /// aldıysa zaten "bu artık hareket etmiyor" demiş oluyor, bizim eşik
-        /// tahminimizden daha güvenilir. Uyku eşiğine hiç inmeyen ama pratikte
-        /// duran cisimler için de kendi eşiğimiz yedekte duruyor.
+        /// İki ayrı eşiğin sebebi oynarken çıktı: hedefi geçtikten sonra hafifçe
+        /// kayan bir kule gevşek eşiğin altında kalıp "durdu" sayılıyor, oyuncu
+        /// kazanıyor, kule on saniye sonra devriliyordu. Gevşek eşik 0.1 rad/s'e
+        /// izin veriyor — saniyede 5.7°, yani on saniyede 57°. Duran bir kule değil
+        /// o, yavaş devrilen bir kule.
+        ///
+        /// Gevşek eşiği sıkılaştırıp tek eşikle yürümedim çünkü ikisi farklı iş
+        /// yapıyor: biri "sıradaki kutu gelebilir" diyor (yanılırsa oyuncu bir
+        /// saniye erken kutu alır), diğeri "bu tur kazanıldı" diyor (yanılırsa
+        /// oyun yalan söyler).
         /// </summary>
-        public bool AllResting()
+        public bool AllSteady() => AllBelow(steadySpeedThreshold, steadyAngularThreshold);
+
+        bool AllBelow(float speed, float angular)
         {
             for (int i = 0; i < bodies.Count; i++)
             {
@@ -74,14 +106,7 @@ namespace PhysicsStack
                     return false;
                 }
 
-                var rb = body.Body;
-                if (rb.IsSleeping())
-                {
-                    continue;
-                }
-
-                if (rb.linearVelocity.sqrMagnitude > restSpeedThreshold * restSpeedThreshold ||
-                    rb.angularVelocity.sqrMagnitude > restAngularThreshold * restAngularThreshold)
+                if (!IsBelow(body.Body, speed, angular))
                 {
                     return false;
                 }
@@ -91,29 +116,32 @@ namespace PhysicsStack
         }
 
         /// <summary>
-        /// Yığının en tepe noktası. Transform pozisyonu değil collider sınırları
-        /// kullanılıyor: kutu yan yattığında merkezi alçalır ama üst kenarı
-        /// yükselir, kule yüksekliği dediğimiz şey ikincisi.
+        /// Önce <c>IsSleeping()</c>'e bakıyoruz: fizik motoru bir cismi uykuya
+        /// aldıysa zaten "bu artık hareket etmiyor" demiş oluyor, bizim eşik
+        /// tahminimizden daha güvenilir. Uyku eşiğine hiç inmeyen ama pratikte
+        /// duran cisimler için de kendi eşiğimiz yedekte duruyor.
         /// </summary>
-        public float HighestPointY() => Highest(skipDragged: false);
+        static bool IsBelow(Rigidbody rb, float speed, float angular) =>
+            rb.IsSleeping() ||
+            (rb.linearVelocity.sqrMagnitude <= speed * speed &&
+             rb.angularVelocity.sqrMagnitude <= angular * angular);
 
         /// <summary>
-        /// Elde tutulan kutuyu saymayan tepe noktası. Kamera bunu kullanıyor:
-        /// yeni kutu kadrajın üstünde belirdiği için, oyuncu ona dokunduğu anda
-        /// "yığının tepesi" birden tavana fırlıyordu ve kamera boşuna yukarı
-        /// zıplıyordu. Kule yüksekliği, oyuncunun elindeki kutu değil,
-        /// yerleştirdiği kutular demek.
+        /// Kulenin tepe noktası: yalnızca bir kez oturmuş kutular sayılıyor.
+        /// Elde tutulan ve henüz havada olan kutular kulenin parçası değil.
+        ///
+        /// Transform pozisyonu değil collider sınırları kullanılıyor: kutu yan
+        /// yattığında merkezi alçalır ama üst kenarı yükselir, kule yüksekliği
+        /// dediğimiz şey ikincisi.
         /// </summary>
-        public float HighestRestingPointY() => Highest(skipDragged: true);
-
-        float Highest(bool skipDragged)
+        public float HighestSettledPointY()
         {
             float highest = 0f;
 
             for (int i = 0; i < bodies.Count; i++)
             {
                 var body = bodies[i];
-                if (body == null || (skipDragged && body.IsDragged))
+                if (body == null || !settled.Contains(body))
                 {
                     continue;
                 }
@@ -127,6 +155,28 @@ namespace PhysicsStack
             }
 
             return highest;
+        }
+
+        /// <summary>
+        /// Havadaki kutuların oturup oturmadığını takip eder. Ölçümü çağrıldığı
+        /// anda hesaplamak yerine burada biriktirmemin sebebi, "bir kez oturmuş
+        /// olmak"ın bir olay olması: geçmişi bilmeden cevaplanamaz.
+        /// </summary>
+        void Update()
+        {
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                var body = bodies[i];
+                if (body == null || body.IsDragged || settled.Contains(body))
+                {
+                    continue;
+                }
+
+                if (IsBelow(body.Body, restSpeedThreshold, restAngularThreshold))
+                {
+                    settled.Add(body);
+                }
+            }
         }
 
         /// <summary>Bir parça verilen yüksekliğin altına düştü mü?</summary>

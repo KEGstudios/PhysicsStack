@@ -46,7 +46,57 @@ namespace PhysicsStack
         /// </summary>
         Vector3 targetPoint;
 
+        /// <summary>
+        /// Kutunun indirilebileceği en alçak nokta. Parmak bunun altına inse bile
+        /// hedef nokta burada kalıyor, yani kutu çizginin altına sürüklenemiyor.
+        ///
+        /// Oyunun tek en önemli kuralı bu. Olmadığında kutuyu kulenin üstüne
+        /// milimetrik yerine getirip sıfır hızla bırakabiliyordun: ortada risk
+        /// yoktu, sadece sabır vardı. Mesafe zorunlu olunca yerleştirme bir
+        /// koymadan bir atışa dönüşüyor ve Gün 4'te ayarladığım bırakma hızı
+        /// nihayet bir şey ifade etmeye başlıyor.
+        ///
+        /// Kısıt hedefe uygulanıyor, cismin kendisine değil: kutu fizikle
+        /// aşağı itilebilir, sadece oyuncu tarafından indirilemez.
+        /// </summary>
+        float minDragHeight = float.NegativeInfinity;
+
+        /// <summary>
+        /// Kutu bir kez bırakıldıysa artık yığının parçası; tekrar alınamıyor.
+        ///
+        /// Oynarken çıktı: yerleştirilmiş kutuyu geri alıp yeniden bırakabilmek
+        /// oyunun bütün zorluğunu siliyor. Beğenmediğin her atışı düzeltebiliyorsan
+        /// bırakma mesafesi de, kule dengesi de, tutunma şartı da anlamını
+        /// kaybediyor — sonunda herkes mükemmel kuleyi kuruyor, sadece daha uzun
+        /// sürede. Bir atış bir karardır; geri alınabilen karar karar değildir.
+        /// </summary>
+        public bool CanGrab => !isPlaced;
+
+        bool isPlaced;
+
         public bool IsDragged => isDragged;
+
+        /// <summary>Bırakma çizgisinin yüksekliği; ekrandaki çizgi bunu okuyor.</summary>
+        public float DropLineY { get; private set; } = float.NegativeInfinity;
+
+        /// <summary>
+        /// Kuyruk kutuyu üretirken seviyenin bırakma çizgisini buraya yazıyor.
+        ///
+        /// Çizgi kutunun **altının** inebileceği yeri gösteriyor, merkezinin değil.
+        /// Merkeze göre tanımlasaydım aynı sayı farklı boydaki kutular için farklı
+        /// düşme mesafesi anlamına gelirdi; boyut oynayan seviyelerde bırakma
+        /// mesafesi sessizce rastgeleleşirdi.
+        ///
+        /// Yarım boy bir kez, üretim anında ölçülüyor. Kutu döndükçe yeniden
+        /// ölçseydim kısıt oyuncunun elinde değişirdi — kural sabit durmalı.
+        /// </summary>
+        public void SetDropLine(float lineY)
+        {
+            DropLineY = lineY;
+
+            float halfHeight = TryGetComponent(out Collider collider) ? collider.bounds.extents.y : 0.5f;
+            minDragHeight = lineY + halfHeight;
+        }
 
         /// <summary>Yerleşme tespiti rigidbody'nin kendisine bakıyor; dışarı açıyoruz.</summary>
         public Rigidbody Body => rb;
@@ -89,7 +139,7 @@ namespace PhysicsStack
                 rb.useGravity = true;
             }
 
-            targetPoint = point;
+            targetPoint = Clamp(point);
             isDragged = true;
 
             Grabbed?.Invoke(this);
@@ -103,12 +153,19 @@ namespace PhysicsStack
         /// <summary>Update'ten çağrılır; sadece hedefi günceller, fiziğe dokunmaz.</summary>
         public void MoveTarget(Vector3 point)
         {
-            targetPoint = point;
+            targetPoint = Clamp(point);
+        }
+
+        Vector3 Clamp(Vector3 point)
+        {
+            point.y = Mathf.Max(point.y, minDragHeight);
+            return point;
         }
 
         public void EndDrag()
         {
             isDragged = false;
+            isPlaced = true;
 
             switch (mode)
             {

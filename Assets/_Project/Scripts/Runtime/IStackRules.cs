@@ -6,6 +6,12 @@ namespace PhysicsStack
         /// <summary>Tur devam ediyor.</summary>
         Continue,
 
+        /// <summary>
+        /// Karar askıda: sonuç belli değil ama sıradaki kutu da verilmemeli.
+        /// Kule hedefi geçtiğinde tutunmasını beklerken bu durumdayız.
+        /// </summary>
+        Pending,
+
         /// <summary>Turun hedefi tamamlandı.</summary>
         Won,
 
@@ -34,6 +40,12 @@ namespace PhysicsStack
         /// <summary>Hedef yükseklik. Sıfır ya da altı "hedef yok" demek.</summary>
         float TargetHeight { get; }
 
+        /// <summary>
+        /// Hedefi geçtikten sonra tutunması gereken süre (sn). Sıfır ise böyle
+        /// bir şart yok. Panel ilerlemeyi bunun üstünden gösteriyor.
+        /// </summary>
+        float HoldTime { get; }
+
         /// <summary>Bu anlık görüntüde tur devam ediyor mu, bitti mi?</summary>
         RunOutcome Evaluate(in StackSnapshot snapshot);
 
@@ -45,5 +57,11 @@ namespace PhysicsStack
 
         /// <summary>Skoru ekranda okunacak hâle getirir. Birim de moda ait.</summary>
         string DescribeScore(float score);
+
+        /// <summary>
+        /// Sıradaki kutu nasıl gelsin? Seviye modunda sabit — seviyenin verisi;
+        /// sonsuz modda yığdıkça büyüyen bir eğri.
+        /// </summary>
+        BoxDifficulty NextBox(in StackSnapshot snapshot);
     }
 }

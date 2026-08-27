@@ -21,11 +21,10 @@ Prototipte oyun "hedef yüksekliği geç, bitir"di. Faz 2'de iki mod var:
 
 | Mod | Kural | Bitiş |
 |-----|-------|-------|
-| **Seviye** | Her seviyenin kendi hedefi ve kendi zorluğu var | Hedefe ulaşınca sonraki seviye |
+| **Seviye** | Her seviyenin kendi sorusu var: bırakma mesafesi, kutu sınırı, engel | Hedefe ulaşınca sonraki seviye |
 | **Sonsuz** | Hedef yok, düşene kadar yığıyorsun | Bir parça düşünce skor yazılır |
 
-Sonsuz mod baştan açık değil: seviye modunda belli bir seviyeye gelince
-açılıyor. Sebebi oyuncuyu oyalamak değil — sonsuz mod, oyuncunun kutuyu
+Sonsuz mod baştan açık değil: seviye modunda 8. seviye bitince açılıyor. Sebebi oyuncuyu oyalamak değil — sonsuz mod, oyuncunun kutuyu
 yerleştirmeyi öğrenmiş olmasını varsayıyor. Seviyeler o öğrenmenin kendisi.
 
 ## Gün planı
@@ -44,13 +43,33 @@ arkasına çıkıyor (`IStackRules`), iki uygulaması oluyor: `LevelRules`,
 `EndlessRules`. Controller "kim kazandı"yı bilmiyor, sadece soruyor.
 
 ### Gün 8 — Seviye verisi ve zorluk eğrisi
-Seviyeler ScriptableObject: hedef yükseklik, kutu boyut varyansı, spawn
-salınımı, kutu sayısı sınırı. Kod değişmeden yeni seviye eklenebilmeli.
-Başlangıç: **12 seviye, sonsuz mod 8'de açılıyor.** Sayılar veri olduğu için
-oynayarak değişecek. On ikiden fazlası bu prototipte dolgu olur.
+Seviyeler ScriptableObject: hedef yükseklik, kutu sınırı, genişlik oynaması ve
+**bırakma mesafesi**. Kod değişmeden yeni seviye eklenebilmeli.
+Başlangıç: **8 seviye, sonsuz mod 8'i bitirince açılıyor.**
 
-### Gün 9 — Akış ve kalıcılık
-Mod seçimi, seviye listesi, tur sonu ekranı. İlk kez gerçek bir arayüz giriyor —
+**Plandan sapma — ve sebebi.** Bu gün başlarken eğri "hedef yükseklik artıyor"
+üzerine kuruluydu: 12 seviye, 2.5'ten 8'e. Tabloyu görünce yanlış eksende
+olduğu ortaya çıktı — yükseklik bir *miktar*, seviye ise bir *soru* olmalı.
+Miktarı artırarak seviye üretmek, 5. seviyede 5 kutu / 100. seviyede 100 kutu
+demek; aynı soruyu daha uzun süre sordurmaktan başka bir şey değil. İlk
+seviyelerin "absürt kolay" görünmesi de bunun belirtisiydi: 2.5 birim kolay bir
+soru değil, **soru değil**.
+
+Asıl sorun daha derinde: oyunda hiç risk yoktu. Kutuyu milimetrik yerine
+getirip sıfır hızla bırakabiliyordun, yani beceri değil sabır testiydi ve
+zorluk ancak kutu sayısıyla artabilirdi.
+
+Yeni mekanik: **kutu, kule tepesinden belirli bir mesafenin üstünden bırakılmak
+zorunda.** Yerleştirme bir koymadan bir atışa dönüşüyor. Zorluk kolu artık tek
+bir mesafe, ve sonraki mekaniklerin hepsi üstüne oturuyor — rüzgâr havadaki
+kutuyu itiyor, engel onu saptırıyor; ikisi de kutu havada yol kat ediyorsa
+anlamlı.
+
+### Gün 9 — Rüzgâr, engel, akış ve kalıcılık
+Rüzgâr (sadece havadaki kutuyu etkiliyor, aşağıdaki kuleyi değil — yoksa
+oyuncunun hatası olmadan kule yıkılır) ve hareketli engel: geçişi belirli
+anlarda tamamen kapatarak nişan alma problemini zamanlama problemine çeviriyor.
+Sonra mod seçimi, seviye listesi, tur sonu ekranı. İlk kez gerçek bir arayüz giriyor —
 gri kutu prensibi burada da geçerli, süs yok. İlerleme ve en iyi skor
 `PlayerPrefs`'te: kaydedilecek şey üç sayı, dosya formatı tasarlamanın anlamı yok.
 Test edebilmek için kilitleri açan bir geliştirici bayrağı da buraya giriyor.

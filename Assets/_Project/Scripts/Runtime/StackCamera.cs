@@ -27,7 +27,7 @@ namespace PhysicsStack
         [SerializeField] float visibleWidth = 5f;
 
         [Tooltip("Kulenin tepesiyle kadrajın üst kenarı arasında bırakılan boşluk.")]
-        [SerializeField] float topMargin = 6f;
+        [SerializeField] float topMargin = 7f;
 
         [Tooltip("Zeminin kadrajın alt kenarının altında kalma payı.")]
         [SerializeField] float groundMargin = 0.6f;
@@ -112,7 +112,7 @@ namespace PhysicsStack
             float restingCenter = half - groundMargin;
 
             // Kule büyüdükçe: tepesi üst kenarın altında kalsın.
-            float towerTop = tracker != null ? tracker.HighestRestingPointY() : 0f;
+            float towerTop = tracker != null ? tracker.HighestSettledPointY() : 0f;
             float followCenter = towerTop + topMargin - half;
 
             // İstenen merkez bulundu; kameranın y'si eğim payı kadar yukarıda duruyor.
@@ -133,7 +133,7 @@ namespace PhysicsStack
         /// </summary>
         public float SpawnHeight(float aboveTower, float minHeight, float marginFromTop)
         {
-            float towerTop = tracker != null ? tracker.HighestRestingPointY() : 0f;
+            float towerTop = tracker != null ? tracker.HighestSettledPointY() : 0f;
 
             // Alt sınır: yığın boşken "kuleTepesi + 4" tam 4 ediyor, yani hedef
             // çizgisinin dibi — kutu çizgiye biniyor ve "zaten hedefteyim" gibi

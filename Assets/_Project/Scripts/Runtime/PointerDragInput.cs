@@ -90,7 +90,9 @@ namespace PhysicsStack
 
             // Collider çocuk nesnede olabilir; bileşeni yukarı doğru arıyoruz.
             var body = hit.collider.GetComponentInParent<DraggableBody>();
-            if (body == null)
+
+            // Yerleştirilmiş kutuya dokunulamıyor: sadece sıradaki kutu alınabilir.
+            if (body == null || !body.CanGrab)
             {
                 return;
             }

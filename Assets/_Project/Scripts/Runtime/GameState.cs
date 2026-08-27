@@ -15,7 +15,16 @@ namespace PhysicsStack
         /// <summary>Kutu bırakıldı, yığın hâlâ hareket hâlinde.</summary>
         Settling,
 
-        /// <summary>Yığın oturdu ve hedef yüksekliği geçti.</summary>
+        /// <summary>
+        /// Kule hedefi geçti ama henüz kazanılmadı: tutunması bekleniyor.
+        ///
+        /// Bu durum sonradan eklendi. Öncesinde hedefi geçmek tek başına
+        /// kazandırıyordu ve hafifçe kayan bir kule "kazandın" yazdıktan on
+        /// saniye sonra devrilebiliyordu. Geçmek bir an, tutunmak bir süre.
+        /// </summary>
+        Holding,
+
+        /// <summary>Yığın hedefi geçti ve orada tutundu.</summary>
         Won,
 
         /// <summary>Bir parça zeminin altına düştü.</summary>
