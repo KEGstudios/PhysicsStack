@@ -207,8 +207,14 @@ namespace PhysicsStack.EditorTools
             SetReference(dropLineView, "queue", queue);
             SetReference(dropLineView, "line", dropLine);
 
-            var restart = go.AddComponent<RestartOnTap>();
-            SetReference(restart, "controller", controller);
+            // Arayüz: menü ve tur sonu. İkisi de kanvasını çalışma zamanında
+            // kendisi kuruyor, o yüzden sahnede tek bir bileşenden ibaretler.
+            var menu = go.AddComponent<MenuUI>();
+            SetReference(menu, "levels", levels);
+
+            var result = go.AddComponent<ResultUI>();
+            SetReference(result, "controller", controller);
+            SetReference(result, "levels", levels);
 
             // Tehditler: ikisi de seviyenin verisinden kendi ayarlarını okuyor,
             // kapalıysa hiç görünmüyorlar.

@@ -1,14 +1,20 @@
 # PhysicsStack — Prototip 1
 
-3D kule yığma prototipi. Ekranın üstünden gelen gri kutuları parmakla sürükleyip
-bırakıyorsun; fizik gerisini hallediyor. Kule hedef yüksekliği geçip **oturursa**
-kazanıyorsun, bir parça zeminin altına düşerse kaybediyorsun.
+3D kule yığma prototipi. Kutuyu parmakla sürüklüyorsun ama **kulenin belirli bir
+mesafe üstünden bırakmak zorundasın** — yerleştirme bir koyma değil, bir atış.
+Kule hedefi geçip orada **tutunursa** kazanıyorsun.
 
-Bu bir oyun değil, bir **his denemesi**: amaç dokunmatik girdiyi fizik dünyasına
-doğru bağlamak. Sanat, ses, menü yok — hepsi gri kutu.
+İki mod var: sekiz seviyelik seri (her seviyenin kendi sorusu var — bırakma
+mesafesi, kutu sınırı, rüzgâr, top atıcı) ve seriyi bitirince açılan sonsuz mod.
+Sanat, ses, müzik yok — hepsi gri kutu.
 
-- Unity 6 (6000.5.10f1) · URP · hedef platform Android
-- Süre: 5 gün, sabit. 5. günün sonunda repo kapanır.
+- Unity 6 (6000.5.10f1) · URP · Android + WebGL
+- **Faz 1 (5 gün):** dokunmatik girdiyi fiziğe bağlamak. `v1-prototype` olarak donduruldu.
+- **Faz 2 (5 gün):** onu oynanabilir bir oyuna çevirmek. Bu belge ikisini de anlatıyor.
+
+Faz 1'in sonunda elimde bir teknik gösterim vardı: beş kutu koyuyordun, bitiyordu.
+Çekirdeğin üstüne gerçek bir oyun döngüsü koymanın maliyeti, sıfırdan yeni bir
+prototip başlatmaktan düşüktü — [neden devam ettiğim](docs/FAZ2.md).
 
 ---
 
@@ -252,6 +258,24 @@ Aynı sebeple kutunun beliriş noktasındaki yatay rastgeleliği kaldırdım.
 Rastgelelik zorluğun kaynağı olmamalı: varken aynı seviyeyi iki kez oynamak iki
 farklı problem çözmek demekti.
 
+### Arayüz sahnede değil, kodda
+
+Menü ve tur sonu ekranı kanvaslarını çalışma zamanında kendileri kuruyor. Arayüzde
+elle ayarlanacak hiçbir şey yok — ne sanat, ne düzen, ne yazı tipi — ve sahneye
+kurulunca ortaya diff'i okunmayan onlarca RectTransform'luk YAML çıkıyor. Sanat
+girseydi bu karar tersine dönerdi.
+
+EventSystem de kullanmadım. uGUI'nin `Button` bileşeni bir EventSystem, bir input
+modülü ve `GraphicRaycaster` istiyor; proje yalnızca yeni Input System kullandığı
+için bunu doğru kurmak ayrı bir bakım borcu. Düğmelerim dikdörtgen ve bir dokunuşun
+içeride olup olmadığı tek satır. Sürükleme ya da klavye gezinme gerekseydi bu
+yanlış karar olurdu.
+
+Menü ile tur arasında sahneyi yeniden yüklüyorum. Aynı sahnede turu "temizlemek"
+mümkündü ama tur bittiğinde ortada onlarca rigidbody ve yarım kalmış fizik durumu
+oluyor; onları tek tek temizleyen kod, her yeni nesne eklendiğinde güncellenmesi
+gereken bir borç. Seçim statik bir sınıfta taşınıyor.
+
 ### Tehditler yalnızca havadaki kutuya dokunuyor
 
 Rüzgâr ve kenarda gezinen top atıcı, ikisi de aynı kurala uyuyor: duran kuleye
@@ -385,7 +409,8 @@ Assets/
       Runtime/       -> PhysicsStack.Runtime assembly
       Editor/        -> PhysicsStack.Editor assembly
     Prefabs/
-    Data/            -> ScriptableObject varlıkları (DragSettings.asset)
+    Data/            -> ScriptableObject varlıkları
+      Levels/        -> seviye varlıkları (koddaki eğriden üretiliyor)
     Art/
       Materials/
       Models/
@@ -420,11 +445,20 @@ Sahne: `Assets/_Project/Scenes/Main.unity`.
 ## Telefon build'i
 
 ```bash
-Unity.exe -batchmode -quit -projectPath . -buildTarget Android           -executeMethod PhysicsStack.EditorTools.AndroidBuild.BuildApk
+# Android
+Unity.exe -batchmode -quit -projectPath . -buildTarget Android           -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildAndroid
+
+# WebGL
+Unity.exe -batchmode -quit -projectPath . -buildTarget WebGL           -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildWebGL
 ```
 
-Çıktı: `Build/Android/PhysicsStack.apk` (Build klasörü commit'lenmiyor).
-Editörden almak istersen aynı iş `PhysicsStack > Android APK Al` menüsünde.
+Çıktı: `Build/Android/PhysicsStack.apk` ve `Build/WebGL/` (Build klasörü
+commit'lenmiyor). Editörden almak istersen aynı işler `PhysicsStack > Build`
+menüsünde.
+
+Sahneyi ve seviyeleri de kod kuruyor: `PhysicsStack > Sahneyi Sifirdan Kur` ve
+`PhysicsStack > Seviyeleri Yeniden Kur`. İkincisi mevcut seviye varlıklarının
+üstüne yazıyor, yani oynayarak yaptığım ayarları koddaki eğriye döndürüyor.
 
 **Build ayarları neden kodda?** Inspector'dan tıklayarak da yapılabilirdi, ama bu
 proje iki makine arasında Git ile taşınıyor ve tıklamaların bir kısmı taşınmıyor:
@@ -460,7 +494,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Gün 7 — Kural katmanı arayüzün arkasına (`LevelRules` / `EndlessRules`)
 - [x] Gün 8 — Bırakma mesafesi mekaniği, 8 seviyelik veri ve zorluk eğrisi
 - [x] Gün 9 — Rüzgâr ve top atıcı, tehdit koridoru, uyarlanır kadraj
-- [ ] Gün 10 — Mod/seviye seçimi, ilerleme kaydı, telefon testi, kapanış
+- [x] Gün 10 — Menü, tur sonu ekranı, ilerleme kaydı
+- [ ] Kapanış — telefon testi, README v2
 
 ## Kapsam dışı
 

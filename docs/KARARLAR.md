@@ -614,3 +614,47 @@ Tepe noktası bir kare sürüyor, gerçekten oturmuş kutu ise durmaya devam edi
 Gün 10'a kaldı. Sonsuz modda tehdit yok — bilinçli: oradaki eğri bırakma mesafesi
 üzerinden yürüyor ve tek şeyin sürekli artması, üst üste binen üç şeyden daha
 okunur bir tırmanış veriyor.
+
+## Gün 10 — Akış: menü, tur sonu, ilerleme
+
+**Arayüz sahnede değil, kodda kuruluyor.** Arayüzde elle ayarlanacak hiçbir şey
+yok — ne sanat, ne düzen, ne yazı tipi. Sahneye kurulunca ortaya diff'i okunmayan
+onlarca RectTransform'luk bir YAML yığını çıkıyor ve her küçük değişiklik için
+Editor açmak gerekiyor. Kodda duran arayüz okunuyor, gözden geçirilebiliyor ve
+sahne kurulumunu şişirmiyor. Sanat girseydi bu karar tersine dönerdi.
+
+Konumlar normalize koordinatlarla (0-1) veriliyor, piksel değil: seviye ızgarası
+seviye sayısına göre kendini hesaplıyor, yani dokuzuncu seviyeyi eklemek düzeni
+baştan kurmak anlamına gelmiyor.
+
+**EventSystem yok.** uGUI'nin `Button` bileşeni bir EventSystem, bir input modülü
+ve `GraphicRaycaster` istiyor; proje yalnızca yeni Input System kullandığı için
+modülün doğru kurulması ayrı bir bakım borcu. Buradaki düğmeler dikdörtgen ve bir
+dokunuşun içeride olup olmadığı tek satır:
+`RectTransformUtility.RectangleContainsScreenPoint`. Sürükleme, odak ya da klavye
+gezinme gerekseydi bu yanlış karar olurdu.
+
+**Yazı tipi motorun içindeki eski çalışma zamanı fontu.** TextMeshPro daha iyi
+görünürdü ama projeye ayrıca "TMP Essentials" içe aktarmayı gerektiriyor — sahneyi
+tek komutla kurabilme kuralını bozan elle bir adım. Gri kutu prototipinde yazının
+güzel olması gerekmiyor, okunması yetiyor.
+
+**Menü ile tur arasında sahne yeniden yükleniyor.** İkisini aynı sahnede yan yana
+çalıştırıp turu "temizlemek" mümkündü ama tur bittiğinde ortada onlarca rigidbody,
+bir kule ve yarım kalmış fizik durumu oluyor. Onları tek tek temizleyen kod, sahne
+yeniden yüklemekten hem uzun hem de her yeni nesne eklendiğinde güncellenmesi
+gereken bir borç. Seçim `RunRequest` adlı statik bir sınıfta taşınıyor — iki sayı
+için bundan fazlası gerekmiyor.
+
+**İlerlemeyi controller yazıyor, arayüz değil.** Kaydın arayüze bağlı olması,
+arayüzü değiştirdiğimde kaydı da bozma riski demek. `PlayerPrefs` kullanmamın
+sebebi saklanacak şeyin üç sayı olması: kendi dosya formatımı tasarlamak, JSON
+yazmak ya da kayıt sürümlemesi düşünmek burada israf olurdu.
+
+**Geliştirici kilidi kayda yazılmıyor**, oyun her açıldığında kapalı başlıyor.
+Yanlışlıkla açık kalan bir hile bayrağı, test ettiğim şeyin gerçek oyun olmadığı
+anlamına gelir.
+
+Gün 5'in "ekrana dokun, sahne yeniden yüklensin" çözümü kalktı. Tek seviyeli bir
+prototip için doğruydu; seviyeler ve iki mod gelince oyuncunun bitişte verebileceği
+karar birden fazla oldu.

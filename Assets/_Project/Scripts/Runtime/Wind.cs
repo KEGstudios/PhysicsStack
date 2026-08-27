@@ -41,6 +41,12 @@ namespace PhysicsStack
 
         void Start()
         {
+            // Menüdeyken kural nesnesi yok; tehdit de yok.
+            if (controller.Rules == null)
+            {
+                return;
+            }
+
             var hazards = controller.Rules.Hazards;
             speed = hazards.windSpeed;
             period = hazards.windPeriod;

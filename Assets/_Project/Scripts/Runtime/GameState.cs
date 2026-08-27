@@ -6,6 +6,9 @@ namespace PhysicsStack
     /// </summary>
     public enum GameState
     {
+        /// <summary>Menü açık; ortada bir tur yok.</summary>
+        Menu,
+
         /// <summary>Sıradaki kutu havada asılı, oyuncunun dokunmasını bekliyor.</summary>
         WaitingForDrag,
 

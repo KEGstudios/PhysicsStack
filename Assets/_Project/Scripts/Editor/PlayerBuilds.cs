@@ -119,15 +119,36 @@ namespace PhysicsStack.EditorTools
             return bytes / 1024d / 1024d;
         }
 
+        /// <summary>
+        /// Klasörün yayınlanacak boyutu.
+        ///
+        /// İki şey dışarıda bırakılıyor. Burst'ün <c>_DoNotShip</c> klasörünü
+        /// Unity'nin kendisi "gönderme" diye adlandırıyor. <c>.git</c> ise WebGL
+        /// çıktısının içinde duruyor, çünkü yayın o klasörden gh-pages dalına
+        /// push edilerek yapılıyor — ve eski build'lerin nesneleri orada birikiyor.
+        /// İkisini saymak, ölçtüğüm sayının "kullanıcının indireceği şey" olmasını
+        /// engelliyordu: 23.6 MB yazıyordu, gerçekte sunulan 12.5 MB'tı.
+        /// </summary>
         static long DirectorySize(DirectoryInfo directory)
         {
             long total = 0;
+
             foreach (var file in directory.GetFiles("*", SearchOption.AllDirectories))
             {
+                if (IsExcluded(file.DirectoryName))
+                {
+                    continue;
+                }
+
                 total += file.Length;
             }
 
             return total;
         }
+
+        static bool IsExcluded(string path) =>
+            path != null &&
+            (path.Contains("_DoNotShip") ||
+             path.Contains($"{Path.DirectorySeparatorChar}.git"));
     }
 }

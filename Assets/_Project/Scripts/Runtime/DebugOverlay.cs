@@ -43,7 +43,9 @@ namespace PhysicsStack
 
         void OnGUI()
         {
-            if (!visible || controller == null)
+            // Menüde ölçü aletine gerek yok; panel orada sadece arayüzün üstünü
+            // kirletiyor.
+            if (!visible || controller == null || controller.State == GameState.Menu)
             {
                 return;
             }
@@ -142,6 +144,7 @@ namespace PhysicsStack
             GameState.WaitingForDrag => "bekliyor",
             GameState.Dragging => "sürükleniyor",
             GameState.Settling => "yerleşiyor",
+            GameState.Menu => "menü",
             GameState.Holding => "tutunuyor",
             GameState.Won => "KAZANDIN",
             GameState.Lost => "KAYBETTIN",

@@ -57,6 +57,17 @@ namespace PhysicsStack
 
         void Start()
         {
+            // Menüdeyken kural nesnesi yok; namlu hiç görünmüyor.
+            if (controller.Rules == null)
+            {
+                if (body != null)
+                {
+                    body.enabled = false;
+                }
+
+                return;
+            }
+
             var hazards = controller.Rules.Hazards;
 
             Active = hazards.cannon;

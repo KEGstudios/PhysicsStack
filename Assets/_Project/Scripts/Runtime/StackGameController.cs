@@ -19,7 +19,10 @@ namespace PhysicsStack
         [SerializeField] BoxQueue queue;
         [SerializeField] StackTracker tracker;
 
-        [Tooltip("Sahne hangi kural setiyle açılacak. Gün 9'da bunu mod seçim ekranı belirleyecek.")]
+        [Tooltip("Menüyü atlayıp aşağıdaki mod/seviye ile doğrudan başla. Editor'de tek seviye denerken işe yarıyor.")]
+        [SerializeField] bool startImmediately;
+
+        [Tooltip("Menü atlanırsa hangi kural seti çalışacak.")]
         [SerializeField] StackMode mode = StackMode.Level;
 
         [Tooltip("Seviyelerin sırası. Seviye modunda bütün sayılar buradan geliyor.")]
@@ -41,7 +44,7 @@ namespace PhysicsStack
 
         float peakHeight;
 
-        public GameState State { get; private set; } = GameState.WaitingForDrag;
+        public GameState State { get; private set; } = GameState.Menu;
 
         /// <summary>Debug paneli için: yığın ne kadar süredir kesintisiz duruyor (gevşek eşik).</summary>
         public float RestTimer { get; private set; }
@@ -64,8 +67,14 @@ namespace PhysicsStack
         /// </summary>
         public float FinalHeight { get; private set; }
 
-        /// <summary>Yürürlükteki kural seti. Panel ve hedef çizgisi buradan okuyor.</summary>
+        /// <summary>Yürürlükteki kural seti. Menüdeyken null.</summary>
         public IStackRules Rules => rules;
+
+        /// <summary>Oynanan mod; sonuç ekranı "sonraki seviye" düğmesi için soruyor.</summary>
+        public StackMode Mode => mode;
+
+        /// <summary>Oynanan seviyenin sırası.</summary>
+        public int LevelIndex => levelIndex;
 
         /// <summary>Hedef yükseklik; sıfır ise bu modda hedef yok.</summary>
         public float TargetHeight => rules != null ? rules.TargetHeight : 0f;
@@ -75,11 +84,26 @@ namespace PhysicsStack
 
         void Awake()
         {
+            // Menüden bir istek geldiyse tur onunla başlıyor; gelmediyse ya
+            // Inspector'daki ayarlar (Editor kolaylığı) ya da hiç — o zaman
+            // sahne menüyle açılıyor.
+            if (RunRequest.HasRequest)
+            {
+                mode = RunRequest.Mode;
+                levelIndex = RunRequest.LevelIndex;
+            }
+            else if (!startImmediately)
+            {
+                return;
+            }
+
             // Kural nesnesi Start'tan önce hazır olmalı: hedef çizgisi kendini
             // hedefe göre yerleştirirken bunu okuyor.
             rules = mode == StackMode.Endless
                 ? new EndlessRules(endlessCollapseDrop)
                 : new LevelRules(ResolveLevel());
+
+            State = GameState.WaitingForDrag;
         }
 
         /// <summary>
@@ -102,6 +126,11 @@ namespace PhysicsStack
 
         void Start()
         {
+            if (rules == null)
+            {
+                return;
+            }
+
             queue.BoxSpawned += OnBoxSpawned;
             RequestNextBox();
         }
@@ -158,7 +187,7 @@ namespace PhysicsStack
 
         void Update()
         {
-            if (State is GameState.Won or GameState.Lost)
+            if (State is GameState.Menu or GameState.Won or GameState.Lost)
             {
                 return;
             }
@@ -242,6 +271,17 @@ namespace PhysicsStack
             RestTimer = 0f;
             SteadyTimer = 0f;
             FinalHeight = snapshot.Height;
+
+            // İlerleme burada yazılıyor, sonuç ekranında değil: kaydın arayüze
+            // bağlı olması, arayüzü değiştirdiğimde kaydı da bozma riski demek.
+            if (result == GameState.Won && mode == StackMode.Level)
+            {
+                Progress.CompleteLevel(levelIndex);
+            }
+            else if (mode == StackMode.Endless)
+            {
+                Progress.ReportEndless(snapshot.PeakHeight);
+            }
 
             Debug.Log($"[StackGameController] {rules.Title} · {result} · " +
                       $"kule {snapshot.Height:0.00} · zirve {snapshot.PeakHeight:0.00} · skor {ScoreText}");
