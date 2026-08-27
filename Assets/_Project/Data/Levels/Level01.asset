@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: PhysicsStack.Runtime::PhysicsStack.LevelDefinition
   title: Seviye 1
   targetHeight: 3
-  boxLimit: 0
   dropGap: 2
   spawnLift: 0
   widthVariance: 0

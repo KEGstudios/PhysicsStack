@@ -56,16 +56,16 @@ namespace PhysicsStack.EditorTools
         /// "çok yakın, zorlanmıyorum" çıktı. Bir birim, bir kutu boyu kadar düşüş
         /// demek — kutu daha hızlanmadan yerine oturuyordu.
         /// </summary>
-        static readonly (string Title, float Target, int Limit, float Gap, float WidthVariance, float Lift, HazardSettings Hazards)[] Curve =
+        static readonly (string Title, float Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards)[] Curve =
         {
-            ("Seviye 1", 3f, 0, 2.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 2", 4f, 0, 2.50f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 3", 4f, 0, 3.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 4", 5f, 6, 3.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 5", 5f, 0, 3.50f, 0.15f, 0f,   HazardSettings.None),
-            ("Seviye 6", 5f, 7, 3.50f, 0.15f, 0f,   MakeWind(0.7f)),
-            ("Seviye 7", 6f, 0, 4.00f, 0.25f, 0f,   MakeWind(1.0f, period: 3.0f)),
-            ("Seviye 8", 6f, 0, 4.00f, 0.15f, 2.5f, MakeCannon(interval: 2.0f, ballSpeed: 7.0f, patrolSpeed: 1.6f, bottomGap: 2.0f, patrolSpan: 3.5f)),
+            ("Seviye 1", 3f, 2.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 2", 4f, 2.50f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 3", 4f, 3.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 4", 5f, 3.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 5", 5f, 3.50f, 0.15f, 0f,   HazardSettings.None),
+            ("Seviye 6", 5f, 3.50f, 0.15f, 0f,   MakeWind(0.7f)),
+            ("Seviye 7", 6f, 4.00f, 0.25f, 0f,   MakeWind(1.0f, period: 3.0f)),
+            ("Seviye 8", 6f, 4.00f, 0.15f, 2.5f, MakeCannon(interval: 2.0f, ballSpeed: 7.0f, patrolSpeed: 1.6f, bottomGap: 2.0f, patrolSpan: 3.5f)),
         };
 
         /// <summary>
@@ -170,11 +170,10 @@ namespace PhysicsStack.EditorTools
             return library;
         }
 
-        static void Apply(LevelDefinition level, (string Title, float Target, int Limit, float Gap, float WidthVariance, float Lift, HazardSettings Hazards) row)
+        static void Apply(LevelDefinition level, (string Title, float Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards) row)
         {
             level.title = row.Title;
             level.targetHeight = row.Target;
-            level.boxLimit = row.Limit;
             level.dropGap = row.Gap;
             level.widthVariance = row.WidthVariance;
             level.spawnLift = row.Lift;

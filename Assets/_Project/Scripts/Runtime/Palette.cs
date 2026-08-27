@@ -64,6 +64,12 @@ namespace PhysicsStack
         public Color uiText = new Color32(58, 58, 66, 255);
         public Color uiTextDim = new Color32(140, 138, 148, 255);
 
+        [Tooltip("Kazanılmış yıldız. Paletin tek sıcak vurgusu: pastelin içinde ödül belli olsun.")]
+        public Color star = new Color32(240, 190, 74, 255);
+
+        [Tooltip("Kazanılmamış yıldız. Boş bırakmak yerine solgun çiziliyor ki kaç yıldız olduğu görünsün.")]
+        public Color starEmpty = new Color32(218, 213, 206, 255);
+
         [Header("Çizgiler")]
         public Color dropLine = new Color32(127, 166, 196, 255);
         public Color targetIdle = new Color32(185, 178, 170, 255);

@@ -61,7 +61,10 @@ namespace PhysicsStack
             // Kutu sınırı olan seviyede hedefe ulaşmadan kutular bitince tur kaybedilir.
             // Sınır kaybettirmenin değil, seviyeye kimlik vermenin yolu: "altı kutuyla
             // şu yüksekliğe çık" ile "istediğin kadar kutuyla çık" iki farklı problem.
-            if (level.boxLimit > 0 && snapshot.PlacedCount >= level.boxLimit)
+            // Kutu sinirini seviye kendisi soyluyor: yildiz esiginin iki
+            // fazlasi. Ayri bir sayi olsaydi sinir ile yildiz esigi celisebilir,
+            // ornegin uc yildizin alinamadigi bir seviye ortaya cikabilirdi.
+            if (snapshot.PlacedCount >= level.BoxLimit)
             {
                 return RunOutcome.Lost;
             }
@@ -83,8 +86,7 @@ namespace PhysicsStack
             new(level.dropGap, level.widthVariance, level.spawnLift);
 
         public override string ToString() =>
-            level.boxLimit > 0
-                ? $"{level.title} · hedef {level.targetHeight:0.0} · {level.boxLimit} kutu · mesafe {level.dropGap:0.0}"
-                : $"{level.title} · hedef {level.targetHeight:0.0} · mesafe {level.dropGap:0.0}";
+            $"{level.title} · hedef {level.targetHeight:0.0} · " +
+            $"{level.StarBoxes} kutu (sinir {level.BoxLimit}) · mesafe {level.dropGap:0.0}";
     }
 }

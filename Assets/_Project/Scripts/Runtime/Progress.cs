@@ -77,12 +77,43 @@ namespace PhysicsStack
         public static bool IsEndlessUnlocked(int unlockIndex) =>
             UnlockEverything || UnlockedLevel > unlockIndex;
 
+        /// <summary>
+        /// Seviyenin en iyi derecesi: o seviyeyi geçmek için kullanılan en az
+        /// kutu sayısı. Sıfır, seviyenin hiç geçilmediği anlamına geliyor.
+        ///
+        /// Neden "en az kutu": seviyenin hedefi sabit bir yükseklik, yani
+        /// "daha yükseğe çık" diye bir yarış yok. Geriye kalan tek anlamlı
+        /// ölçü, hedefe kaç kutuyla ulaştığın — bu da doğrudan yerleştirme
+        /// isabetini ölçüyor. Süre tutmayı düşündüm ama eledim: bu oyunda
+        /// acele etmek her zaman kötü oynamak demek, dolayısıyla süreyi
+        /// ödüllendirmek mekaniğin tersine çalışırdı.
+        ///
+        /// Sonsuz modun tersi yönde çalışması (orada yüksek olan iyi, burada
+        /// düşük olan) kafa karıştırıcı değil çünkü ikisi aynı ekranda hiç
+        /// yan yana gelmiyor ve ikisi de kendi biriminde yazılıyor.
+        /// </summary>
+        public static int LevelBest(int index) =>
+            PlayerPrefs.GetInt(LevelBestKey(index), 0);
+
+        static string LevelBestKey(int index) => $"physicsstack.best.{index}";
+
         /// <summary>Seviye geçildi: bir sonraki seviyeyi açar. Geri almaz.</summary>
-        public static void CompleteLevel(int index)
+        public static void CompleteLevel(int index, int boxesUsed)
         {
             if (index + 1 > UnlockedLevel)
             {
                 UnlockedLevel = index + 1;
+            }
+
+            int previous = LevelBest(index);
+
+            // Sıfır "derece yok" demek olduğu için ilk geçiş her zaman yazılıyor;
+            // sonrasında yalnızca daha azı. Karşılaştırmayı ters yazmak, ilk
+            // dereceyi hiç kaydetmemek gibi sessiz bir hataya yol açardı.
+            if (boxesUsed > 0 && (previous == 0 || boxesUsed < previous))
+            {
+                PlayerPrefs.SetInt(LevelBestKey(index), boxesUsed);
+                PlayerPrefs.Save();
             }
         }
 
@@ -99,6 +130,16 @@ namespace PhysicsStack
         {
             PlayerPrefs.DeleteKey(UnlockedKey);
             PlayerPrefs.DeleteKey(EndlessBestKey);
+
+            // Seviye dereceleri ayrı anahtarlarda; silme döngüsünün üst sınırı
+            // seviye sayısından bağımsız olarak geniş tutuldu. "Kaç seviye var"
+            // bilgisini buraya taşımak, seviye eklendiğinde güncellenmesi
+            // unutulacak ikinci bir yer açardı.
+            for (int i = 0; i < 64; i++)
+            {
+                PlayerPrefs.DeleteKey(LevelBestKey(i));
+            }
+
             PlayerPrefs.Save();
         }
     }

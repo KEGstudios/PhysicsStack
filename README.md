@@ -661,7 +661,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Görünüş — pastel palet, gökyüzü shader'ı, post-process, TMP arayüz
 - [x] His — ezilme-uzama, çarpma tozu, kamera sarsıntısı, hız çizgileri
 - [x] Ses — koddan sentezlenen on efekt, ses açma/kapama, rüzgâr etiketi
-- [ ] İçerik ve kapanış — zorluk eğrisi, seviye başına skor, son build, README v3
+- [x] İçerik — yıldız sistemi, seviye kartı, türetilen kutu ekonomisi ve zorluk
+- [ ] Kapanış — sonsuz moda tehdit, 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı
 

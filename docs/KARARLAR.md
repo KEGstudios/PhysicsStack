@@ -896,3 +896,97 @@ Gösterge bir şeyi doğru anlatıyordu ama neyi anlattığını söylemiyordu; 
 oynayan biri hareket eden çubuğun ne olduğunu anlamıyordu. Simge yerine yazı
 koydum, çünkü simge de öğrenilmesi gereken bir şey — tek kelime değil. Yazı küçük
 ve solgun: bilgi çubukta, bu sadece çubuğun adı.
+
+## Seviye başına derece: en az kutu
+
+Sonsuz modda skor kulenin yüksekliği, ama seviyelerde hedef sabit bir yükseklik —
+"daha yükseğe çık" diye bir yarış yok. Geriye kalan tek anlamlı ölçü hedefe kaç
+kutuyla ulaşıldığı; bu da doğrudan yerleştirme isabetini ölçüyor.
+
+Süre tutmayı düşündüm ve eledim: bu oyunda acele etmek her zaman kötü oynamak
+demek, dolayısıyla süreyi ödüllendirmek mekaniğin tersine çalışırdı.
+
+İki modun ölçüsünün ters yönde çalışması (sonsuzda yüksek iyi, seviyede düşük
+iyi) kafa karıştırmıyor, çünkü ikisi hiçbir ekranda yan yana gelmiyor ve her biri
+kendi biriminde yazılıyor.
+
+Derece menüde seviye adının altında, küçük ve solgun duruyor. Aynı satıra aynı
+puntoda koyduğumda sekiz düğmenin sekizi de iki bilgi birden bağırıyor ve ızgara
+okunmaz oluyordu. Rengi paletten türetiliyor: zengin metin etiketine elle hex
+yazsaydım palet değiştiğinde bu satır sessizce eski renkte kalırdı.
+
+Tur sonu ekranında rekor kırıldığında "5 kutu · en iyi 5 kutu" gibi kendini
+tekrar eden bir satır çıkıyordu; onun yerine rekor ayrıca duyuruluyor.
+
+## Yıldız sistemi ve kutu ekonomisi
+
+Derece "en az kutu" olarak başlamıştı; yıldıza çevirmek onu bir istatistikten
+hedefe dönüştürdü. Üç yıldız hedef yüksekliğin bir fazlası kadar kutu, her fazla
+kutu bir yıldız götürüyor, üçüncü fazlada tur kayıp.
+
+Üç yıldız eşiğinin **yükseklik + 1** olmasının sebebi fiziksel: kutular sabit 1
+birim yüksekliğinde, yani teorik alt sınır hedef yüksekliği kadar kutu. Ama
+kutular otururken aralarında küçük bir temas payı kalıyor ve tam sınırdaki bir
+kule hedefi ıskalayabiliyor. Bir kutuluk pay, üç yıldızı "kusursuz istifle"
+olmaktan çıkarıp "bir kutuluk israfla" yapıyor.
+
+Elle verilen `boxLimit` alanını kaldırdım. Yıldız sistemi gelince iki alan aynı
+şeyi ölçmeye başlamıştı ve çelişebilirlerdi: sınır üç yıldız sayısının altında
+kalsaydı üç yıldızın hiç alınamadığı bir seviye ortaya çıkardı ve bunu ancak
+oynayan fark ederdi. Sınır artık türetiliyor. Bunun bedeli, kutu sınırının
+seviye başına ayarlanabilir bir zorluk kolu olmaktan çıkması; zorluk artık
+bırakma mesafesi ve tehditlerden geliyor.
+
+Zorluk göstergesi de seviye verisinden türetiliyor, elle yazılmıyor. Ağırlıklar
+elle seçildi ama en azından verinin kendisini okuyorlar: elle yazılmış bir zorluk
+sayısı, seviye ayarını her değiştirdiğimde güncellenmesi gereken ve
+güncellenmediğinde kimsenin fark etmediği ikinci bir yer olurdu.
+
+Yıldız simgesi koddan çiziliyor: on köşeli çokgen, piksel başına 3x3 örnekle
+kenar yumuşatma. `★` karakterini kullanmadım çünkü TMP yalnızca font atlasındaki
+karakterleri çizebiliyor — fontta yoksa ekranda boş kare çıkar ve bu ancak build
+alınınca görülür. Hazır sprite ise "hiçbir hazır varlık yok" kuralını bozardı.
+
+Seviyeye dokunmak artık turu doğrudan başlatmıyor, bir kart açıyor. Yıldız
+sistemi ancak eşiği önceden bilinirse hedef olur; tur sonunda öğrenilen bir eşik
+sürprizdir. Bu bilgiyi ızgaradaki düğmeye sığdırmayı denedim, sekiz düğmenin
+sekizi de dört satır bilgi bağırınca ızgara okunmaz oluyordu.
+
+Kart açıkken arkadaki düğmeler görsel olarak değil, mantıksal olarak da devre
+dışı: yalnızca üstünü örtseydim kartın yanındaki boşluğa dokunmak arkadaki
+seviyeyi başlatırdı.
+
+## Yıldız arayüzünün iki yazı düzeltmesi
+
+Oynanmamış seviyenin kartında "henüz geçmedin" yazıyordu; kaldırdım. Bilgi
+taşımıyordu — yıldızlar zaten boş ve oyuncu bunu görüyor. Boş olduğunu ayrıca
+yazmak ekranı bilgiyle değil metinle doldurmak.
+
+"En iyin: 4 kutu" yerine "en düşük: 4 kutu". Seviyede iyi olan az kutu
+kullanmak, ve bir sayının hangi yönde iyi olduğunu etiketin kendisi söylemeli.
+Sonsuz modda tersi geçerli olduğu için orada "en iyi" doğru kalıyor — aynı
+kelimeyi her yerde kullanmak tutarlılık değil, iki farklı şeye aynı adı vermek
+olurdu.
+
+## Ekrandan bağımsız düzen, sabit punto ile olmuyor
+
+Seviye kartı dikey telefonda sığıyordu, yatay ekranda taşıyordu. Sebep kanvasın
+hem genişliğe hem yüksekliğe eşlenmesi: aynı kart yatayda basık kalıyor ve dört
+satır yazı aynı puntoda artık sığmıyor.
+
+Kartı büyütmek tek başına yeterli olmazdı, sadece sınırı öteler. Yazılara punto
+aralığı verdim (sarma açık, otomatik küçülme). Bunu her etikete koymadım çünkü
+otomatik boyutlandırma her karede ölçüm yapıyor; yalnızca içeriği değişken olan
+yerlerde var.
+
+## Faz 3 · 2. günün sonu
+
+Bugün biten işler: kodla sentezlenen ses efektleri ve ses açma/kapama, rüzgâr
+göstergesine etiket, hız çizgilerinin dört tur süren hata avı, yıldız sistemi ve
+seviye kartı, kutu ekonomisinin tek kaynağa indirilmesi, seviye başına derece.
+
+WebGL build'i alındı: yayına giden yük 13 MB (Burst hata ayıklama verisi ve git
+klasörü hariç). Bir önceki sürüm ~12 MB'tı; artış TextMeshPro ve yeni arayüz
+kodundan. Ses build'i büyütmedi, çünkü klipler dosya değil kod.
+
+Kalan: sonsuz moda tehdit, 30 saniyelik kayıt, README v3 ve `v3` etiketi.

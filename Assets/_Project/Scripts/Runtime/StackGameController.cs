@@ -276,7 +276,7 @@ namespace PhysicsStack
             // bağlı olması, arayüzü değiştirdiğimde kaydı da bozma riski demek.
             if (result == GameState.Won && mode == StackMode.Level)
             {
-                Progress.CompleteLevel(levelIndex);
+                Progress.CompleteLevel(levelIndex, snapshot.PlacedCount);
             }
             else if (mode == StackMode.Endless)
             {

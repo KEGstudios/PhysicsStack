@@ -120,6 +120,152 @@ namespace PhysicsStack
         /// görünüyordu. TMP mesafe alanı (SDF) kullanıyor: aynı varlık her
         /// boyutta keskin.
         /// </summary>
+        static Sprite star;
+
+        /// <summary>
+        /// Yıldız simgesi. Dosyadan gelmiyor, çalışma zamanında çiziliyor.
+        ///
+        /// İki alternatifi de eledim. **Yazı karakteri (★)** en ucuzu görünüyordu
+        /// ama TMP yalnızca font atlasındaki karakterleri çizebiliyor; kullandığım
+        /// fontta bu karakter yoksa ekranda boş kare çıkar ve bunu ancak build'i
+        /// alıp bakınca görürüm. **Hazır sprite** ise projenin "hiçbir hazır varlık
+        /// yok" kuralını bozardı.
+        ///
+        /// Yıldız on köşeli bir çokgen: beş dış, beş iç köşe. İç yarıçapın dış
+        /// yarıçapa oranı 0.42 — daha büyüğü şişman bir çiçek, daha küçüğü ince
+        /// bir yıldız patlaması gibi duruyor.
+        ///
+        /// Kenar yumuşatma elle yapılıyor (her pikselde 3x3 örnek): tek örnekle
+        /// yıldızın eğik kenarları merdiven gibi çıkıyor ve küçük boyutta bu
+        /// doğrudan görünüyor.
+        /// </summary>
+        public static Sprite Star
+        {
+            get
+            {
+                if (star != null)
+                {
+                    return star;
+                }
+
+                const int size = 64;
+                const int samples = 3;
+
+                var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+
+                var polygon = StarPolygon(size * 0.5f, size * 0.5f, size * 0.46f, 0.42f);
+                var pixels = new Color32[size * size];
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        int inside = 0;
+
+                        for (int sy = 0; sy < samples; sy++)
+                        {
+                            for (int sx = 0; sx < samples; sx++)
+                            {
+                                var point = new Vector2(
+                                    x + (sx + 0.5f) / samples,
+                                    y + (sy + 0.5f) / samples);
+
+                                if (Contains(polygon, point))
+                                {
+                                    inside++;
+                                }
+                            }
+                        }
+
+                        byte alpha = (byte)(255 * inside / (samples * samples));
+
+                        // Renk beyaz, bilgi yalnızca alfada: böylece aynı doku
+                        // hem dolu hem boş yıldız için kullanılabiliyor, rengi
+                        // Image bileşeni veriyor.
+                        pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                    }
+                }
+
+                texture.SetPixels32(pixels);
+                texture.Apply();
+
+                star = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f));
+                return star;
+            }
+        }
+
+        static Vector2[] StarPolygon(float centerX, float centerY, float outerRadius, float innerRatio)
+        {
+            var points = new Vector2[10];
+
+            for (int i = 0; i < 10; i++)
+            {
+                // Tek indeksler iç köşe. -90 derece kaydırma yıldızın bir ucunu
+                // yukarı bakacak şekilde çeviriyor.
+                float radius = i % 2 == 0 ? outerRadius : outerRadius * innerRatio;
+                float angle = Mathf.Deg2Rad * (-90f + i * 36f);
+
+                points[i] = new Vector2(
+                    centerX + Mathf.Cos(angle) * radius,
+                    centerY + Mathf.Sin(angle) * radius);
+            }
+
+            return points;
+        }
+
+        /// <summary>Işın atma yöntemiyle nokta-çokgen testi.</summary>
+        static bool Contains(Vector2[] polygon, Vector2 point)
+        {
+            bool inside = false;
+
+            for (int i = 0, j = polygon.Length - 1; i < polygon.Length; j = i++)
+            {
+                if (polygon[i].y > point.y != polygon[j].y > point.y &&
+                    point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) /
+                              (polygon[j].y - polygon[i].y) + polygon[i].x)
+                {
+                    inside = !inside;
+                }
+            }
+
+            return inside;
+        }
+
+        /// <summary>
+        /// Üç yıldızlık bir sıra çizer. Kazanılanlar vurgu renginde, kalanlar
+        /// solgun — boş bırakmak yerine solgun çizmek "kaç yıldız var" bilgisini
+        /// de veriyor, yoksa iki yıldızlı bir seviye iki yıldızlık bir oyun gibi
+        /// görünüyor.
+        /// </summary>
+        public static void StarRow(Transform parent, Rect area, int earned, int total = 3)
+        {
+            for (int i = 0; i < total; i++)
+            {
+                float width = area.width / total;
+
+                var go = new GameObject($"Star{i}", typeof(RectTransform), typeof(Image));
+                var rect = go.GetComponent<RectTransform>();
+
+                rect.SetParent(parent, false);
+                rect.anchorMin = new Vector2(area.xMin + width * i, area.yMin);
+                rect.anchorMax = new Vector2(area.xMin + width * (i + 1), area.yMax);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+
+                var image = go.GetComponent<Image>();
+                image.sprite = Star;
+                image.preserveAspect = true;
+                image.color = i < earned ? StarColor : StarEmptyColor;
+            }
+        }
+
+        public static Color StarColor => palette != null ? palette.star : new Color(0.95f, 0.76f, 0.29f);
+        public static Color StarEmptyColor => palette != null ? palette.starEmpty : new Color(0.85f, 0.83f, 0.80f);
+
         public static TMP_Text Label(Transform parent, string text, float fontSize, TextAlignmentOptions alignment)
         {
             var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));

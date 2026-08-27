@@ -86,16 +86,30 @@ namespace PhysicsStack
 
             string headline = state == GameState.Won ? "KAZANDIN" : "KAYBETTIN";
 
+            // Kazanilan seviyede yildiz siralaniyor; o zaman baslik ve skor
+            // yukari sikisiyor. Yildiz icin yer acmak yerine hepsini sabit
+            // yerlestirseydim, yildizsiz durumlarda ortada bos bir bant kalirdi.
+            var level = state == GameState.Won && controller.Mode == StackMode.Level && levels != null
+                ? levels.Get(controller.LevelIndex)
+                : null;
+
+            float titleBottom = level != null ? 0.70f : 0.62f;
+
             var title = UIKit.Label(panel, headline, 84, TextAlignmentOptions.Top);
-            title.rectTransform.anchorMin = new Vector2(0f, 0.62f);
+            title.rectTransform.anchorMin = new Vector2(0f, titleBottom);
             title.rectTransform.anchorMax = new Vector2(1f, 0.95f);
             title.rectTransform.offsetMin = Vector2.zero;
             title.rectTransform.offsetMax = Vector2.zero;
 
+            if (level != null)
+            {
+                UIKit.StarRow(panel, new Rect(0.32f, 0.48f, 0.36f, 0.20f), level.StarsFor(Mathf.RoundToInt(controller.Score)));
+            }
+
             var score = UIKit.Label(panel, Describe(state), 44, TextAlignmentOptions.Top);
             score.color = UIKit.DimTextColor;
-            score.rectTransform.anchorMin = new Vector2(0f, 0.44f);
-            score.rectTransform.anchorMax = new Vector2(1f, 0.62f);
+            score.rectTransform.anchorMin = new Vector2(0f, level != null ? 0.38f : 0.44f);
+            score.rectTransform.anchorMax = new Vector2(1f, level != null ? 0.48f : 0.62f);
             score.rectTransform.offsetMin = Vector2.zero;
             score.rectTransform.offsetMax = Vector2.zero;
 
@@ -132,9 +146,27 @@ namespace PhysicsStack
                 return $"kule {controller.FinalHeight:0.00}  ·  en iyi {Progress.EndlessBest:0.00}";
             }
 
-            return state == GameState.Won
-                ? $"{score} ile geçtin"
-                : $"kule {controller.FinalHeight:0.00} / hedef {rules.TargetHeight:0.00}";
+            if (state != GameState.Won)
+            {
+                return $"kule {controller.FinalHeight:0.00} / hedef {rules.TargetHeight:0.00}";
+            }
+
+            // Derece bu noktada zaten kaydedilmiş durumda, yani "en iyi" bu turu
+            // da içeriyor. Rekor kırıldığında ikisini yan yana yazmak "5 kutu ·
+            // en iyi 5 kutu" gibi kendini tekrar eden bir satır üretiyordu;
+            // onun yerine rekoru ayrıca duyuruyorum.
+            int best = Progress.LevelBest(controller.LevelIndex);
+            bool record = best > 0 && Mathf.RoundToInt(controller.Score) <= best;
+
+            // "En iyi" yerine "en düşük": seviyede iyi olan az kutu kullanmak ve
+            // sayının hangi yönde iyi olduğunu etiketin kendisi söylemeli.
+            // Sonsuz modda tersi geçerli, orada "en iyi" doğru kalıyor.
+            if (record)
+            {
+                return $"{score} ile geçtin  ·  rekor";
+            }
+
+            return $"{score} ile geçtin  ·  en düşük {best} kutu";
         }
 
         void Launch(StackMode mode, int levelIndex)
