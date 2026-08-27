@@ -50,6 +50,10 @@ namespace PhysicsStack
 
         public Color wind = new Color32(224, 164, 88, 255);
 
+        [Header("Efektler")]
+        [Tooltip("Hız çizgileri: beyaz ve hafif saydam. Açık gökyüzünde zor seçiliyor ama renkli çizgi sahneye yabancı duruyordu.")]
+        public Color speedLine = new Color32(255, 255, 255, 140);
+
         [Header("Arayüz")]
         [Tooltip("Menü ve tur sonu panelinin zemini.")]
         public Color uiPanel = new Color32(250, 246, 240, 245);

@@ -25,6 +25,7 @@ namespace PhysicsStack
         readonly List<UIButton> levelButtons = new();
 
         UIButton endlessButton;
+        UIButton muteButton;
         Canvas canvas;
 
         void Awake()
@@ -59,7 +60,24 @@ namespace PhysicsStack
 
             BuildLevelGrid();
             BuildEndless();
+            BuildMute();
         }
+
+        /// <summary>
+        /// Ses açma/kapama. Yalnızca menüde: oyunun içinde bir ayar düğmesi
+        /// olması, parmağın sürekli ekranda olduğu bir oyunda yanlışlıkla
+        /// basılacak bir hedef eklemek demekti.
+        ///
+        /// Ayarı <see cref="Progress"/> tutuyor, yani sekmeyi kapatıp açınca
+        /// tercih duruyor. Sessiz oynamak isteyen birinin bunu her açılışta
+        /// tekrar söylemesi gerekmiyor.
+        /// </summary>
+        void BuildMute()
+        {
+            muteButton = UIKit.Button(canvas.transform, new Rect(0.28f, 0.05f, 0.44f, 0.08f), MuteLabel(), 34);
+        }
+
+        static string MuteLabel() => Progress.Muted ? "ses: kapalı" : "ses: açık";
 
         /// <summary>
         /// Seviyeler iki sütunlu bir ızgarada. Konumlar normalize koordinatlarla
@@ -132,11 +150,29 @@ namespace PhysicsStack
             if (endlessButton != null && endlessButton.Contains(position))
             {
                 Launch(StackMode.Endless, 0);
+                return;
             }
+
+            if (muteButton != null && muteButton.Contains(position))
+            {
+                ToggleMute();
+            }
+        }
+
+        void ToggleMute()
+        {
+            Progress.Muted = !Progress.Muted;
+            muteButton.Label.text = MuteLabel();
+
+            // Ses tıkı kapatırken değil açarken çalıyor. Kapatma dokunuşunun
+            // sesi çıksaydı, "sesi kapattım ama ses geldi" diye okunurdu.
+            SfxPlayer.Play(Sfx.UiTap);
         }
 
         void Launch(StackMode mode, int levelIndex)
         {
+            SfxPlayer.Play(Sfx.UiTap);
+
             RunRequest.Set(mode, levelIndex);
             SceneManager.LoadScene(gameObject.scene.buildIndex);
         }

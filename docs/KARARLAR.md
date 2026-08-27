@@ -820,3 +820,79 @@ bağlanmadan hemen önce yeniden okunuyor.
 Üçünün ortak dersi: **"0 hata" bir doğrulama değil.** Artık `SetReference`
 yazdığını okuyup doğruluyor ve yazılamazsa bağırıyor, ve sahne kuran her komuttan
 sonra çıktıyı gözle kontrol ediyorum.
+
+## Ses — dosyadan değil, koddan
+
+Karar dosya indirmek ile sentezlemek arasındaydı. İndirilmiş CC0 ses paketi daha
+iyi ses verirdi; sentezlemeyi seçmemin sebebi projede başka hiçbir hazır varlık
+olmaması ve sesin, hazır varlıkların sızdığı en kolay yer olması. Oyunun ihtiyacı
+olan seslerin tamamının darbe sesi olması da kararı kolaylaştırdı — vuruş, tık ve
+uğultu, sentezlemesi en kolay ses ailesi. Melodik bir oyunda tersini seçerdim.
+
+Riski bilerek aldım ve sınırladım: `ProceduralAudio` üretimi yapıyor, `SfxPlayer`
+çalıyor ve klibin nereden geldiğini bilmiyor. Sesler ucuz gelirse tek yapılacak
+şey üretim sınıfını dosya yüklemesiyle değiştirmek olur.
+
+Sentezde iki şey öğrendim. Vuruş sesindeki perde düşüşü doğrusal olduğunda ses
+siren gibi duyuluyor; karekökle düşürünce vuruş gibi duyuluyor. Ve ham gürültü
+ile "tık" arasındaki tek fark bir filtre: alçak frekansları çıkarınca "şşş" sesi
+tıka dönüşüyor, alçak geçirip bırakınca tok bir çarpma oluyor.
+
+Tek klip hıza göre farklı ağırlıkta cisim gibi duyulabiliyor — sert çarpmada ses
+seviyesi yukarı, perde aşağı. Üstüne küçük bir perde rastgeleliği koydum, yoksa
+kule çökerken arka arkaya gelen onlarca çarpma makineli tüfek gibi duyuluyor.
+
+`SfxPlayer` sahneler arası yaşıyor. İki sebep: menüden seviyeye geçiş sahneyi
+yeniden yüklemek demek ve düğme sesi tam o anda çalıyor — sahneyle birlikte
+silinseydi hiç duyulmazdı. İkincisi klipler açılışta üretiliyor ve her sahne
+yüklemesinde yeniden üretmek gereksiz bir iş. Kendi nesnesinde duruyor, "Systems"
+üzerinde değil: orada olsaydı bütün oyun sistemleri de kalıcı hale gelir ve sahne
+yeniden yüklendiğinde iki kontrolcü, iki kuyruk olurdu. Sesin kalıcı olabilen tek
+bileşen olması tesadüf değil — tur durumu tutmayan tek sistem o.
+
+Sesi kulakla doğrulayamadığım için sayıyla doğruladım: `AudioProbe` klipleri süre,
+tepe genlik, RMS ve bozuk örnek sayısıyla ölçüp `.wav` olarak dışa aktarıyor.
+Gerekçesi Faz 3'ün "0 hata bir doğrulama değil" dersinin aynısı: sentez kodu
+hatasız derlenip sıfır dolu bir tampon üretebilir ve konsolda tek satır çıkmaz,
+oyun sadece sessiz çalışır. Denetleyici klip tablosunu oyunla paylaşıyor; kendi
+kopyasını tutsaydı bir sesi değiştirdiğimde eskisini ölçmeye devam ederdi.
+
+## Görünmeyen hız çizgileri — asıl sebep benim düzeltmemdi
+
+Hız çizgileri bir kez çalıştı. Geri bildirim "sanki bana geliyormuş gibi aşağı
+doğru gitmesindense" idi: görünüyorlardı, yönleri yanlıştı. Parçacık sistemi
+şeklin +Z yönüne fırlatıyor ve dönmemiş hâlde o yön kameraya bakıyordu.
+
+Yönü düzeltmek için başlangıç hızını sıfırlayıp hareketi `velocityOverLifetime`
+modülüne verdim. Çizgiler tam o anda kayboldu. Gerilmiş parçacık kendi hız
+vektörü boyunca uzatılarak çiziliyor; hız sıfır olunca uzatılacak yön kalmıyor.
+Toz sisteminde bu sorun yok çünkü o gerilmiyor, kameraya dönük düz bir kart.
+Doğru düzeltme hızı öldürmek değil, yayılım şeklini X'te 90° döndürüp +Z'yi
+dünya -Y'ye çevirmekti.
+
+Sonraki dört turda sebebi başka yerlerde aradım. Bulduklarım gerçek hatalardı,
+düzeltilmeleri iyi oldu, ama hiçbiri bu hatanın sebebi değildi: kontrast yokluğu
+(saydam beyaz çizgi, neredeyse beyaz gökyüzü), saydamlığın iki kez uygulanması
+(URP parçacık shader'ı malzeme rengini parçacık rengiyle çarpıyor, 0.43 × 0.43 =
+0.19), parçacıkların yarısının opak kutunun içinde doğması, ve malzeme için elle
+kurulup hiç doğrulanmamış beş ayarlık bir saydamlık yapılandırması. Dördü de
+düzeldi, ekranda hâlâ hiçbir şey yoktu.
+
+Asıl ders: **bir şey önce çalışıp sonra bıraktıysa sebep benim değiştirdiğim
+şeydedir.** Bu bilgi ilk günden elimdeydi. "Görüyordum ama yönü yanlıştı"
+cümlesini bir yön raporu olarak okudum; aynı zamanda bir "çalışıyor" raporuydu.
+Dört turu hiç kırılmamış katmanları inceleyerek geçirdim.
+
+İkinci ders ölçüyle ilgili. Üç tur tahmin ettikten sonra panele düşüş hızı,
+üretilen ve canlı parçacık sayısı ile "çiziliyor mu" bayrağını ekledim. Sayılar
+sebebi söylemedi ama aramayı daralttı: parçacıkların üretildiği ve yaşadığı
+görülünce renk ve eşikle ilgili bütün hipotezler elendi. Paneli F1'e bağlamamın
+sebebi de bu — yalnızca Inspector'dan açılan bir ölçü aleti, ölçmek istediğim
+anda elimde olmuyor ve tahmin etmeye başlıyorum.
+
+## Rüzgâr göstergesine etiket
+
+Gösterge bir şeyi doğru anlatıyordu ama neyi anlattığını söylemiyordu; ilk kez
+oynayan biri hareket eden çubuğun ne olduğunu anlamıyordu. Simge yerine yazı
+koydum, çünkü simge de öğrenilmesi gereken bir şey — tek kelime değil. Yazı küçük
+ve solgun: bilgi çubukta, bu sadece çubuğun adı.

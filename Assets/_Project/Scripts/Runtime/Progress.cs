@@ -18,6 +18,7 @@ namespace PhysicsStack
     {
         const string UnlockedKey = "physicsstack.unlocked";
         const string EndlessBestKey = "physicsstack.endlessbest";
+        const string MutedKey = "physicsstack.muted";
 
         /// <summary>
         /// Açılmış en yüksek seviye indeksi (0 tabanlı). Sıfır: sadece ilk seviye açık.
@@ -39,6 +40,26 @@ namespace PhysicsStack
             private set
             {
                 PlayerPrefs.SetFloat(EndlessBestKey, value);
+                PlayerPrefs.Save();
+            }
+        }
+
+        /// <summary>
+        /// Ses kapalı mı.
+        ///
+        /// İlerlemeyle aynı yerde tutuyorum çünkü ikisi de aynı soruya cevap
+        /// veriyor: "oyuncu bu oyunu daha önce açtığında ne yapmıştı".
+        /// Ayrı bir ayar sınıfı açmak tek bir bayrak için fazla olurdu.
+        ///
+        /// PlayerPrefs bool tutmuyor, int tutuyor; dönüşüm burada kapalı
+        /// kalsın ki çağıran taraf 0/1 ile uğraşmasın.
+        /// </summary>
+        public static bool Muted
+        {
+            get => PlayerPrefs.GetInt(MutedKey, 0) == 1;
+            set
+            {
+                PlayerPrefs.SetInt(MutedKey, value ? 1 : 0);
                 PlayerPrefs.Save();
             }
         }

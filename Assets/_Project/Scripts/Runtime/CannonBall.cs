@@ -22,8 +22,25 @@ namespace PhysicsStack
             Destroy(gameObject, lifetime);
         }
 
+        ImpactEffects effects;
+
+        /// <summary>
+        /// Efekt sunucusu disaridan veriliyor, mermi kendi bulmuyor.
+        /// <c>FindObjectOfType</c> her atista sahneyi taramak demek olurdu ve
+        /// mermi saniyede birden fazla uretiliyor.
+        /// </summary>
+        public void Bind(ImpactEffects value)
+        {
+            effects = value;
+        }
+
         void OnCollisionEnter(Collision collision)
         {
+            if (effects != null)
+            {
+                effects.BallHit(collision.GetContact(0).point);
+            }
+
             Destroy(gameObject);
         }
     }

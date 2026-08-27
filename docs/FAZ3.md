@@ -39,7 +39,7 @@ gün bu ve en ucuzu.
 zaman yavaşlaması, çizgi ve rüzgâr göstergesinin yeniden tasarımı. Görsel
 "güzel"i "canlı"ya çeviren gün.
 
-### Gün 4 — Ses ve arayüz
+### Gün 4 — Ses ve arayüz  *(bitti)*
 Ses efektleri, düzgün bir yazı tipi, menü ve tur sonu ekranının yeniden
 tasarımı, geçişler.
 

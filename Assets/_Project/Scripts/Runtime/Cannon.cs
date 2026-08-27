@@ -20,6 +20,15 @@ namespace PhysicsStack
         [SerializeField] StackGameController controller;
         [SerializeField] StackTracker tracker;
         [SerializeField] GameObject ballPrefab;
+        [SerializeField] ImpactEffects effects;
+
+        [Tooltip("Atis aninda namlunun geriye kacma mesafesi.")]
+        [SerializeField] float recoilDistance = 0.35f;
+
+        [Tooltip("Geri tepmenin sonme hizi (birim/sn).")]
+        [SerializeField] float recoilRecovery = 1.6f;
+
+        float recoil;
 
         [Tooltip("Namlunun görünen gövdesi; tehdit kapalıyken gizleniyor.")]
         [SerializeField] Renderer body;
@@ -124,8 +133,13 @@ namespace PhysicsStack
             // Aralık sabit olduğu için PingPong sürekli: namlu bandın altı ile üstü
             // arasında düzgün gidip geliyor, ritmi öğrenilebiliyor.
             travelled += patrolSpeed * Time.deltaTime;
+            // Geri tepme namlunun disa dogru kacmasi: atisin cikmis oldugunu
+            // gosteren en ucuz sey. Yon sideX'in isaretinden turetiliyor ki
+            // namluyu karsi kenara tasimak tek bir sayi degistirmek olsun.
+            recoil = Mathf.MoveTowards(recoil, 0f, recoilRecovery * Time.deltaTime);
+
             transform.position = new Vector3(
-                sideX,
+                sideX + Mathf.Sign(sideX) * recoil,
                 smoothedBottom + Mathf.PingPong(travelled, patrolSpan),
                 0f);
 
@@ -146,6 +160,15 @@ namespace PhysicsStack
             // namluyu karşı kenara taşımak tek bir sayı değiştirmek olsun.
             ball.GetComponent<Rigidbody>().linearVelocity =
                 new Vector3(Mathf.Sign(-sideX) * ballSpeed, 0f, 0f);
+
+            ball.GetComponent<CannonBall>().Bind(effects);
+
+            recoil = recoilDistance;
+
+            // Perde her atışta biraz kayıyor. Namlu düzenli aralıklarla ateş
+            // ettiği için tıpatıp aynı ses metronom gibi duyuluyor ve kulak
+            // birkaç atıştan sonra onu takip etmeyi bırakıyor.
+            SfxPlayer.Play(Sfx.CannonFire, 1f, Random.Range(0.92f, 1.08f));
         }
     }
 }

@@ -31,6 +31,7 @@ namespace PhysicsStack.EditorTools
         const string SkyMaterialPath = "Assets/_Project/Art/Materials/M_Sky.mat";
         const string LineMaterialPath = "Assets/_Project/Art/Materials/M_Line.mat";
         const string DustMaterialPath = "Assets/_Project/Art/Materials/M_Dust.mat";
+        const string StreakMaterialPath = "Assets/_Project/Art/Materials/M_Streak.mat";
         const string VolumeProfilePath = "Assets/_Project/Settings/PostProcess.asset";
         const string DragSettingsPath = "Assets/_Project/Data/DragSettings.asset";
         // Uzantı bilerek ".asset": Unity, PhysicsMaterial'ı CreateAsset ile
@@ -85,6 +86,7 @@ namespace PhysicsStack.EditorTools
             var dropLine = CreateDropLine(lineMaterial);
             var ballPrefab = CreateBallPrefab(ballMaterial);
             var dust = CreateDust(palette);
+            var speedLines = CreateSpeedLines(palette);
             var levels = LevelBootstrap.LoadOrCreate();
 
             // Palet referansi bilerek yeniden okunuyor. Yukarida yeni varlik
@@ -93,7 +95,7 @@ namespace PhysicsStack.EditorTools
             // atandiginda da sessizce bos yaziliyor. Bu hata iki kez isirdi ve
             // ikisinde de tek belirtisi renklerin yanlis olmasiydi.
             palette = LoadOrCreatePalette();
-            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels, palette, cannonMaterial, lineMaterial, dust);
+            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels, palette, cannonMaterial, lineMaterial, dust, speedLines);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -327,7 +329,8 @@ namespace PhysicsStack.EditorTools
             Palette palette,
             Material cannonMaterial,
             Material lineMaterial,
-            ParticleSystem dust)
+            ParticleSystem dust,
+            ParticleSystem speedLines)
         {
             var go = new GameObject("Systems");
 
@@ -379,6 +382,7 @@ namespace PhysicsStack.EditorTools
             SetReference(effects, "controller", controller);
             SetReference(effects, "queue", queue);
             SetReference(effects, "dust", dust);
+            SetReference(effects, "speedLines", speedLines);
 
             // Arayüz: menü ve tur sonu. İkisi de kanvasını çalışma zamanında
             // kendisi kuruyor, o yüzden sahnede tek bir bileşenden ibaretler.
@@ -402,12 +406,13 @@ namespace PhysicsStack.EditorTools
             SetReference(wind, "queue", queue);
 
             SetReference(overlay, "wind", wind);
+            SetReference(overlay, "effects", effects);
 
             var windIndicator = go.AddComponent<WindIndicator>();
             SetReference(windIndicator, "wind", wind);
             SetReference(windIndicator, "palette", palette);
 
-            CreateCannon(cannonMaterial, ballPrefab, controller, tracker);
+            CreateCannon(cannonMaterial, ballPrefab, controller, tracker, effects);
 
             // Kamera bileşeni kameranın kendi nesnesinde duruyor ama ölçümü
             // buradaki tracker'dan alıyor; kuyruk da kutuyu kadrajın üstünde
@@ -416,6 +421,26 @@ namespace PhysicsStack.EditorTools
             SetReference(stackCamera, "tracker", tracker);
             SetReference(queue, "stackCamera", stackCamera);
             SetReference(effects, "stackCamera", stackCamera);
+
+            CreateAudio();
+        }
+
+        /// <summary>
+        /// Ses oyuncusu kendi nesnesinde duruyor, "Systems"in uzerinde degil.
+        ///
+        /// Sebep: <see cref="SfxPlayer"/> sahneler arasi yasiyor
+        /// (<c>DontDestroyOnLoad</c>). Systems nesnesinin uzerinde olsaydi butun
+        /// oyun sistemleri onunla birlikte kalici hale gelirdi ve sahne yeniden
+        /// yuklendiginde iki kuyruk, iki kontrolcu ve iki girdi okuyucu olurdu.
+        ///
+        /// Sesin kalici olmasi gereken tek bilesen olmasi tesadufi degil: tek
+        /// durumsuz sistem o. Digerlerinin hepsi turun durumunu tutuyor ve
+        /// tur bitince silinmeleri gerekiyor.
+        /// </summary>
+        static void CreateAudio()
+        {
+            var go = new GameObject("Audio");
+            go.AddComponent<SfxPlayer>();
         }
 
         /// <summary>
@@ -625,7 +650,8 @@ namespace PhysicsStack.EditorTools
             Material cannonMaterial,
             GameObject ballPrefab,
             StackGameController controller,
-            StackTracker tracker)
+            StackTracker tracker,
+            ImpactEffects effects)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Cannon";
@@ -646,6 +672,7 @@ namespace PhysicsStack.EditorTools
             SetReference(cannon, "controller", controller);
             SetReference(cannon, "tracker", tracker);
             SetReference(cannon, "ballPrefab", ballPrefab);
+            SetReference(cannon, "effects", effects);
             SetReference(cannon, "body", go.GetComponent<MeshRenderer>());
 
             return go;
@@ -723,6 +750,145 @@ namespace PhysicsStack.EditorTools
         /// Carpma basina ayri sistem uretmek bir turda onlarca Instantiate/Destroy
         /// demek olurdu.
         /// </summary>
+        /// <summary>
+        /// Hiz cizgileri: kutu hizlandiginda arkasinda birakilan ince izler.
+        ///
+        /// Parcacik olarak degil, "gerilmis" olarak ciziliyorlar
+        /// (<c>ParticleSystemRenderMode.Stretch</c>): parcacik kendi hizi yonunde
+        /// uzatiliyor, yani cizgiyi hesaplamama gerek kalmiyor, hareket zaten
+        /// uretiyor.
+        ///
+        /// Saydam malzeme gerekiyor - opak cizgiler hava degil enkaz gibi
+        /// duruyor. URP'de saydamliga gecmek tek bir bayrak degil: yuzey tipi,
+        /// harmanlama modu, derinlik yazimi ve render sirasi birlikte ayarlanmali.
+        ///
+        /// Cizgiler once beyazdi ve oynarken hic gorunmuyorlardi. Sebep esikleri
+        /// ya da uretim hizi degildi: gokyuzu gradyani (220,233,242) ile
+        /// (251,238,227) arasinda, yani neredeyse beyaz. Beyazin ustune beyaz
+        /// ciziyordum. Rengi paletten koyu bir maviye almak, tek basina bir
+        /// gorunurluk ayarindan daha cok fark etti - bu isin dersi su: bir efekt
+        /// gorunmuyorsa once "yeterince mi uretiliyor" degil, "arkasindaki seyden
+        /// ayirt ediliyor mu" diye sormak gerekiyor.
+        /// </summary>
+        static ParticleSystem CreateSpeedLines(Palette palette)
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>(StreakMaterialPath);
+
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+                AssetDatabase.CreateAsset(material, StreakMaterialPath);
+            }
+
+            // Malzeme duz beyaz ve OPAK. Ikisi de bilincli birer geri adim.
+            //
+            // Renk beyaz: URP'nin parcacik shader'i malzeme rengini parcacik
+            // rengiyle CARPIYOR. Ikisine de paletin saydam rengini verdigimde
+            // alfa iki kez uygulaniyordu (0.43 x 0.43 = 0.19) ve cizgiler %19
+            // opaklikta ciziliyordu. Renk ve saydamlik artik tek yerden geliyor.
+            //
+            // Malzemenin ALFASI 1 ve bu bilincli. Saydamlik yalnizca parcacigin
+            // renginden geliyor; ikisine birden saydam deger vermek alfayi iki
+            // kez uygulamak demek (0.43 x 0.43 = 0.19) ve cizgiler bir kez bu
+            // yuzden neredeyse gorunmez olmustu.
+            material.color = Color.white;
+
+            // Saydam yuzey. Bir ara buradan vazgecip malzemeyi opak yapmistim:
+            // cizgiler gorunmuyordu ve dogrulamadigim bu bes ayardan suphelendim.
+            // Sebep bu degilmis (gerilmis parcacigin hizsiz birakilmasiymis) ve
+            // opak cizgiler siyahimsi, sert duruyordu - hava degil cubuk gibi.
+            // Saydamlik geri geldi; artik efektin calistigi bilindigi icin bu
+            // ayarlar da ilk kez gercekten dogrulanabilir durumda.
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+
+            // Arka yuz kirpma kapali. Kamera'ya bakan sade bir billboard her
+            // zaman on yuzunu gosteriyor, ama gerilmis parcacik hiz yonune gore
+            // donuyor ve bazi acilarda arkasi kameraya gelebiliyor; kirpma
+            // aciksa o parcacik hic cizilmiyor. Tozun bu sorunu yok, cunku o
+            // gerilmiyor.
+            material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+            EditorUtility.SetDirty(material);
+
+            var go = new GameObject("SpeedLines", typeof(ParticleSystem));
+            var system = go.GetComponent<ParticleSystem>();
+
+            var main = system.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            // Omur uzatildi: 0.16 sn'lik bir iz, 60 fps'te on kare demek ve o
+            // sure icinde goz onu bir cizgi olarak degil bir titreme olarak
+            // aliyor.
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.26f, 0.42f);
+
+            // Parcaciklar asagi dogru, kutudan yavas gidiyor. Kutu 5-8 m/s ile
+            // duserken izler 2-4 m/s ile indigi icin geride kaliyorlar - iz
+            // birakma etkisi bundan geliyor, ayri bir "kuyruk" koduna gerek yok.
+            main.startSpeed = new ParticleSystem.MinMaxCurve(2f, 4f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.14f);
+            main.startColor = palette.speedLine;
+            main.gravityModifier = 0f;
+            main.maxParticles = 200;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var emission = system.emission;
+            emission.rateOverTime = 0f;
+
+            // Kutunun etrafinda genis bir bant: cizgiler kutunun icinden degil
+            // yanindan geciyormus gibi gorunsun.
+            var shape = system.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+
+            // Sekil 90 derece dondurulmus: parcacik sistemi her zaman seklin
+            // +Z yonune firlatiyor ve dondurulmemis halde o yon kameraya
+            // dogruydu ("bana geliyor" goruntusunun sebebi buydu). X ekseninde
+            // 90 derece cevirince +Z dunya -Y'ye, yani asagi bakiyor.
+            //
+            // Yonu duzeltmenin yolu hizi sifirlamak DEGIL. Bir kez oyle yaptim
+            // ve cizgiler tamamen kayboldu: gerilmis parcacik kendi hiz vektoru
+            // boyunca uzatilarak ciziliyor, hiz sifir olunca uzatilacak yon
+            // kalmiyor. Toz sisteminde bu sorun yok cunku o gerilmiyor.
+            shape.rotation = new Vector3(90f, 0f, 0f);
+
+            // Olcekler dondurulmus eksende veriliyor: yerel X dunya X'te kaliyor,
+            // yerel Y dunya Z'ye, yerel Z dunya Y'ye gidiyor. Yani bu deger
+            // dunyada 2.1 genis, 0.2 yuksek, 0.3 derin bir bant demek.
+            shape.scale = new Vector3(2.1f, 0.3f, 0.2f);
+
+            // Yayilim kutunun ONUNE aliniyor (kamera -Z tarafinda). Kutunun
+            // merkezinde dogan parcacigin yarisi, 1 birim derinligindeki opak
+            // kutunun ICINDE kaliyordu ve hicbir zaman cizilmiyordu. Efekt
+            // caliyordu, sadece gorunmuyordu - bir parcacik sistemini ayarlarken
+            // once "uretiliyor mu" degil, "cizildigi yer gorunur mu" diye
+            // bakmak gerekiyormus.
+            // Ayni eksen takasi konum icin de gecerli: dunyada kameraya dogru
+            // (-Z) kaydirmak istiyorum, o da yerel -Y oluyor.
+            shape.position = new Vector3(0f, -0.75f, 0f);
+
+            // Omur boyu hiz modulu kapali. Yonu bir ara buradan vermistim ve
+            // ise yaramadi: gerilmis parcacigin uzatildigi yon parcacigin
+            // baslangic hizindan geliyor, bu modulden degil. Tek bir mekanizma
+            // (baslangic hizi + dondurulmus sekil) hem yonu hem uzunlugu
+            // veriyor; ikinci bir modul sadece nereye bakacagimi karistirdi.
+            var velocity = system.velocityOverLifetime;
+            velocity.enabled = false;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.velocityScale = 0.25f;
+            renderer.lengthScale = 4.5f;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            return system;
+        }
+
         static ParticleSystem CreateDust(Palette palette)
         {
             var material = AssetDatabase.LoadAssetAtPath<Material>(DustMaterialPath);

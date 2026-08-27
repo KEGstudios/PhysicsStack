@@ -43,9 +43,27 @@ namespace PhysicsStack
 
         GameState lastSeen = (GameState)(-1);
 
+        [Tooltip("Durum degisiminde cizginin kalinlasma orani.")]
+        [SerializeField] float pulseAmount = 2.2f;
+
+        [Tooltip("Kalinlasmanin sonme suresi (sn).")]
+        [SerializeField] float pulseDuration = 0.35f;
+
+        /// <summary>
+        /// Durum degistiginde cizgi kisa sureli kalinlasiyor.
+        ///
+        /// Renk degisimi tek basina yetmiyordu: hedefi gecip tutunma basladiginda
+        /// cizgi sariya donuyor ama oyuncunun gozu o an kulede oluyor ve degisimi
+        /// kaciriyor. Hareket, rengin aksine cevresel gorusle de fark ediliyor.
+        /// </summary>
+        float pulse;
+
+        Vector3 baseScale;
+
         void Awake()
         {
             block = new MaterialPropertyBlock();
+            baseScale = targetLine.transform.localScale;
         }
 
         /// <summary>
@@ -78,6 +96,15 @@ namespace PhysicsStack
 
             lastSeen = controller.State;
 
+            // Vurgu her durum degisiminde degil, yalnizca sonucu ilgilendiren
+            // gecislerde. Ilk yazisinda her kutu uretiminde, her iniste ve her
+            // tutusta parliyordu - surekli parlayan bir gosterge hicbir sey
+            // anlatmiyor.
+            if (lastSeen is GameState.Holding or GameState.Won or GameState.Lost)
+            {
+                pulse = 1f;
+            }
+
             // Hedefsiz modda çizgi tur boyunca kapalı duruyor: gösterecek bir
             // hedef yok. Tur bitince kulenin ulaştığı yüksekliğe taşınıp açılıyor,
             // yani çizgi "geçmen gereken yer"den "geldiğin yer"e dönüşüyor.
@@ -92,6 +119,25 @@ namespace PhysicsStack
             targetLine.GetPropertyBlock(block);
             block.SetColor(BaseColor, ColorFor(lastSeen));
             targetLine.SetPropertyBlock(block);
+        }
+
+        void LateUpdate()
+        {
+            if (pulse <= 0f)
+            {
+                return;
+            }
+
+            pulse = Mathf.MoveTowards(pulse, 0f, Time.deltaTime / pulseDuration);
+
+            // Yalnizca kalinlik buyuyor; uzunluk sabit kaliyor cunku cizginin
+            // uzunlugu oyun alanini anlatiyor, degismemeli.
+            float scale = 1f + pulse * pulseAmount;
+
+            targetLine.transform.localScale = new Vector3(
+                baseScale.x,
+                baseScale.y * scale,
+                baseScale.z * scale);
         }
 
         Color ColorFor(GameState state) => state switch

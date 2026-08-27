@@ -53,6 +53,37 @@ namespace PhysicsStack
 
             bar = CreatePart(canvas.transform, "WindBar", 0f);
             head = CreatePart(canvas.transform, "WindHead", 45f);
+            BuildCaption(canvas.transform);
+        }
+
+        /// <summary>
+        /// Cubugun altina "RUZGAR" yazisi.
+        ///
+        /// Ilk oynayan biri hareket eden bir cubugun ne oldugunu anlamiyordu -
+        /// gosterge bir seyi dogru anlatiyordu ama neyi anlattigini soylemiyordu.
+        /// Simge tasarlamak yerine yazi koymamin sebebi: simge de ogrenilmesi
+        /// gereken bir sey, tek kelime degil.
+        ///
+        /// Yazi solgun ve kucuk: bilgi cubukta, bu sadece cubugun adi. Ayni
+        /// puntoda olsaydi gozu kendine ceker ve asil izlenmesi gereken seyden
+        /// uzaklastirirdi.
+        /// </summary>
+        void BuildCaption(Transform parent)
+        {
+            var label = UIKit.Label(parent, "RÜZGÂR", 26, TextAlignmentOptions.Center);
+            label.name = "WindCaption";
+            label.color = palette != null ? palette.uiTextDim : Color.gray;
+
+            // Harf arasi acikligi: buyuk harfle yazilmis kisa bir kelime,
+            // aralikli dizildiginde etiket gibi okunuyor, bagirma gibi degil.
+            label.characterSpacing = 12f;
+
+            var rect = label.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.80f);
+            rect.anchorMax = new Vector2(0.5f, 0.80f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(300f, 40f);
+            rect.anchoredPosition = new Vector2(0f, -22f);
         }
 
         /// <summary>

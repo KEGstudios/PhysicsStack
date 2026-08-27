@@ -122,7 +122,20 @@ namespace PhysicsStack
 
             if (body != null && !body.isKinematic && (draggable == null || !draggable.IsDragged))
             {
-                target = Mathf.Clamp01(Mathf.Abs(body.linearVelocity.y) / speedForMaxStretch) * maxStretch;
+                float speed = Mathf.Clamp01(Mathf.Abs(body.linearVelocity.y) / speedForMaxStretch);
+
+                // Uzama kutunun kendi y ekseninde yapiliyor, cunku olcek her zaman
+                // yerel. Kutu takla atinca o eksen dikey olmaktan cikiyor ve uzama
+                // hareketle alakasiz bir yone gidiyor - mermi carpip kutuyu
+                // dondurdugunde ortaya cikan garip goruntu buydu.
+                //
+                // Cozum uzamayi dunya dikeyine cevirmek degil: o, mesh'i de
+                // dondurmek ya da ayri bir deformasyon yazmak demek. Bunun yerine
+                // eksen dikeyden uzaklastikca uzama soneliyor. Donen kutuda
+                // uzamanin zaten anlatacagi bir sey yok.
+                float alignment = Mathf.Abs(Vector3.Dot(transform.up, Vector3.up));
+
+                target = speed * alignment * alignment * maxStretch;
             }
 
             stretch = Mathf.MoveTowards(stretch, target, stretchResponse * Time.deltaTime);

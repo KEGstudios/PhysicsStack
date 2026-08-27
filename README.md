@@ -6,7 +6,8 @@ Kule hedefi geçip orada **tutunursa** kazanıyorsun.
 
 İki mod var: sekiz seviyelik seri (her seviyenin kendi sorusu var — bırakma
 mesafesi, kutu sınırı, rüzgâr, top atıcı) ve seriyi bitirince açılan sonsuz mod.
-Sanat, ses, müzik yok — hepsi gri kutu.
+Sanatçısı olmayan bir projede görsel ve ses tamamen koddan geliyor: pastel palet,
+elle yazılmış gökyüzü shader'ı ve dosyadan değil sentezden çıkan ses efektleri.
 
 - Unity 6 (6000.5.10f1) · URP · Android + WebGL
 - **Faz 1 (5 gün):** dokunmatik girdiyi fiziğe bağlamak. `v1-prototype` olarak donduruldu.
@@ -308,6 +309,92 @@ vermeden alanı boş bırakıyor.
 Üçünün ortak sonucu aynı: sahne kurulum aracı artık yazdığı her referansı geri
 okuyup doğruluyor ve yazamadığında bağırıyor.
 
+### Ses dosyadan gelmiyor, koddan üretiliyor
+
+Oyundaki on sesin hiçbiri bir dosya değil. Hepsi açılışta örnek örnek
+hesaplanıyor: zarf, filtrelenmiş gürültü ve birkaç sinüs.
+
+Alternatif indirilmiş CC0 ses paketiydi ve dürüst olmak gerekirse **daha iyi ses
+verirdi.** Sentezlemeyi seçmemin sebebi şu: bu projede başka hiçbir hazır varlık
+yok ve ses, hazır varlıkların sızdığı en kolay yer. Üstelik oyunun ihtiyacı olan
+seslerin tamamı darbe sesi — tok bir vuruş, bir tık, bir uğultu — ve bunlar
+sentezlemesi en kolay ses ailesi. Melodik bir oyun yapsaydım bu karar yanlış
+olurdu.
+
+Sentezin kendisinde öğrendiğim iki şey:
+
+**Perde düşüşü doğrusal olmamalı.** Vuruş sesi alçalan bir sinüsten geliyor; o
+alçalma doğrusal olduğunda ses siren gibi duyuluyor. Karekökle düşürünce —
+başta hızlı, sonra yavaş — vuruş gibi duyuluyor.
+
+**Ham gürültü ile tık arasındaki tek fark bir filtre.** Aynı gürültüden alçak
+frekansları çıkarınca "şşş" sesi "tık" oluyor. Alçak geçirip bırakınca ise tok
+bir çarpma. Üç ayrı ses değil, aynı kaynağın üç filtresi.
+
+Tek klip, hıza göre farklı ağırlıklarda cisim gibi duyulabiliyor: çarpma sertse
+ses seviyesi yukarı, perde aşağı. İki ayrı klip üretmeye gerek kalmıyor.
+
+Ses üretimini çalma katmanından ayırdım — `SfxPlayer` klibin nereden geldiğini
+bilmiyor. Sentetik sesler kulağa ucuz gelirse tek yapılacak şey üretim sınıfını
+dosya yüklemesiyle değiştirmek; tetikleme noktalarının hiçbiri değişmiyor.
+
+Sesi de gözle doğrulayamadığım için bir denetim aracı yazdım: klipler süre, tepe
+genlik, RMS ve bozuk örnek sayısıyla ölçülüyor ve `.wav` olarak dışa
+aktarılıyor. Sebebi doğrudan yukarıdaki "0 hata bir doğrulama değil" dersi —
+sentez kodu hatasız derlenip sıfır dolu bir tampon üretebilir ve hiçbir yerde
+hata görünmez, oyun sadece sessiz çalışır.
+
+### Dört tur yanlış yerde aramak
+
+Bu, projede en çok vakit kaybettiğim hata ve kaybın sebebi teknik değildi.
+
+Hız çizgileri bir kez **çalıştı**. Geri bildirim şuydu: *"sanki bana geliyormuş
+gibi aşağı doğru gitmesindense."* Yani görünüyorlardı, sadece yönleri yanlıştı —
+parçacık sistemi her zaman şeklin +Z yönüne fırlatıyor ve dönmemiş hâlde o yön
+kameraya bakıyordu.
+
+Yönü düzeltmek için başlangıç hızını sıfırladım ve hareketi `velocityOverLifetime`
+modülüne devrettim. **Çizgiler tam o anda kayboldu.**
+
+Sebep: gerilmiş parçacık (Stretched Billboard) kendi **hız vektörü boyunca**
+uzatılarak çiziliyor. Hız sıfır olunca uzatılacak bir yön kalmıyor. Aynı sahnedeki
+toz sisteminin bu sorunu yok, çünkü o gerilmiyor — kameraya dönük düz bir kart ve
+hızı umursamıyor. Doğru düzeltme hızı öldürmek değil, yönünü çevirmekti: yayılım
+şeklini X ekseninde 90° döndürmek, böylece +Z dünya -Y'ye bakıyor.
+
+Ondan sonraki dört tur boyunca sebebi başka yerlerde aradım. Bulduklarım gerçek
+hatalardı ve düzeltilmeleri iyi oldu, ama hiçbiri **bu** hatanın sebebi değildi:
+
+1. **Kontrast yoktu** — çizgiler saydam beyazdı, gökyüzü de neredeyse beyaz.
+2. **Saydamlık iki kez uygulanıyordu** — URP'nin parçacık shader'ı malzeme
+   rengini parçacık rengiyle çarpıyor; ikisine de saydam renk verince
+   0.43 × 0.43 = 0.19 opaklık çıkıyordu.
+3. **Parçacıkların yarısı kutunun içinde doğuyordu** — yayılım derinliği ±0.125,
+   kutu 1 birim derin; o aralıktakiler opak kutunun içinde kalıyordu.
+4. **Doğrulanmamış bir saydamlık yapılandırması** — malzeme için elle beş ayar
+   kurmuştum (yüzey tipi, harmanlama, derinlik yazımı, render sırası, keyword) ve
+   hiçbirinin çalıştığını görerek doğrulamamıştım. Toz aynı shader'ı varsayılan
+   opak hâliyle kullanıyor ve çalıştığı kesin, o yüzden bir tur için kanıtlanmışa
+   döndüm. (Sebep bu da değilmiş. Efekt çalıştıktan sonra saydamlık geri geldi ve
+   ilk kez gerçekten doğrulanabildi — opak çizgiler hava değil çubuk gibi
+   duruyordu.)
+
+Dördü de düzeldi ve ekranda hâlâ hiçbir şey yoktu.
+
+**Asıl ders:** bir şey önce çalışıp sonra çalışmayı bıraktıysa, sebep benim
+değiştirdiğim şeydedir. Bu bilgi ilk günden elimdeydi — "görüyordum, yönü
+yanlıştı" cümlesi tam olarak bunu söylüyordu. Ben onu bir *yön* raporu olarak
+okudum, oysa aynı zamanda bir *çalışıyor* raporuydu. Sonraki dört turu, hiç
+kırılmamış olan renk ve saydamlık katmanlarını inceleyerek geçirdim.
+
+İkinci ders ölçüyle ilgili. Üç tur tahmin ettikten sonra debug paneline düşüş
+hızı, üretilen ve canlı parçacık sayısı ile "çiziliyor mu" bayrağını ekledim
+(F1 ile açılıyor). Bu sayılar sebebi tek başına söylemedi ama aramayı daralttı:
+parçacıkların üretildiğini ve yaşadığını gösterince renk ve eşikle ilgili bütün
+hipotezler bir anda elendi. Paneli F1'e bağlamamın sebebi de bu turda anlaşıldı —
+yalnızca Inspector'dan açılan bir ölçü aleti, ölçmek istediğim anda elimde
+olmuyor ve ben tahmin etmeye başlıyorum.
+
 ### Arayüz sahnede değil, kodda
 
 Menü ve tur sonu ekranı kanvaslarını çalışma zamanında kendileri kuruyor. Arayüzde
@@ -569,10 +656,19 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Gün 10 — Menü, tur sonu ekranı, ilerleme kaydı
 - [x] Kapanış — WebGL yayını, telefon testi, README v2
 
+**Faz 3 — bitmiş gibi görünen sürüm** ([plan](docs/FAZ3.md))
+
+- [x] Görünüş — pastel palet, gökyüzü shader'ı, post-process, TMP arayüz
+- [x] His — ezilme-uzama, çarpma tozu, kamera sarsıntısı, hız çizgileri
+- [x] Ses — koddan sentezlenen on efekt, ses açma/kapama, rüzgâr etiketi
+- [ ] İçerik ve kapanış — zorluk eğrisi, seviye başına skor, son build, README v3
+
 ## Kapsam dışı
 
-Ses, sanat, parçacık efekti, karakter animasyonu, reklam/IAP, bulut kayıt, çoklu
-dil. Bilinçli olarak yok — Faz 2 oyunu **oynanabilir** yapıyor, **yayınlanabilir**
-değil.
+Karakter, animasyon sistemi, reklam/IAP, bulut kayıt, çoklu dil, çoklu oyuncu.
 
-Seviye sistemi ve skor kaydı Faz 1'de kapsam dışıydı, Faz 2'de kapsama girdi.
+Kapsam faz faz genişledi ve her genişleme bilinçliydi: seviye sistemi ve skor
+kaydı Faz 1'de kapsam dışıydı, Faz 2'de girdi; sanat, ses ve parçacık efekti Faz
+2'de kapsam dışıydı, Faz 3'te girdi. Değişmeyen kural şu: **hiçbiri hazır varlık
+olarak gelmedi.** Palet, gökyüzü, parçacıklar, arayüz ve ses — hepsi bu repodaki
+kodun çıktısı.

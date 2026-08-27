@@ -62,6 +62,7 @@ namespace PhysicsStack
             }
             else if (menuButton.Contains(position))
             {
+                SfxPlayer.Play(Sfx.UiTap);
                 RunRequest.Clear();
                 SceneManager.LoadScene(gameObject.scene.buildIndex);
             }
@@ -138,6 +139,8 @@ namespace PhysicsStack
 
         void Launch(StackMode mode, int levelIndex)
         {
+            SfxPlayer.Play(Sfx.UiTap);
+
             RunRequest.Set(mode, levelIndex);
             SceneManager.LoadScene(gameObject.scene.buildIndex);
         }

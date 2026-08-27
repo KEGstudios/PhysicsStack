@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace PhysicsStack
 {
@@ -27,6 +28,9 @@ namespace PhysicsStack
         [Tooltip("Rüzgâr açıksa o anki değeri panele basmak için.")]
         [SerializeField] Wind wind;
 
+        [Tooltip("Hız çizgisi ölçümlerini panele basmak için.")]
+        [SerializeField] ImpactEffects effects;
+
         [Tooltip("Varsayılan olarak kapalı: oyuncunun göreceği bilgiler artık HudUI'de. Burası geliştirici aracı.")]
         [SerializeField] bool visible;
 
@@ -38,6 +42,26 @@ namespace PhysicsStack
             if (controller == null)
             {
                 controller = FindAnyObjectByType<StackGameController>();
+            }
+        }
+
+        /// <summary>
+        /// F1 paneli açıp kapatıyor.
+        ///
+        /// Daha önce yalnızca Inspector'daki kutu vardı ve bu, paneli pratikte
+        /// kullanılmaz yapıyordu: bir şeyi ölçmek istediğimde oyunu durdurup
+        /// nesneyi bulmam gerekiyordu. Ölçü aleti, ölçmek istediğim an elimde
+        /// olmazsa ölçmüyorum — iki turdur hız çizgilerini tahminle kovalamamın
+        /// sebeplerinden biri de bu.
+        ///
+        /// Klavye yoksa (telefon) <c>Keyboard.current</c> null geliyor; panel o
+        /// zaman yalnızca Inspector'dan açılıyor.
+        /// </summary>
+        void Update()
+        {
+            if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
+            {
+                visible = !visible;
             }
         }
 
@@ -98,6 +122,20 @@ namespace PhysicsStack
                 // karede "0.0" diye yazmak paneli uzatmaktan başka bir işe yaramaz.
                 string gust = wind != null && wind.Active ? $" · rüzgâr {wind.CurrentForce:+0.0;-0.0}" : "";
                 GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}{gust}", style);
+            }
+
+            // Hız çizgisi satırı bir hata avının kalıntısı. Efekt iki tur
+            // boyunca görünmedi ve iki turda da sebebini tahmin ettim; üçüncüde
+            // ölçmeye karar verdim. Üç sayı üç ayrı katmanı ayırıyor: düşüş hızı
+            // sıfırsa kod o yola hiç girmiyor, üretilen sıfırsa eşik geçilmiyor,
+            // canlı sıfırsa parçacık üretilip anında ölüyor. Üçü de doluysa
+            // sorun çizimde — yani sayının söylemediği tek yerde.
+            if (effects != null)
+            {
+                GUILayout.Label(
+                    $"çizgi: düşüş {effects.LastFallSpeed:0.0} · üretilen {effects.SpeedLinesEmitted}" +
+                    $" · canlı {effects.SpeedLinesAlive} · çiziliyor {(effects.SpeedLinesVisible ? "evet" : "HAYIR")}",
+                    style);
             }
 
             if (settings != null)
