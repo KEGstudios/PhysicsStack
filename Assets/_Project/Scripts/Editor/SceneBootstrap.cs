@@ -178,7 +178,10 @@ namespace PhysicsStack.EditorTools
             SetReference(overlay, "controller", controller);
             SetReference(overlay, "settings", settings);
 
-            var indicator = go.AddComponent<ResultIndicator>();
+            // Çizginin yüksekliği artık burada değil, kural setinden belirleniyor;
+            // aşağıdaki başlangıç yüksekliği sadece Editor'da sahneyi boş
+            // bakarken anlamlı dursun diye.
+            var indicator = go.AddComponent<TargetLine>();
             SetReference(indicator, "controller", controller);
             SetReference(indicator, "targetLine", targetLine);
 

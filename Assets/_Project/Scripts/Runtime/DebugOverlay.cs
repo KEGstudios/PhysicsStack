@@ -47,8 +47,13 @@ namespace PhysicsStack
             EnsureStyles();
 
             var tracker = controller.Tracker;
-            float height = tracker != null ? tracker.HighestPointY() : 0f;
-            int count = tracker != null ? tracker.Count : 0;
+            var rules = controller.Rules;
+
+            // Panelde yerleştirilmiş kule gösteriliyor, eldeki kutu dahil değil:
+            // oyuncu kutuyu havada tutarken sayının bir zıplayıp geri düşmesi
+            // "kule ne kadar yüksek" sorusunu cevaplamaz, bulandırır.
+            float height = tracker != null ? tracker.HighestRestingPointY() : 0f;
+            float target = controller.TargetHeight;
 
             float pad = Screen.height * 0.012f;
 
@@ -58,8 +63,18 @@ namespace PhysicsStack
             GUILayout.BeginArea(new Rect(pad, pad, Screen.width - pad * 2f, Screen.height * 0.5f));
             GUILayout.BeginVertical(boxStyle, GUILayout.ExpandWidth(false));
 
-            GUILayout.Label($"{Describe(controller.State)} · {count} kutu · {controller.RestTimer:0.0} sn", style);
-            GUILayout.Label($"kule {height:0.00} / {controller.TargetHeight:0.00}", style);
+            // İlk satır modu da yazıyor: iki kural seti aynı sahnede çalıştığı
+            // için "hangi modu test ediyorum" sorusu telefonda tek bakışta
+            // cevaplanabilmeli.
+            string title = rules != null ? rules.Title : "-";
+
+            GUILayout.Label($"{title} · {Describe(controller.State)} · {controller.RestTimer:0.0} sn", style);
+
+            GUILayout.Label(
+                target > 0f
+                    ? $"kule {height:0.00} / {target:0.00} · {controller.ScoreText}"
+                    : $"kule {height:0.00} · {controller.ScoreText}",
+                style);
 
             if (stackCamera != null)
             {

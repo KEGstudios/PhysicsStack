@@ -186,6 +186,65 @@ yüklüyorum — unutulan bir alan, silinmeyen bir olay aboneliği ya da sahnede
 bir kutu ihtimali kalmıyor. Tek sahnelik bir prototipte yükleme maliyeti yok
 denecek kadar az; büyük bir projede bu tercih tersine dönerdi.
 
+### Kamera: kadrajı FOV değil görünür genişlik belirliyor
+
+Oyunu portreye çevirdiğimde kutu ekranda görünmez oldu. Sebep hata değil geometri:
+sabit bir dikey FOV ile 9:19.5 bir ekranda görünen dünya genişliği, 16:9'dakinin
+yarısından az oluyor. Kadrajı dikey açıya bırakırsan oyunun ne kadar geniş
+göründüğü cihaza göre değişir.
+
+Tersine çevirdim. Sabitlediğim şey **dünya biriminden görünür genişlik**; dikey FOV
+her en boy oranı için `tan(hFov/2) = oran · tan(vFov/2)` bağıntısından hesaplanıyor.
+Kule her cihazda aynı genişlikte görünüyor, değişen tek şey yukarıda kalan boşluk —
+portrede zaten istediğim şey o.
+
+Takip iki farklı hızda: yükselirken 0.35 sn, alçalırken 1.1 sn yumuşatma. Tek süre
+kullanınca kule devrildiğinde kamera aşağı fırlayıp yıkılışı kaçırıyordu.
+
+Kamera "kulenin tepesi"ni sorarken elde tutulan kutuyu saydırmıyor. Yeni kutu
+kulenin üstünde belirdiği için oyuncu ona dokunduğu anda ölçüm tavana fırlıyor ve
+kamera boşuna zıplıyordu. Kule yüksekliği, elindeki kutu değil yerleştirdiklerin.
+
+### İki mod, tek controller
+
+Faz 2'de iki mod var: hedef yüksekliği olan seviye modu ve düşene kadar yığdığın
+sonsuz mod. İkisini tek sınıfa `if (sonsuz)` ile sığdırmak bugün çalışırdı; ayırma
+kararını üçüncü modu hayal ettiğim için değil, şunu fark ettiğim için verdim:
+controller'ın yaptığı işlerin hiçbiri moda göre değişmiyor. Girdiyi dinlemek,
+sıradaki kutuyu istemek, yığının oturmasını beklemek, durumu yayınlamak — hepsi
+aynı. Değişen tek şey "bu anlık görüntü ne anlama geliyor" sorusunun cevabı.
+
+Sınırı oraya çektim. `IStackRules` tek bir soru soruyor: bu anlık görüntüde tur
+devam mı ediyor, bitti mi. `LevelRules` hedefe ve isteğe bağlı kutu sınırına
+bakıyor, `EndlessRules` sadece bir şey düştü mü diye bakıyor.
+
+Kurallara `StackTracker`'ı doğrudan vermedim, `StackSnapshot` diye bir struct
+veriyorum: yükseklik, yerleşmiş kutu sayısı, bir şey düştü mü, yığın oturdu mu.
+İki kazancı var. Kural sınıfı sahnedeki hiçbir bileşene bağlı değil — MonoBehaviour
+bile değiller, düz C# sınıfı. Ve aynı kararın içinde ölçümü iki kez okuyup iki
+farklı cevap alma ihtimali yok; ölçüm karede bir kez donduruluyor.
+
+Skoru da kural hesaplıyor, çünkü "skor" iki modda aynı şeyi anlatmıyor: seviyede
+harcadığın kutu sayısı (az olsun), sonsuz modda ulaştığın kule boyu (çok olsun).
+Ters yönler; controller'ın bunu bilmesi için bir sebep yok.
+
+### Kaybetmek mümkün değilmiş
+
+Sonsuz modun bitiş koşulunu yazarken fark ettim: kaybetme kontrolü "bir parça
+zeminin altına düşerse" diyordu ama zemin 14 birim geniş. Kuleden devrilen kutu
+zemine oturuyor, ölüm yüksekliğinin altına hiç inmiyor. Sonsuz mod hiç bitmezdi;
+seviye modunda da enkazın üstüne yığmaya devam edilebiliyordu. Beş kutuda hedefe
+ulaşıldığı için beş gün boyunca fark etmemişim.
+
+Ölçülmesi gereken şey kutunun nereye gittiği değil kulenin kısalması. Tur boyunca
+ulaşılan en yüksek **oturmuş** boyu tutuyorum; boy zirvenin 0.6 birim altına
+düşerse tepeden kutu gitmiş demektir, tur biter. Zirveyi sadece oturmuş ölçümle
+güncellemek şart: sallanan kule bir kare için olduğundan yüksek okunuyor ve o
+sahte zirve yazılsa sonraki her ölçüm "çökmüş" görünürdü.
+
+Zemini daraltmak da işi görürdü ama o, kuralı sahne geometrisine yazmak olurdu —
+zemin boyutunu değiştiren biri farkında olmadan oyunun zorluğunu değiştirirdi.
+
 ### Assembly definition kullanıldı
 
 `_Project` altındaki kod ayrı bir assembly (`PhysicsStack.Runtime`). İki sebep:
@@ -256,20 +315,35 @@ geçen bir hata, yeşil görünen kırık bir build demek olurdu.
 kısmı 32-bit çalıştırmıyor; ilk build uzun sürüyor (C++ runtime da derleniyor) ama
 telefonda çalışmayan bir APK'yı hızlı almanın değeri yok.
 
-Ekran yönü yatay kilitli: kamera yatay kadraj için kurulu, otomatik döndürme açık
-kalsaydı portre tutunca zemin kadrajdan taşardı.
+Ekran yönü portre kilitli. Prototipte yataydı — kamera yatay kadraj için kuruluydu.
+Faz 2'de kamera görünür genişliği sabitleyecek şekilde yeniden yazılınca portreye
+geçmek mümkün oldu; kule yukarı büyüyen bir oyunun doğal yönü de bu ve tek elle
+oynanabiliyor.
 
 ## Durum
 
-5 günlük planın günlük kararları ve notları: [docs/KARARLAR.md](docs/KARARLAR.md)
+Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
+
+**Faz 1 — prototip (bitti, `v1-prototype`)**
 
 - [x] Gün 1 — Proje şablonu, .gitignore, klasör yapısı, ilk commit
 - [x] Gün 2 — Sürükleme çekirdeği
 - [x] Gün 3 — Kazanma/kaybetme, yerleşme tespiti, kutu kuyruğu
 - [x] Gün 4 — His ayarı, değerlerin SO'ya taşınması, debug overlay
-- [ ] Gün 5 — Telefonda build, 30 sn kayıt, README kapanışı
+- [x] Gün 5 — Build hattı (Android + WebGL), bitiş göstergesi, README kapanışı
+
+**Faz 2 — oynanabilir sürüm** ([plan](docs/FAZ2.md))
+
+- [x] Gün 6 — Kuleyi takip eden kamera, orana göre kadraj, portre yön
+- [x] Gün 7 — Kural katmanı arayüzün arkasına (`LevelRules` / `EndlessRules`)
+- [ ] Gün 8 — Seviye verisi ve zorluk eğrisi
+- [ ] Gün 9 — Mod seçimi, tur sonu, ilerleme kaydı
+- [ ] Gün 10 — Telefon testi, his ayarı, kapanış
 
 ## Kapsam dışı
 
-Menü, ses, skor kaydı, seviye sistemi, parçacık efekti, birden fazla kutu tipi,
-karakter animasyonu. Bilinçli olarak yok.
+Ses, sanat, parçacık efekti, karakter animasyonu, reklam/IAP, bulut kayıt, çoklu
+dil. Bilinçli olarak yok — Faz 2 oyunu **oynanabilir** yapıyor, **yayınlanabilir**
+değil.
+
+Seviye sistemi ve skor kaydı Faz 1'de kapsam dışıydı, Faz 2'de kapsama girdi.

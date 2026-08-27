@@ -1,0 +1,101 @@
+using UnityEngine;
+
+namespace PhysicsStack
+{
+    /// <summary>
+    /// Hedef çizgisini yönetir: kuralın hedefine göre yerleştirir, hedefi olmayan
+    /// modda gizler, tur bitince rengiyle sonucu söyler.
+    ///
+    /// Rengin sebebi Gün 5: beş kutuyu üst üste koyup kazandığımda oyunun
+    /// bittiğini anlamamıştım — köşedeki debug panelinde tek kelime yazıyordu ama
+    /// oynarken oraya bakılmıyor. Bitişin oyuncunun zaten baktığı yerde, kulenin
+    /// tepesinde olması gerekiyordu.
+    ///
+    /// Yerleştirmenin sebebi Gün 7: hedef artık sabit değil, kural setinden
+    /// geliyor. Çizginin sahnede sabit bir y'de durması, seviye hedefi
+    /// değiştiğinde yalan söylemesi demekti. Sonsuz modda ise gösterilecek bir
+    /// hedef yok, çizgi tamamen kapanıyor.
+    ///
+    /// Bileşen çizginin kendisinde değil Systems'te duruyor: sahnedeki görsel
+    /// nesneler bootstrap'ın ürettiği gri kutular, üzerlerinde script taşımıyorlar.
+    /// </summary>
+    public sealed class TargetLine : MonoBehaviour
+    {
+        [SerializeField] StackGameController controller;
+        [SerializeField] Renderer targetLine;
+
+        [SerializeField] Color idleColor = new(0.30f, 0.30f, 0.32f);
+        [SerializeField] Color wonColor = new(0.25f, 0.75f, 0.35f);
+        [SerializeField] Color lostColor = new(0.80f, 0.25f, 0.25f);
+
+        /// <summary>
+        /// Renk MaterialPropertyBlock ile veriliyor, <c>renderer.material</c> ile değil.
+        /// İkincisi materyalin çalışma zamanı kopyasını çıkarır: hem sahnedeki
+        /// varlığa dokunmuş oluruz hem de kopya ayrı bir draw call'a düşer.
+        /// PropertyBlock materyali hiç kopyalamadan tek nesnenin rengini değiştiriyor.
+        /// </summary>
+        MaterialPropertyBlock block;
+
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+
+        GameState lastSeen = (GameState)(-1);
+
+        void Awake()
+        {
+            block = new MaterialPropertyBlock();
+        }
+
+        /// <summary>
+        /// Yerleştirme Start'ta: kural nesnesi controller'ın Awake'inde kuruluyor,
+        /// Unity de bütün Awake'leri bütün Start'lardan önce çalıştırıyor. Sıralamayı
+        /// script execution order ayarıyla değil bu doğal garantiyle çözmek,
+        /// projeye görünmez bir ayar borcu bırakmıyor.
+        /// </summary>
+        void Start()
+        {
+            float target = controller != null ? controller.TargetHeight : 0f;
+            bool hasTarget = target > 0f;
+
+            targetLine.enabled = hasTarget;
+
+            if (hasTarget)
+            {
+                var position = targetLine.transform.position;
+                targetLine.transform.position = new Vector3(position.x, target, position.z);
+            }
+        }
+
+        void Update()
+        {
+            // Her karede renk yazmanın anlamı yok; sadece durum değişince.
+            if (controller.State == lastSeen)
+            {
+                return;
+            }
+
+            lastSeen = controller.State;
+
+            // Hedefsiz modda çizgi tur boyunca kapalı duruyor: gösterecek bir
+            // hedef yok. Tur bitince kulenin ulaştığı yüksekliğe taşınıp açılıyor,
+            // yani çizgi "geçmen gereken yer"den "geldiğin yer"e dönüşüyor.
+            // Sonsuz modda bitişi ekranda gösteren tek şey bu.
+            if (!targetLine.enabled && lastSeen is GameState.Won or GameState.Lost)
+            {
+                var position = targetLine.transform.position;
+                targetLine.transform.position = new Vector3(position.x, controller.FinalHeight, position.z);
+                targetLine.enabled = true;
+            }
+
+            targetLine.GetPropertyBlock(block);
+            block.SetColor(BaseColor, ColorFor(lastSeen));
+            targetLine.SetPropertyBlock(block);
+        }
+
+        Color ColorFor(GameState state) => state switch
+        {
+            GameState.Won => wonColor,
+            GameState.Lost => lostColor,
+            _ => idleColor,
+        };
+    }
+}

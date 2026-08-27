@@ -266,3 +266,107 @@ dosya yerine tıklanır bir link.
 - Ses, menü, skor kaydı yok — bunlar bilinçli olarak kapsam dışıydı.
 
 Son üçü Faz 2'nin ilk günü. Bkz. [FAZ2.md](FAZ2.md).
+
+---
+
+# Faz 2
+
+## Gün 6 — Kamera, yön ve kadraj
+
+**Yapılan:** Kamera kulenin tepesini takip ediyor, ekran yönü portreye döndü,
+sıradaki kutu artık sabit bir yükseklikte değil kulenin biraz üstünde beliriyor.
+
+**Kadrajı FOV değil genişlik belirliyor.** Portreye geçtiğimde kutu ekranda
+görünmez oldu. Sebep bir hata değil, geometriydi: sabit bir dikey FOV ile 9:19.5
+bir ekranda görünen dünya genişliği, 16:9'dakinin yarısından az oluyor. Bunu
+tersine çevirdim — sabitlediğim şey artık **dünya biriminden görünür genişlik**,
+dikey FOV her orana göre `tan(hFov/2) = en boy oranı · tan(vFov/2)` bağıntısından
+hesaplanıyor. Böylece "kule ne kadar geniş görünüyor" cihazdan bağımsız hâle
+geldi; değişen tek şey yukarıda ne kadar boşluk kaldığı, ki portrede zaten
+istediğim şey o.
+
+**Yükselirken hızlı, alçalırken yavaş.** Takip için tek bir yumuşatma süresi
+kullanınca kule devrildiğinde kamera aşağı fırlıyor ve olan biteni kaçırıyorsun.
+İki ayrı süre var: yükselirken 0.35 sn, alçalırken 1.1 sn. Kamera yeni kutuya
+hemen yetişiyor ama yıkılışı seyrediyor.
+
+**"Kulenin tepesi" eldeki kutuyu saymıyor.** Yeni kutu kulenin üstünde belirdiği
+için, oyuncu ona dokunduğu anda ölçüm birden tavana fırlıyor ve kamera boşuna
+zıplıyordu. `StackTracker` iki ayrı cevap veriyor artık: `HighestPointY` her şeyi
+sayıyor, `HighestRestingPointY` elde tutulanı saymıyor. Kamera ikincisini
+kullanıyor — kule yüksekliği, oyuncunun elindeki kutu değil yerleştirdiği kutular.
+
+**Spawn kadraja değil kuleye bağlı.** Önce kutuyu kadrajın üst kenarına göre
+konumlandırmıştım; kule yükseldikçe düşme mesafesi kısalıyor, başta ise kutu dokuz
+birim yukarıdan düşüyordu. Şimdi kule tepesinin sabit 4 birim üstünde beliriyor,
+kadraj sınırı yalnızca üst sınır olarak devrede. Düşme mesafesi turun her anında
+aynı, yani "kutu nereye düşecek" tahmini öğrenilebilir bir şey oldu.
+
+**Yarım kalan:** İlk iki kutuda spawn noktası hedef çizgisinin altında kalıyor.
+`minSpawnHeight` ile kozmetik olarak kapattım ama genel bir çözüm değil — kule
+büyüdükçe çizgiyi geçmek zaten doğal ve bilgi verici.
+
+## Gün 7 — Kural katmanının ikiye ayrılması
+
+**Yapılan:** `StackGameController` artık kimin kazandığını bilmiyor. Karar bir
+arayüzün arkasına çıktı: `IStackRules`, iki uygulaması `LevelRules` ve
+`EndlessRules`.
+
+**Neden arayüz, neden şimdi.** İki modu tek sınıfa `if (sonsuz)` ile sığdırmak
+bugün çalışırdı. Ayırmamın sebebi üçüncü modu düşünmek değil, şunu fark etmek:
+controller'ın yaptığı işlerin — girdiyi dinlemek, sıradaki kutuyu istemek, yığının
+oturmasını beklemek, durumu yayınlamak — hiçbiri modlara göre değişmiyor. Değişen
+tek şey "bu anlık görüntü ne anlama geliyor" sorusunun cevabı. Sınırı oraya
+çektim; başka bir yere çekseydim iki taraf da yarım olurdu.
+
+**Kural sınıfları MonoBehaviour değil.** Düz C# sınıfı oldular: sahneye bağlı
+değiller, mod değiştirmek bir nesne değiştirmek kadar ucuz ve kuralı sahne açmadan
+test edebiliyorum. ScriptableObject da yapabilirdim ama o zaman her kural bir
+varlık dosyası isterdi; Gün 8'de varlık olacak şey kuralın kendisi değil,
+seviyenin **verisi**.
+
+**`StackSnapshot` — ölçümü tek seferde dondurmak.** Kural sınıflarına tracker'ı
+doğrudan verebilirdim, daha kısa olurdu. İki şey kaybederdim: kural sahnedeki bir
+bileşene bağlanırdı ve aynı kararın içinde ölçümü iki kez okuyup iki farklı cevap
+alma ihtimali doğardı. Karede bir kez okunuyor, struct olarak geçiliyor, çöp
+üretmiyor.
+
+**Kutu sınırı kaybettirmek için değil.** `LevelRules` isteğe bağlı bir kutu sınırı
+alıyor. Amacı zorluk eklemek değil kimlik vermek: "beş kutuyla şu yüksekliğe çık"
+ile "istediğin kadar kutuyla çık" iki farklı problem, ve seviye modunu birbirinin
+kopyası on iki turdan kurtaracak şey bu ayrım.
+
+**Hedef çizgisi artık veriye bakıyor.** Çizgi sahnede sabit bir yükseklikte
+duruyordu; hedef kural setinden gelmeye başlayınca bu yalan söylemek demekti.
+Şimdi kendini hedefe göre yerleştiriyor, hedefi olmayan modda tamamen kapanıyor.
+Sonsuz modda tur bitince kulenin ulaştığı yüksekliğe taşınıp kırmızıya dönüyor:
+aynı çizgi "geçmen gereken yer"den "geldiğin yer"e dönüşüyor. Menü kurmadan
+sonucu göstermenin hâlâ en ucuz yolu bu.
+
+**Günün asıl bulgusu: kaybetmek mümkün değilmiş.** Sonsuz modu yazarken bitiş
+koşulunu kontrol ettim — `killHeight` -1, yani "bir parça zeminin altına düşerse
+kaybettin". Ama zemin 14 birim geniş. Kuleden devrilen kutu zemine oturuyor,
+ölüm yüksekliğinin altına hiç inmiyor. Yani sonsuz mod **hiç bitmezdi**, seviye
+modunda da enkazın üstüne yığmaya devam edilebiliyordu; beş kutuda hedefe
+ulaşıldığı için bunu beş gün boyunca fark etmemişim.
+
+Ölçülmesi gereken şey kutunun nereye gittiği değil kulenin kısalması. Tur boyunca
+ulaşılan en yüksek oturmuş boyu (`PeakHeight`) tutuyorum; oturmuş boy zirvenin
+0.6 birim altına düşerse tepeden en az bir kutu gitmiş demektir, tur biter. Zirve
+yalnızca oturmuş ölçümle güncelleniyor — sallanan kule bir kare için olduğundan
+yüksek okunuyor ve o sahte zirve yazılsaydı sonraki her ölçüm "çökmüş" görünürdü.
+Zemini daraltmak da bir çözümdü ama o, kuralı sahne geometrisine yazmak olurdu.
+
+**Skor buraya kaydı.** Gün 6'nın planında skor ölçümü vardı, oraya koymadım:
+"skor" kelimesi iki modda aynı şeyi anlatmıyor. Seviyede harcadığın kutu sayısı (az olsun),
+sonsuz modda ulaştığın kule boyu (çok olsun). Ters yönler.
+
+Sonsuz modda skoru kutu sayısı yapmayı düşünmüştüm, vazgeçtim: kutu sayısı kuleyi
+hiç yükseltmeyen kutularla da artıyor, yani yere yan yana kutu dizerek skor
+toplanabilirdi. Boy ancak gerçekten yükseldiğinde artıyor. Kuralı yazmak yerine
+skoru doğru şeyi ölçecek biçimde seçmek, aynı sömürüyü ek bir kontrol olmadan
+kapatıyor.
+
+**Yarım kalan:** Mod seçimi hâlâ Inspector'daki bir enum; gerçek seçim Gün 9'da.
+Sonsuz modun zorluk eğrisi yok, şu an sonsuza kadar aynı zorlukta — onu ilginç
+kılacak şey Gün 8'de geliyor.

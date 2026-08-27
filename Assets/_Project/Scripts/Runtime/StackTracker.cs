@@ -21,7 +21,32 @@ namespace PhysicsStack
 
         readonly List<DraggableBody> bodies = new();
 
+        /// <summary>Yığına kaydedilmiş toplam kutu sayısı; eldeki kutu da dahil.</summary>
         public int Count => bodies.Count;
+
+        /// <summary>
+        /// Yerleştirilmiş kutu sayısı: elde tutulan kutu sayılmıyor. Skor bunu
+        /// kullanıyor — oyuncu kutuyu havada tutarken skorun bir artıp geri
+        /// düşmesi, sayının ne anlama geldiğini bulanıklaştırırdı.
+        /// </summary>
+        public int PlacedCount
+        {
+            get
+            {
+                int count = 0;
+
+                for (int i = 0; i < bodies.Count; i++)
+                {
+                    var body = bodies[i];
+                    if (body != null && !body.IsDragged)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
 
         public void Register(DraggableBody body)
         {
