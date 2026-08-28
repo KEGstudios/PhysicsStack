@@ -1541,3 +1541,26 @@ değil.
 HUD'un yazı bandı da sağ kenara kadar gitmiyor artık — dişliye yer bırakıyor.
 İkisini aynı yere koyup birinin diğerini örtmesini beklemek, düzeltmesi kolay
 ama fark edilmesi zor bir hata olurdu.
+
+### Geliştirici modu: gizli ama görünür
+
+Telefonda 13. seviyeyi test etmenin yolu yoktu — tarayıcıda Inspector yok, yani
+`unlockEverything` kutusuna erişilemiyor, ve seviyeleri sırayla geçmek de her
+test için baştan oynamak demek.
+
+Menüde gizli bir jest ekledim: oyunun adına art arda beş dokunuş, geliştirici
+modunu açıp kapatıyor. Görünür bir düğme olamazdı — oyuncunun bulabileceği bir
+"hepsini aç" düğmesi seviye sıralamasını anlamsız kılar. Jestin oyunun adında
+olmasının sebebi, ekranda zaten duran ve hiçbir işi olmayan tek şey olması;
+ayrı bir gizli bölge (mesela köşe) tanımlasaydım kazara bulunma ihtimali daha
+yüksek olurdu, çünkü köşeye dokunmak sıradan bir hareket, başlığa beş kez
+dokunmak değil. Süre penceresi de aralıklı dokunuşları eliyor.
+
+Bayrak kalıcı ve bu, ilk yazdığım gerekçeye aykırı görünüyor: *"yanlışlıkla açık
+kalan bir hile bayrağı, test ettiğim şeyin gerçek oyun olmadığı anlamına
+gelir."* İtiraz hâlâ doğru ama sorun kalıcılık değil **görünmezlik**miş. Mod
+açıkken menüde adın altında "geliştirici modu: kilitler kapalı" yazıyor, yani
+hangi oyunu test ettiğim her zaman ekranda. Kapalıyken o etiket hiç kurulmuyor.
+
+"İlerlemeyi sıfırla" bayrağı da siliyor: sıfırladıktan sonra bütün seviyelerin
+açık kalması, sıfırlamanın işe yaramadığını düşündürürdü.

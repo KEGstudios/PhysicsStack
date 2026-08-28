@@ -52,12 +52,41 @@ namespace PhysicsStack
         /// sıfırla" düğmesi tercihleri silmemeli.
         /// </summary>
 
+        const string DevKey = "physicsstack.dev";
+
+        /// <summary>Inspector'dan gelen, oturumluk geliştirici bayrağı.</summary>
+        static bool sessionUnlock;
+
         /// <summary>
-        /// Kilitleri yok sayan geliştirici bayrağı. Kayda yazılmıyor, oyun her
-        /// açıldığında kapalı başlıyor: yanlışlıkla açık kalan bir hile bayrağı,
-        /// test ettiğim şeyin gerçek oyun olmadığı anlamına gelir.
+        /// Kilitleri yok sayan geliştirici bayrağı. İki kaynağı var: Inspector'daki
+        /// kutu (oturumluk) ve menüdeki gizli jest (kalıcı).
         /// </summary>
-        public static bool UnlockEverything { get; set; }
+        public static bool UnlockEverything
+        {
+            get => sessionUnlock || DevUnlock;
+            set => sessionUnlock = value;
+        }
+
+        /// <summary>
+        /// Menüdeki gizli jestle açılan kalıcı geliştirici modu.
+        ///
+        /// Kalıcı olması ilk yazdığım gerekçeye aykırı görünüyor: "yanlışlıkla
+        /// açık kalan bir hile bayrağı, test ettiğim şeyin gerçek oyun olmadığı
+        /// anlamına gelir." O itiraz hâlâ doğru ama sorun kalıcılık değil,
+        /// **görünmezlik**miş. Tarayıcıda Inspector yok ve telefonda 13. seviyeyi
+        /// test etmenin başka yolu da yok; bayrak açıkken menüde bunu söyleyen
+        /// bir satır duruyor, yani hangi oyunu test ettiğim her zaman ekranda
+        /// yazıyor.
+        /// </summary>
+        public static bool DevUnlock
+        {
+            get => PlayerPrefs.GetInt(DevKey, 0) == 1;
+            set
+            {
+                PlayerPrefs.SetInt(DevKey, value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
 
         public static bool IsLevelUnlocked(int index) =>
             UnlockEverything || index <= UnlockedLevel;
@@ -118,6 +147,11 @@ namespace PhysicsStack
         {
             PlayerPrefs.DeleteKey(UnlockedKey);
             PlayerPrefs.DeleteKey(EndlessBestKey);
+
+            // Geliştirici modu da siliniyor: "ilerlemeyi sıfırla" dedikten sonra
+            // bütün seviyelerin açık kalması, sıfırlamanın işe yaramadığını
+            // düşündürür.
+            PlayerPrefs.DeleteKey(DevKey);
 
             // Seviye dereceleri ayrı anahtarlarda; silme döngüsünün üst sınırı
             // seviye sayısından bağımsız olarak geniş tutuldu. "Kaç seviye var"

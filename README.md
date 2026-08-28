@@ -692,6 +692,22 @@ EventSystem istiyor, gereken şey ise iki dikdörtgen ve bir bölme işlemi. Dok
 hedefi görünen çubuktan kalın: çizgi ince olmalı ama parmağın ince bir çizgiyi
 tutturması gerekmemeli.
 
+## Geliştirici modu
+
+Telefonda son seviyeleri test etmenin yolu yoktu: tarayıcıda Inspector yok ve
+seviyeleri sırayla geçmek her test için baştan oynamak demek.
+
+Menüde gizli bir jest var — oyunun adına art arda beş dokunuş kilitleri açıp
+kapatıyor. Görünür bir düğme olamazdı; oyuncunun bulabileceği bir "hepsini aç"
+düğmesi seviye sıralamasını anlamsız kılar. Jest oyunun adında, çünkü ekranda
+zaten duran ve hiçbir işi olmayan tek şey o: köşeye dokunmak sıradan bir
+hareket, başlığa beş kez dokunmak değil.
+
+Bayrak kalıcı ama **görünür**: mod açıkken menüde adın altında bir satır
+duruyor. İlk yazdığım gerekçe "hile bayrağı kalıcı olmamalı" idi; oynayınca
+sorunun kalıcılık değil görünmezlik olduğu anlaşıldı. Hangi oyunu test ettiğimi
+bilmeden ölçüm almak, ölçmemekten daha kötü.
+
 ## Ölçülen performans
 
 Uzun süre buraya hiçbir şey yazmadım, çünkü ölçmemiştim: "akıcı çalışıyor"

@@ -54,16 +54,27 @@ namespace PhysicsStack
             readout = UIKit.Label(canvas.transform, string.Empty, 42f, TextAlignmentOptions.Top);
             readout.color = UIKit.DimTextColor;
             Place(readout.rectTransform, 0.83f, 0.89f);
+
+            // Bant daraldığı için puntolar esnek. Alt satırın içeriği tur
+            // boyunca değişiyor ve en uzun hâli ("kule 2.31 / hedef 4.00")
+            // sabit puntoyla dar ekranda taşardı.
+            UIKit.Fit(title, 28f, 58f);
+            UIKit.Fit(readout, 20f, 42f);
         }
 
         /// <summary>
-        /// Panel sağ kenara kadar gitmiyor: sağ üst köşede duraklatma dişlisi
-        /// var. Yazıyı ortalayıp dişliyi üstüne bindirmek, iki şeyi aynı yere
-        /// koyup birinin diğerini örtmesini beklemek olurdu.
+        /// Yazı bandı iki yandan eşit pay bırakıyor ve payı sağ üstteki
+        /// duraklatma dişlisi belirliyor.
+        ///
+        /// Önce yalnızca sağdan kısaltmıştım (0.06 - 0.82) ve yazı sola kaymış
+        /// göründü: yazı ekranın ortasına değil, kendi kutusunun ortasına
+        /// hizalanıyor. Kutuyu bir yandan kısaltmak, o kutunun merkezini de
+        /// kaydırıyor. Simetrik pay hem dişliden uzak duruyor hem de yazıyı
+        /// ekranın gerçek ortasında tutuyor.
         /// </summary>
         static void Place(RectTransform rect, float bottom, float top)
         {
-            rect.anchorMin = new Vector2(0.06f, bottom);
+            rect.anchorMin = new Vector2(0.18f, bottom);
             rect.anchorMax = new Vector2(0.82f, top);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;

@@ -105,6 +105,10 @@ namespace PhysicsStack
         /// <summary>Bırakıldıktan sonra kaymanın sönme hızı (1/sn).</summary>
         const float ScrollDecay = 7f;
 
+        /// <summary>Geliştirici modunu açan gizli jest: adın üstüne art arda dokunuş.</summary>
+        const int DevTapCount = 5;
+        const float DevTapWindow = 1.2f;
+
         readonly List<UIButton> levelButtons = new();
 
         Canvas canvas;
@@ -112,6 +116,9 @@ namespace PhysicsStack
         float screenTime;
 
         TMP_Text title;
+        int titleTaps;
+        float lastTitleTap;
+
         GameObject homeRoot;
         CanvasGroup homeGroup;
         GameObject levelsRoot;
@@ -191,6 +198,8 @@ namespace PhysicsStack
             title = UIKit.Label(canvas.transform, "PhysicsStack", 110, TextAlignmentOptions.Center);
             UIKit.Fit(title, 44f, 110f);
 
+            BuildDevNotice();
+
             screen = introShown ? MenuScreen.Home : MenuScreen.Intro;
             screenTime = 0f;
 
@@ -206,6 +215,31 @@ namespace PhysicsStack
             // hiçbir şey yapmayan bir düğme, bozuk bir düğmeden ayırt
             // edilemiyor.
             settingsButton.SetVisible(introShown);
+        }
+
+        /// <summary>
+        /// Geliştirici modu açıkken adın altında duran satır.
+        ///
+        /// Gizli bir bayrağın görünür bir işareti olması şart: hangi oyunu test
+        /// ettiğimi bilmeden ölçüm almak, ölçmemekten daha kötü. Kapalıyken
+        /// hiçbir şey kurulmuyor, yani oyuncunun göreceği bir iz yok.
+        /// </summary>
+        void BuildDevNotice()
+        {
+            if (!Progress.DevUnlock)
+            {
+                return;
+            }
+
+            var notice = UIKit.Label(canvas.transform, "geliştirici modu: kilitler kapalı", 30, TextAlignmentOptions.Center);
+
+            notice.color = UIKit.DimTextColor;
+            notice.rectTransform.anchorMin = new Vector2(0.06f, 0.815f);
+            notice.rectTransform.anchorMax = new Vector2(0.94f, 0.865f);
+            notice.rectTransform.offsetMin = Vector2.zero;
+            notice.rectTransform.offsetMax = Vector2.zero;
+
+            UIKit.Fit(notice, 14f, 30f);
         }
 
         /// <summary>
@@ -616,6 +650,11 @@ namespace PhysicsStack
 
             Vector2 position = pointer.position.ReadValue();
 
+            if (TapTitle(position))
+            {
+                return;
+            }
+
             if (levelsButton.Contains(position))
             {
                 SfxPlayer.Play(Sfx.UiTap);
@@ -634,6 +673,52 @@ namespace PhysicsStack
                 SfxPlayer.Play(Sfx.UiTap);
                 ShowSettings();
             }
+        }
+
+        /// <summary>
+        /// Oyunun adına art arda beş dokunuş geliştirici modunu açıp kapatıyor.
+        ///
+        /// Gizli bir jest gerekiyordu çünkü tarayıcıda Inspector yok ve telefonda
+        /// 13. seviyeyi test etmenin başka yolu da yok. Görünür bir düğme
+        /// olamazdı: oyuncunun bulabileceği bir "hepsini aç" düğmesi, seviye
+        /// sıralamasını anlamsız kılar.
+        ///
+        /// Neden ad: ekranda zaten duran, hiçbir işi olmayan tek şey o. Ayrı bir
+        /// gizli bölge (mesela köşe) tanımlasaydım, oyuncunun kazara bulma
+        /// ihtimali daha yüksek olurdu — köşeye dokunmak sıradan bir hareket,
+        /// başlığa beş kez dokunmak değil.
+        ///
+        /// Süre penceresi art arda dokunuşları ayırıyor: aralıklı beş dokunuş
+        /// jest sayılmıyor, yoksa menüde oyalanan biri kazara açardı.
+        /// </summary>
+        bool TapTitle(Vector2 position)
+        {
+            if (!RectTransformUtility.RectangleContainsScreenPoint(title.rectTransform, position))
+            {
+                return false;
+            }
+
+            float now = Time.unscaledTime;
+
+            titleTaps = now - lastTitleTap <= DevTapWindow ? titleTaps + 1 : 1;
+            lastTitleTap = now;
+
+            if (titleTaps < DevTapCount)
+            {
+                return true;
+            }
+
+            titleTaps = 0;
+            Progress.DevUnlock = !Progress.DevUnlock;
+
+            // Kilitler değişti, yani seviye listesi ve sonsuz mod düğmesi artık
+            // yanlış. Sahneyi baştan yüklemek en ucuzu: menü kendini zaten
+            // sıfırdan kuruyor.
+            SfxPlayer.Play(Progress.DevUnlock ? Sfx.Win : Sfx.Lose);
+            RunRequest.Clear();
+            SceneManager.LoadScene(gameObject.scene.buildIndex);
+
+            return true;
         }
 
         void ShowLevels()
