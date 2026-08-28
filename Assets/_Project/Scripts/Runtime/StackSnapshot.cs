@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace PhysicsStack
 {
     /// <summary>
@@ -59,6 +61,18 @@ namespace PhysicsStack
         }
 
         /// <summary>
+        /// Kuleye girmeyip zemine düşen kutu sayısı: zemindeki kutulardan
+        /// birincisi kulenin temeli, gerisi düşmüş demektir.
+        ///
+        /// İki ayrı olayı tek sayıda topluyor ve bu bilinçli: kuleyi ıskalayıp
+        /// yere düşen kutu ile kuleden devrilip yere inen kutu, oyuncu açısından
+        /// aynı şey — bir kutu kaybettin. Ayrı ayrı saymak iki farklı ceza
+        /// üretirdi ve oyuncunun ikisini birbirinden ayırması için hiçbir sebep
+        /// yok.
+        /// </summary>
+        public int DroppedCount => Mathf.Max(0, GroundedCount - 1);
+
+        /// <summary>
         /// Kutu ıskalandı mı: zemine oturmuş ikinci bir kutu var demek, kulenin
         /// üstüne konmamış bir kutu var demek.
         ///
@@ -84,5 +98,36 @@ namespace PhysicsStack
         /// kutunun nereye gittiği değil, kulenin kısalması.
         /// </summary>
         public bool Collapsed(float drop) => PeakHeight - Height > drop;
+
+        /// <summary>
+        /// Ölçülen boyun kaçta kaçı temas gömülmesine gidebilir. Eşikler bu pay
+        /// kadar aşağı çekiliyor, üst ve alt sınırlarla birlikte.
+        /// </summary>
+        const float HeightSlack = 0.02f;
+        const float MinSlack = 0.03f;
+        const float MaxSlack = 0.4f;
+
+        /// <summary>
+        /// Kule verilen yüksekliğe ulaştı mı?
+        ///
+        /// Doğrudan karşılaştırma yapmıyor ve sebebi fizik: PhysX üst üste duran
+        /// cisimlerin birbirine milimetrik gömülmesine izin veriyor. Tek kutuda
+        /// görünmüyor ama gömülmeler toplanıyor — on kutuluk kule 10.00 değil
+        /// 9.99 ölçülüyor. Sonuç sistematik bir kutu kayması: hedefi 8 olan
+        /// seviyeyi 8 kutuyla geçemiyorsun, sonsuz modda "6 birimde rüzgâr"
+        /// 7. kutuda başlıyor.
+        ///
+        /// Payın oransal olmasının sebebi hatanın da oransal olması: her temas
+        /// bir miktar gömülme ekliyor, yani hata kule uzadıkça büyüyor. Üst
+        /// sınır bir kutunun epey altında — pay bir kutuyu geçseydi eşikler bu
+        /// kez erken tetiklenirdi ve o, düzeltmeye çalıştığımız hatanın aynısı
+        /// olurdu.
+        ///
+        /// Alternatif, fizikteki temas payını küçültmekti. Onu yapmadım: o sayı
+        /// kulenin kararlılığını da belirliyor ve bir görüntü sorunu için
+        /// simülasyonu bozmak, sorunu ölçüden çözmekten pahalı.
+        /// </summary>
+        public bool Reached(float threshold) =>
+            Height >= threshold - Mathf.Clamp(threshold * HeightSlack, MinSlack, MaxSlack);
     }
 }

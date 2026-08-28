@@ -313,7 +313,7 @@ namespace PhysicsStack
             bool unlocked = Progress.IsEndlessUnlocked(unlockIndex);
 
             string label = unlocked
-                ? $"Sonsuz Mod  ·  en iyi {Progress.EndlessBest:0.00}"
+                ? $"Sonsuz Mod  ·  en iyi {Progress.EndlessBest:0.0}"
                 : $"Sonsuz Mod  ·  {unlockIndex + 1}. seviyeyi bitir";
 
             endlessButton = UIKit.Button(parent, new Rect(0.14f, 0.28f, 0.72f, 0.15f), label, 46);
@@ -536,7 +536,7 @@ namespace PhysicsStack
                 // gosterirdi.
                 if (unlocked)
                 {
-                    int stars = level != null ? level.StarsFor(Progress.LevelBest(i)) : 0;
+                    int stars = level != null ? level.StarsForBoxes(Progress.LevelBest(i)) : 0;
                     UIKit.StarRow(button.Rect, new Rect(0.30f, 0.08f, 0.40f, 0.30f), stars);
                 }
 
@@ -650,11 +650,6 @@ namespace PhysicsStack
 
             Vector2 position = pointer.position.ReadValue();
 
-            if (TapTitle(position))
-            {
-                return;
-            }
-
             if (levelsButton.Contains(position))
             {
                 SfxPlayer.Play(Sfx.UiTap);
@@ -672,7 +667,15 @@ namespace PhysicsStack
             {
                 SfxPlayer.Play(Sfx.UiTap);
                 ShowSettings();
+                return;
             }
+
+            // Gizli jest en sonda. Önce buradaydı ve ayar düğmesini yuttu:
+            // dişli köşede, adın dikdörtgeninin içinde duruyor ve jest "adın
+            // üstüne dokunuldu mu" diye sorup dokunuşu tüketiyordu. Görünür
+            // düğmeler her zaman önce sorulmalı; gizli olan, kimsenin
+            // istemediği dokunuşu alan taraf.
+            TapTitle(position);
         }
 
         /// <summary>
@@ -984,7 +987,7 @@ namespace PhysicsStack
             UIKit.Fit(cardTitle, 34f, 72f);
 
             int best = Progress.LevelBest(index);
-            int stars = level != null ? level.StarsFor(best) : 0;
+            int stars = level != null ? level.StarsForBoxes(best) : 0;
 
             UIKit.StarRow(card, new Rect(0.32f, 0.55f, 0.36f, 0.21f), stars);
 
@@ -1025,8 +1028,8 @@ namespace PhysicsStack
 
             return
                 $"zorluk {level.Difficulty}/5{threat}\n" +
-                $"hedef yükseklik {level.targetHeight:0.0}\n" +
-                $"3 yıldız: {level.StarBoxes} kutu  ·  sınır: {level.BoxLimit}" +
+                $"hedef {level.targetBoxes} kutu\n" +
+                $"3 yıldız: hiç düşürmeden  ·  {LevelDefinition.MaxDrops} düşen kutu = kayıp" +
                 record;
         }
 

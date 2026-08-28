@@ -21,7 +21,12 @@ namespace PhysicsStack
 
         public string Title => level.title;
 
-        public float TargetHeight => level.targetHeight;
+        /// <summary>
+        /// Hedefin yükseklik karşılığı: hedef çizgisi ve kamera bunu okuyor.
+        /// Kutular sabit 1 birim olduğu için sayı hedef kutu sayısıyla aynı,
+        /// yani çizgi hâlâ "kulenin çıkması gereken yer"i gösteriyor.
+        /// </summary>
+        public float TargetHeight => level.TargetHeight;
 
         public float HoldTime => level.holdTime;
 
@@ -57,12 +62,12 @@ namespace PhysicsStack
                 return RunOutcome.Lost;
             }
 
-            // Kuleye konmayan kutu seviyede de kaybettiriyor. Eskiden yalnızca
-            // kutu bütçesinden düşüyordu, yani ıskanın cezası "bir kutu daha az"
-            // idi; bu, sınırı geniş olan seviyelerde cezasızlık demekti. İki
-            // modda da aynı kuralın geçerli olması ayrıca önemli: oyuncu
-            // ıskanın ne demek olduğunu bir kez öğreniyor.
-            if (snapshot.Missed)
+            // Seviyede üç kutu düşürmek turu bitiriyor. Sonsuz modda tek kutu
+            // yetiyor ve fark bilerek: orada tur zaten "nereye kadar
+            // dayanabilirsin" sorusu, burada ise oyuncunun öğrenmesi gereken bir
+            // düzen var ve öğrenmek hata yapmayı gerektiriyor. İki kutuluk pay,
+            // yıldızın da ölçüsü — yani hata cezasız değil, kademeli.
+            if (snapshot.DroppedCount >= LevelDefinition.MaxDrops)
             {
                 return RunOutcome.Lost;
             }
@@ -81,34 +86,39 @@ namespace PhysicsStack
                 return RunOutcome.Lost;
             }
 
-            // Hedefi geçmek yetmiyor, orada durmak da gerekiyor. Geçmek bir an,
-            // tutunmak bir süre — ve bu oyunda ayakta kalan kule ile devrilmek
-            // üzere olan kule arasındaki fark tam olarak o süre.
-            if (snapshot.Height >= level.targetHeight)
+            // Hedef kutu sayısına ulaşmak yetmiyor, kulenin orada durması da
+            // gerekiyor. Ulaşmak bir an, tutunmak bir süre — ve bu oyunda ayakta
+            // kalan kule ile devrilmek üzere olan kule arasındaki fark tam
+            // olarak o süre.
+            //
+            // Sayılan şey kuledeki kutu, atılan kutu değil: yere düşenler
+            // hedefe saymıyor. Önce hedef yükseklikti ve ölçüm kulenin boyuydu;
+            // ikisi kutu 1 birim olduğu için hemen hemen aynı sayı ama aynı şey
+            // değil. Yükseklik ölçümü temas gömülmesine takılıyordu (on kutuluk
+            // kule 9.99 okunuyor), kutu saymak ise tam sayı: "dört kutu koy"
+            // diyen bir seviye dört kutuda geçiliyor.
+            if (TowerBoxes(snapshot) >= level.targetBoxes)
             {
                 return snapshot.SteadyTime >= level.holdTime
                     ? RunOutcome.Won
                     : RunOutcome.Pending;
             }
 
-            // Kutu sınırı olan seviyede hedefe ulaşmadan kutular bitince tur kaybedilir.
-            // Sınır kaybettirmenin değil, seviyeye kimlik vermenin yolu: "altı kutuyla
-            // şu yüksekliğe çık" ile "istediğin kadar kutuyla çık" iki farklı problem.
-            // Kutu sinirini seviye kendisi soyluyor: yildiz esiginin iki
-            // fazlasi. Ayri bir sayi olsaydi sinir ile yildiz esigi celisebilir,
-            // ornegin uc yildizin alinamadigi bir seviye ortaya cikabilirdi.
-            if (snapshot.PlacedCount >= level.BoxLimit)
-            {
-                return RunOutcome.Lost;
-            }
-
             return RunOutcome.Continue;
         }
 
+        /// <summary>Kulede duran kutu sayısı: atılanlardan yere düşenler çıkarılıyor.</summary>
+        static int TowerBoxes(in StackSnapshot snapshot) =>
+            snapshot.PlacedCount - snapshot.DroppedCount;
+
         /// <summary>
         /// Seviyede skor "kaç kutu harcadın". Az olan iyi — sonsuz moddaki skorun
-        /// tam tersi yönde, bu yüzden en iyi skor karşılaştırması Gün 9'da mod
-        /// başına yapılacak.
+        /// tam tersi yönde, bu yüzden en iyi skor karşılaştırması mod başına
+        /// yapılıyor.
+        ///
+        /// Hedef kutu sayısına dönünce bu sayı doğrudan hatayı gösterir oldu:
+        /// kusursuz bir tur tam hedef kadar kutu harcıyor, fazlası düşen kutu
+        /// demek. Yıldız da zaten aradaki farkı okuyor.
         /// </summary>
         public float Score(in StackSnapshot snapshot) => snapshot.PlacedCount;
 
@@ -119,7 +129,7 @@ namespace PhysicsStack
             new(level.dropGap, level.widthVariance, level.spawnLift);
 
         public override string ToString() =>
-            $"{level.title} · hedef {level.targetHeight:0.0} · " +
-            $"{level.StarBoxes} kutu (sinir {level.BoxLimit}) · mesafe {level.dropGap:0.0}";
+            $"{level.title} · hedef {level.targetBoxes} kutu · " +
+            $"{LevelDefinition.MaxDrops - 1} dusurme hakki · mesafe {level.dropGap:0.0}";
     }
 }

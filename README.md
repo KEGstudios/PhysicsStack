@@ -5,10 +5,10 @@ mesafe üstünden bırakmak zorundasın** — yerleştirme bir koyma değil, bir
 Kule hedefi geçip orada **tutunursa** kazanıyorsun.
 
 İki mod var: on üç seviyelik seri (her seviyenin kendi sorusu var — bırakma
-mesafesi, yıldız için kutu bütçesi, rüzgâr, top atıcı, yükseklik, ve sondaki
-ikisinde bunların birleşimi) ve sekizinci seviyede açılan sonsuz mod. Sonsuzda zorluk seviyeler arasında değil turun **içinde** artıyor:
-tehditler sırayla devreye giriyor, belirli kutu sayılarında da kulenin altı
-donarak yeni bir zemin oluyor. Sanatçısı olmayan bir projede görsel ve ses
+mesafesi, hedef kutu sayısı, rüzgâr, top atıcı, ve sondaki ikisinde bunların
+birleşimi) ve sekizinci seviyede açılan sonsuz mod. Sonsuzda zorluk seviyeler
+arasında değil turun **içinde** artıyor: tehditler sırayla devreye giriyor,
+belirli yüksekliklerde de kulenin altı donarak yeni bir zemin oluyor. Sanatçısı olmayan bir projede görsel ve ses
 tamamen koddan geliyor: pastel palet, elle yazılmış gökyüzü shader'ı ve dosyadan
 değil sentezden çıkan ses efektleri.
 
@@ -162,8 +162,8 @@ Yanında iki faydası daha var: değerler tek yerde durduğu için "hangi kutuda
 değer kalmış" sorusu ortadan kalkıyor, ve ileride "ağır kutu" gibi bir varyant
 gerekirse ikinci bir varlık oluşturup prefab'a vermek yetiyor, kod değişmiyor.
 
-Her ayarı oraya taşımadım. Yerleşme eşiği `StackTracker`'da, hedef yükseklik ve
-oturma süresi `StackGameController`'da kaldı — onlar hisle değil kuralla ilgili ve
+Her ayarı oraya taşımadım. Yerleşme eşiği `StackTracker`'da, hedef kutu sayısı
+ve tutunma süresi `StackGameController`'da kaldı — onlar hisle değil kuralla ilgili ve
 kural sınıfının kendi Inspector'ında durmaları daha okunur. Aynı varlığa doldurmak
 "ayarlar" diye her şeyi toplayan bir çöp kutusu üretirdi.
 
@@ -222,7 +222,7 @@ kamera boşuna zıplıyordu. Kule yüksekliği, elindeki kutu değil yerleştird
 
 ### İki mod, tek controller
 
-Faz 2'de iki mod var: hedef yüksekliği olan seviye modu ve düşene kadar yığdığın
+Faz 2'de iki mod var: hedef kutu sayısı olan seviye modu ve düşene kadar yığdığın
 sonsuz mod. İkisini tek sınıfa `if (sonsuz)` ile sığdırmak bugün çalışırdı; ayırma
 kararını üçüncü modu hayal ettiğim için değil, şunu fark ettiğim için verdim:
 controller'ın yaptığı işlerin hiçbiri moda göre değişmiyor. Girdiyi dinlemek,
@@ -230,13 +230,12 @@ sıradaki kutuyu istemek, yığının oturmasını beklemek, durumu yayınlamak 
 aynı. Değişen tek şey "bu anlık görüntü ne anlama geliyor" sorusunun cevabı.
 
 Sınırı oraya çektim. `IStackRules` tek bir soru soruyor: bu anlık görüntüde tur
-devam mı ediyor, bitti mi. `LevelRules` hedefe ve kutu sınırına bakıyor (sınır
-elle verilmiyor, yıldız bütçesinden türüyor), `EndlessRules` sadece bir şey
-düştü mü diye bakıyor.
+devam mı ediyor, bitti mi. `LevelRules` kuledeki kutu sayısına ve düşürülen
+kutu sayısına bakıyor, `EndlessRules` sadece bir şey düştü mü diye bakıyor.
 
 Arayüz zamanla iki soru daha kazandı ve ikisi de aynı sebeple: cevabı moda göre
 değişen ama controller'ı ilgilendirmeyen şeyler. `HazardsFor` — tehditler şu an
-ne olmalı; `IsCheckpoint` — kulenin altı bu kutu sayısında dondurulsun mu.
+ne olmalı; `CheckpointAfter` — kulenin altı hangi yükseklikte dondurulsun.
 
 Kurallara `StackTracker`'ı doğrudan vermedim, `StackSnapshot` diye bir struct
 veriyorum: yükseklik, yerleşmiş kutu sayısı, bir şey düştü mü, yığın oturdu mu.
@@ -715,18 +714,24 @@ cümlesi ölçüm olmadan bir iddia değil, bir izlenim.
 
 Şu an elimdeki tek gerçek ölçüm:
 
-| Cihaz | Ortam | Seviye | Sonuç |
-|---|---|---|---|
-| iPhone 16 Plus | Safari, WebGL | 1 | 59-61 fps |
-| iPhone 13 | Safari, WebGL | 1 | 55-60 fps |
+| Cihaz | Ortam | Seviye | Kalite | Sonuç |
+|---|---|---|---|---|
+| iPhone 16 Plus | Safari, WebGL | 1 | yüksek | 59-61 fps |
+| iPhone 16 Plus | Safari, WebGL | 13 | yüksek | 60 fps |
+| iPhone 13 | Safari, WebGL | 1 | yüksek | 55-60 fps |
 
 İki sayının da ne söylediğine dikkat etmek gerekiyor. İki cihazın da ekranı
 60 Hz ve WebGL `requestAnimationFrame`'e bağlı çalışıyor, yani üstteki satırda
 ölçülen şey **oyunun tavanı değil ekranın tavanı**: "oyun kareleri
 yetiştiriyor" diyor, "ne kadar payla" demiyor.
 
-Asıl bilgi alttaki satırda. iPhone 13, **1. seviyede** — yani sahnede iki üç
-kutu varken — tavanın altına düşüyor. Sahnede fizik yok denecek kadar az, yani
+İkinci satır bir eleme yapıyor: iPhone 16 Plus, **13. seviyede** — oyunun en
+yüklü sahnesinde, iki namlu ateş ederken ve kule sekiz kutuya çıkmışken — hâlâ
+tavanda. Yani oyunun kendisi bu cihazda zorlanmıyor.
+
+Asıl bilgi son satırda. iPhone 13, **1. seviyede** — yani sahnede iki üç
+kutu varken — tavanın altına düşüyor. Aynı oyun, daha eski cihaz, en hafif
+sahne. Sahnede fizik yok denecek kadar az, yani
 maliyet fizikte değil. En güçlü aday doldurma oranı: proje varsayılan WebGL
 şablonunu kullanıyor ve şablondaki `config.devicePixelRatio = 1;` satırı yorumda,
 yani oyun cihazın tam piksel yoğunluğunda çiziliyor — iPhone 13'te DPR 3, kabaca
@@ -887,7 +892,7 @@ büyütüyor; belli bir yükseklikten sonra kule benim becerimle değil birikmi�
 salınımla devriliyor. Bir oyun 100. seviyeye gelip hâlâ "15 kutu yığ" diyecekse
 zaten orada bir sınır var demektir.
 
-Kontrol noktası bu zinciri kesiyor: belirli kutu sayılarında o ana kadar oturmuş
+Kontrol noktası bu zinciri kesiyor: belirli yüksekliklerde o ana kadar oturmuş
 bütün kutular kinematik oluyor. İtilemiyorlar ama hâlâ çarpışıyorlar — kule için
 yeni bir zemin. Yan kazanç, donan cisimlerin çözücünün dışına çıkması: 20
 tekrarlı çözücüde 30 kutunun 20'si hesaptan düşüyor.
@@ -897,10 +902,10 @@ bir kuleyi dondurmak eğikliği kalıcılaştırır ve oyuncunun düzeltme şans
 verilmiş bir ceza olur. Eğikliği düzeltmiyorum da: o eğiklik oyuncunun bırakma
 biçiminden geldi.
 
-Sonsuz modda noktalar 10, 25, 45, 70, 100... — aralık her seferinde 5 kutu
-büyüyor. Sabit aralık daha basit olurdu ama yanlış şeyi ölçer: ilk 10 kutu ile
-90'dan 100'e giden 10 kutu aynı iş değil. Seviye modunda `checkpointEvery`
-alanı var ve varsayılanı kapalı; sekiz seviyenin hiçbirinin ihtiyacı yok, ama
+Sonsuz modda noktalar 10, 25, 45, 70, 100... — aralık her seferinde 5 birim
+büyüyor. Sabit aralık daha basit olurdu ama yanlış şeyi ölçer: ilk 10 birim ile
+90'dan 100'e giden 10 birim aynı iş değil. Seviye modunda `checkpointEvery`
+alanı var ve varsayılanı kapalı; on üç seviyenin hiçbirinin ihtiyacı yok, ama
 ileride yüksek kule isteyen bir seviye tasarlarken mekaniği baştan yazmak
 istemiyorum.
 
@@ -909,18 +914,47 @@ Geri bildirimin üç katmanı var ve biri kalıcı: kısa bir ezilme ve bir ses 
 sabit" demeye devam ediyor. Ayrı bir gri "donmuş" rengi vermedim — tek gri renk
 kuleyi renklerinden eder ve donmuş kısım oyunun dışından gelmiş gibi dururdu.
 
+## Seviyenin hedefi: yükseklik değil kutu sayısı
+
+Uzun süre seviyenin hedefi bir yükseklikti ("4 birime çık"). Ölçü olarak sorunlu
+çıktı: PhysX üst üste duran cisimlerin birbirine milimetrik gömülmesine izin
+veriyor ve gömülmeler toplanıyor — on kutuluk kule 9.99 ölçülüyor. Sonuç
+sistematik bir kayma: hedefi 4 olan seviye dört kutuyla geçilmiyordu, sonsuz
+modda "6 birimde rüzgâr" 7. kutuda başlıyordu.
+
+Tolerans ekleyerek düzeltilebilirdi ve seviye tarafında öyle yapmadım: ölçünün
+türünü değiştirdim. **Hedef artık kutu sayısı.** Sayılar aynı (3, 4, 4, 5...)
+çünkü kutu 1 birim; değişen şey cinsi. Tam sayı olduğu için ondalık ölçünün
+getirdiği bütün sorular ortadan kalkıyor.
+
+Bu, yıldızın ölçtüğü şeyi de değiştirmek zorunda bıraktı. Eski ölçü "kaç kutu
+harcadın" idi ve yalnızca hedef yükseklikken anlamlıydı — eğri oturan kule aynı
+yüksekliğe çıkmak için fazladan kutu ister. Hedef kutu sayısına dönünce o ölçü
+ölüyor: her tur tam hedef kadar kutuyla biterdi ve herkes hep üç yıldız alırdı.
+
+Yeni ölçü doğrudan hatayı sayıyor: **düşen kutu**. Hiç düşürmezsen üç yıldız,
+bir kutuda iki, iki kutuda bir, üçüncüde tur biter. Hata cezasız değil ama
+kademeli — öğrenilecek bir düzen varken öğrenmek hata yapmayı gerektiriyor.
+Sonsuz modda tek kutu hâlâ kaybettiriyor: orada tur zaten "nereye kadar
+dayanabilirsin" sorusu.
+
 ## Sonsuz modun zorluk eğrisi
 
 Sonsuz modda uzun süre hiç tehdit yoktu ve gerekçesini yazmıştım: tek bir şeyin
 — bırakma mesafesinin — sürekli artması, üst üste binen üç şeyden daha okunur
-bir tırmanış verir. Gerekçe doğruydu ama eksikti. Mesafe 15 kutuda tavana
+bir tırmanış verir. Gerekçe doğruydu ama eksikti. Mesafe 15 birimde tavana
 vuruyor; ondan sonrası sabit zorlukta bir tur. Yani tırmanışı okunur kılayım
-derken tırmanışın kendisini 15 kutuyla sınırlamışım.
+derken tırmanışın kendisini 15 birimle sınırlamışım.
+
+Eşiklerin kutu sayısı değil **yükseklik** olması sonradan düzeltilen bir hataydı:
+önce atılan kutuyu sayıyordum, yani yere düşen kutular da tehdit merdivenini
+tırmandırıyordu. Kule 7 kutudayken rüzgâr çıkıyor, üç kutu ıskalamış oyuncu
+kendi kulesinin boyuyla alakasız bir zorlukla karşılaşıyordu.
 
 Tehditleri üst üste yığmak yerine sıraya dizdim. Her biri bir öncekinin doyduğu
 yerde giriyor:
 
-| Kutu | Giren şey |
+| Yükseklik | Giren şey |
 |---|---|
 | 0–15 | bırakma mesafesi 2.5 → 3.6, genişlik oynaması 0 → 0.25 |
 | 6–14 | rüzgâr 0 → 1.0 m/s, sabit yönlü |
@@ -929,7 +963,7 @@ yerde giriyor:
 
 Sıra rastgele değil. Sabit yönlü rüzgâr bir kez öğrenilip telafi edilen bir şey;
 salınım telafiyi zamanlamaya bağlıyor; namlu ise bir ritim problemi. Üçü aynı
-anda gelseydi 18. kutuda oyuncu neyi yanlış yaptığını göremezdi. 18'den sonra
+anda gelseydi 18 birimde oyuncu neyi yanlış yaptığını göremezdi. 18'den sonra
 hiçbir şey artmıyor: sonsuza kadar tırmanan bir eğri, oyuncunun becerisinin
 değil eğrinin kazandığı bir yer yaratır.
 
@@ -969,11 +1003,11 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Görünüş — pastel palet, gökyüzü shader'ı, post-process, TMP arayüz
 - [x] His — ezilme-uzama, çarpma tozu, kamera sarsıntısı, hız çizgileri
 - [x] Ses — koddan sentezlenen on efekt, ses açma/kapama, rüzgâr etiketi
-- [x] İçerik — yıldız sistemi, seviye kartı, türetilen kutu ekonomisi ve zorluk
+- [x] İçerik — kutu sayısı hedefi, düşen kutuyu ölçen yıldız, seviye kartı, zorluk
 - [x] Sonsuz mod — tur içinde sıraya dizilen tehditler
 - [x] Yükseklik tavanı — düşüş sürtünmesi, fizik ayarları, kontrol noktası
 - [x] Menü — tanıtım, ana ekran, kaydırmalı seviye listesi
-- [x] Seviye 9-11 — eğrinin yeni kolu: yükseklik
+- [x] Seviye 9-11 — eğrinin yeni kolu: daha yüksek kule
 - [x] Seviye 12-13 — birleşen tehditler, çift namlu
 - [x] Ayarlar — ses, grafik kalitesi, sarsıntı, oyun içi duraklatma
 - [x] Simgeler — yıldız, dişli, yeniden başlat, altlık (hepsi kodda)

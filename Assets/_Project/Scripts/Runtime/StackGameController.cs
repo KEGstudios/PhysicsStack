@@ -62,10 +62,28 @@ namespace PhysicsStack
         public string ScoreText => rules != null ? rules.DescribeScore(Score) : string.Empty;
 
         /// <summary>
-        /// Tur bittiğinde kulenin ulaştığı yükseklik. Hedefi olmayan modda
+        /// Tur boyunca kulenin **ulaştığı** yükseklik. Hedefi olmayan modda
         /// gösterilecek tek anlamlı sayı bu: "buraya kadar geldin".
+        ///
+        /// Zirve okunuyor, bitiş anındaki boy değil. Uzun süre yanlıştı ve
+        /// belirtisi şuydu: 15 birimlik kule çöktüğünde tur sonu ekranı "kule
+        /// 5.00" yazıyordu. Çünkü tur tam da kule kısaldığı için bitiyor — yani
+        /// bitiş anındaki boy, hep kaybettiren çöküşün sonrasını gösteriyor.
+        ///
+        /// Cümlenin kendisi zaten doğruyu söylüyormuş: "ulaştığı yükseklik".
+        /// Kodun onunla uyuşmadığını fark etmek bir tur oynamak kadar sürdü ama
+        /// yazıyı okumak daha kısa sürerdi.
         /// </summary>
         public float FinalHeight { get; private set; }
+
+        /// <summary>
+        /// Kulede duran kutu sayısı ve yere düşenler. Panel bunları gösteriyor:
+        /// seviyenin hedefi artık kutu sayısı ve yıldız da düşen kutuyu
+        /// sayıyor, yani oyuncunun tur boyunca merak ettiği iki sayı bunlar.
+        /// </summary>
+        public int TowerBoxes { get; private set; }
+
+        public int DroppedBoxes { get; private set; }
 
         /// <summary>Yürürlükteki kural seti. Menüdeyken null.</summary>
         public IStackRules Rules => rules;
@@ -247,7 +265,10 @@ namespace PhysicsStack
             }
 
             var snapshot = Read(settled);
+
             Score = rules.Score(snapshot);
+            DroppedBoxes = snapshot.DroppedCount;
+            TowerBoxes = snapshot.PlacedCount - snapshot.DroppedCount;
 
             switch (rules.Evaluate(snapshot))
             {
@@ -297,7 +318,7 @@ namespace PhysicsStack
         /// </summary>
         void TryCheckpoint(in StackSnapshot snapshot)
         {
-            if (snapshot.Height < NextCheckpoint)
+            if (!snapshot.Reached(NextCheckpoint))
             {
                 return;
             }
@@ -346,7 +367,7 @@ namespace PhysicsStack
             State = result;
             RestTimer = 0f;
             SteadyTimer = 0f;
-            FinalHeight = snapshot.Height;
+            FinalHeight = snapshot.PeakHeight;
 
             // İlerleme burada yazılıyor, sonuç ekranında değil: kaydın arayüze
             // bağlı olması, arayüzü değiştirdiğimde kaydı da bozma riski demek.

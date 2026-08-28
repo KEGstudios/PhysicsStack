@@ -44,9 +44,9 @@ namespace PhysicsStack.EditorTools
         const float WindResponse = 3f;
 
         /// <summary>
-        /// Zorluk eğrisi. Büyüyen şey bilerek kutu sayısı değil: hedef yükseklik
-        /// 3'ten 6'ya çıkıp orada duruyor, asıl artan şey bırakma mesafesi —
-        /// yani kutunun kendi başına kat ettiği yol.
+        /// Zorluk eğrisi. Hedef sütunu artık kule için gereken kutu sayısı;
+        /// eskiden hedef yükseklikti ve kutu 1 birim olduğu için sayılar aynı
+        /// kaldı, ölçünün türü değişti.
         ///
         /// Sıra da bilinçli: önce sadece mesafe (1-3), sonra kutu sınırı (4),
         /// sonra genişlik oynaması (5), sonra rüzgâr (6-7), sonra top atıcı (8),
@@ -65,38 +65,38 @@ namespace PhysicsStack.EditorTools
         /// "çok yakın, zorlanmıyorum" çıktı. Bir birim, bir kutu boyu kadar düşüş
         /// demek — kutu daha hızlanmadan yerine oturuyordu.
         /// </summary>
-        static readonly (string Title, float Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards)[] Curve =
+        static readonly (string Title, int Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards)[] Curve =
         {
-            ("Seviye 1", 3f, 2.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 2", 4f, 2.50f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 3", 4f, 3.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 4", 5f, 3.00f, 0f,    0f,   HazardSettings.None),
-            ("Seviye 5", 5f, 3.50f, 0.15f, 0f,   HazardSettings.None),
-            ("Seviye 6", 5f, 3.50f, 0.15f, 0f,   MakeWind(0.7f)),
-            ("Seviye 7", 6f, 4.00f, 0.25f, 0f,   MakeWind(1.0f, period: 3.0f)),
-            ("Seviye 8", 6f, 4.00f, 0.15f, 2.5f, MakeCannon(interval: 2.0f, ballSpeed: 7.0f, patrolSpeed: 1.6f, bottomGap: 0.4f)),
+            ("Seviye 1", 3, 2.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 2", 4, 2.50f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 3", 4, 3.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 4", 5, 3.00f, 0f,    0f,   HazardSettings.None),
+            ("Seviye 5", 5, 3.50f, 0.15f, 0f,   HazardSettings.None),
+            ("Seviye 6", 5, 3.50f, 0.15f, 0f,   MakeWind(0.7f)),
+            ("Seviye 7", 6, 4.00f, 0.25f, 0f,   MakeWind(1.0f, period: 3.0f)),
+            ("Seviye 8", 6, 4.00f, 0.15f, 2.5f, MakeCannon(interval: 2.0f, ballSpeed: 7.0f, patrolSpeed: 1.6f, bottomGap: 0.4f)),
 
             // Son üç seviye yeni bir kolla yazıldı: yükseklik. Mesafe 8'de zaten
             // oynanabilirlik tavanına dayanmıştı (4 birimden düşen kutu ~9 m/s
             // ile çarpıyor ve kuleyi süpürüyor), yani eğriyi mesafeyle
             // sürdürmenin yolu yoktu. Düşüş sürtünmesi ve fizik ayarları kule
             // tavanını yükseltince ikinci kol açıldı: hedef 6'dan 8'e çıkıyor.
-            ("Seviye 9",  7f, 3.50f, 0.15f, 0f,   HazardSettings.None),
-            ("Seviye 10", 7f, 4.00f, 0.20f, 0f,   MakeWind(0.9f, period: 3.0f)),
-            ("Seviye 11", 8f, 4.00f, 0.20f, 2.5f, MakeCannon(interval: 2.2f, ballSpeed: 6.5f, patrolSpeed: 1.6f, bottomGap: 0.4f)),
+            ("Seviye 9",  7, 3.50f, 0.15f, 0f,   HazardSettings.None),
+            ("Seviye 10", 7, 4.00f, 0.20f, 0f,   MakeWind(0.9f, period: 3.0f)),
+            ("Seviye 11", 8, 4.00f, 0.20f, 2.5f, MakeCannon(interval: 2.2f, ballSpeed: 6.5f, patrolSpeed: 1.6f, bottomGap: 0.4f)),
 
             // Son iki seviye tehditleri birleştiriyor. Buraya kadar her seviye
             // tek bir soru soruyordu; sondaki ikisi soruların birlikte
             // sorulabildiği yer. Sıra yine bilinçli: önce iki farklı tehdit
             // (rüzgâr + namlu), sonra aynı tehdidin iki katı (çift namlu).
             // İkisini de aynı seviyeye koysaydım kaybın sebebi okunmazdı.
-            ("Seviye 12", 8f, 4.00f, 0.15f, 2.5f, WithWind(MakeCannon(interval: 2.4f, ballSpeed: 6.5f, patrolSpeed: 1.5f, bottomGap: 0.4f), speed: 0.8f, period: 3.2f)),
+            ("Seviye 12", 8, 4.00f, 0.15f, 2.5f, WithWind(MakeCannon(interval: 2.4f, ballSpeed: 6.5f, patrolSpeed: 1.5f, bottomGap: 0.4f), speed: 0.8f, period: 3.2f)),
 
             // Çift namluda atış aralığı tek namlununkinden uzun: iki namlu
             // yarım tur kaymış ateş ettiği için oyuncuya gelen mermi sıklığı
             // zaten iki katı. 2.2 bırakılsaydı koridor sürekli dolu olurdu ve
             // ortaya beceriyle değil şansla geçilen bir seviye çıkardı.
-            ("Seviye 13", 8f, 4.00f, 0.20f, 2.5f, MakeCannon(interval: 3.0f, ballSpeed: 6.0f, patrolSpeed: 1.4f, bottomGap: 0.4f, count: 2)),
+            ("Seviye 13", 8, 4.00f, 0.20f, 2.5f, MakeCannon(interval: 3.0f, ballSpeed: 6.0f, patrolSpeed: 1.4f, bottomGap: 0.4f, count: 2)),
         };
 
         /// <summary>
@@ -218,10 +218,10 @@ namespace PhysicsStack.EditorTools
             return library;
         }
 
-        static void Apply(LevelDefinition level, (string Title, float Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards) row)
+        static void Apply(LevelDefinition level, (string Title, int Target, float Gap, float WidthVariance, float Lift, HazardSettings Hazards) row)
         {
             level.title = row.Title;
-            level.targetHeight = row.Target;
+            level.targetBoxes = row.Target;
             level.dropGap = row.Gap;
             level.widthVariance = row.WidthVariance;
             level.spawnLift = row.Lift;

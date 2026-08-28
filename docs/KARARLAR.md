@@ -1564,3 +1564,103 @@ hangi oyunu test ettiğim her zaman ekranda. Kapalıyken o etiket hiç kurulmuyo
 
 "İlerlemeyi sıfırla" bayrağı da siliyor: sıfırladıktan sonra bütün seviyelerin
 açık kalması, sıfırlamanın işe yaramadığını düşündürürdü.
+
+### Gizli jest görünür düğmeyi yuttu
+
+Geliştirici jestini ekledikten hemen sonra ana menüdeki ayar düğmesi çalışmaz
+oldu. Sebep sıralamaydı: jest "adın üstüne dokunuldu mu" diye soruyor ve dokunuşu
+tüketiyor; dişli ise köşede, adın dikdörtgeninin içinde duruyor. Yazı ortalı
+olduğu için görsel bir çakışma yok ama dikdörtgenler çakışıyor.
+
+Düzeltmesi tek satırlık bir yer değişikliği — jest artık en sonda — ama kuralı
+yazmaya değer: **görünür düğmeler her zaman önce sorulmalı, gizli olan kimsenin
+istemediği dokunuşu alan taraf olmalı.** Aynı kural kaydırmalı listede de vardı:
+orada da "Geri" düğmesi kaydırmadan önce soruluyor.
+
+### Tur sonu ekranı çöküşten sonraki boyu gösteriyordu
+
+Sonsuz modda fark edildi: 15 birimlik kule çöktüğünde tur sonu ekranı "kule
+5.00" yazıyordu. Aynı hata seviye modunda da vardı, orada daha az göze
+batıyordu çünkü kuleler kısa.
+
+Sebep basit ama tersten bakınca görünüyor: tur **tam da kule kısaldığı için**
+bitiyor. Bitiş anındaki boyu okumak, her zaman kaybettiren çöküşün sonrasını
+okumak demek. Ölçülmesi gereken şey zirve — tur boyunca ulaşılan en yüksek
+oturmuş boy — ve o zaten anlık görüntüde duruyordu.
+
+İlginç olan şu: alanın kendi açıklaması doğruyu söylüyormuş — "tur bittiğinde
+kulenin **ulaştığı** yükseklik". Kod o cümleyle uyuşmuyordu. Yazılı gerekçenin
+ikinci faydası bu: yalnızca kararı hatırlatmıyor, kodun karardan sapmış
+olduğunu da gösteriyor.
+
+Düzeltme tek satır ve üç yeri birden düzeltti: tur sonu ekranındaki skor,
+seviye modundaki "hedefe ne kadar yaklaştın" satırı ve sonsuz modda kulenin
+ulaştığı yeri işaretleyen çizgi — üçü de aynı alanı okuyor. Seviye modundaki
+satırın etiketi de "kule" yerine "en yüksek" oldu: sayı artık bitiş anını değil
+zirveyi gösteriyor ve etiketin bunu söylemesi gerekiyor.
+
+### 9.99: temas gömülmesi ve bir kutuluk sistematik kayma
+
+"On kutu yığdım, neden 10.00 değil de 9.99?" Cevap fizikte: PhysX üst üste duran
+cisimlerin birbirine milimetrik gömülmesine izin veriyor. Tek temasta
+görünmüyor, on temasta toplanıyor.
+
+Asıl mesele görüntü değil. Bütün yükseklik eşikleri tam sayı ve ölçüm hep bir
+tık altında kalıyor, yani **her eşik bir kutu geç tetikleniyor**: hedefi 8 olan
+seviyeyi 8 kutuyla geçemiyorsun, sonsuz modda "6 birimde rüzgâr" 7. kutuda
+başlıyor, 10'daki kontrol noktası 11. kutuda geliyor. Küçük ama sistematik ve
+görünmez — en sevmediğim hata türü.
+
+Düzeltmeyi ölçünün kendisinde değil, karşılaştırmada yaptım: anlık görüntüye
+"bu yüksekliğe ulaştı mı" diye soran bir metot eklendi ve eşiği küçük bir pay
+kadar aşağı çekiyor. Pay oransal, çünkü hata da oransal — her temas biraz daha
+gömülme ekliyor. Üst sınırı bir kutunun epey altında: pay bir kutuyu geçseydi
+eşikler bu kez erken tetiklenirdi, yani düzeltmeye çalıştığım hatanın aynısı.
+
+İki alternatifi eledim. **Fizikteki temas payını küçültmek**: o sayı kulenin
+kararlılığını da belirliyor ve bir ölçü sorunu için simülasyonu bozmak pahalı.
+**Ölçülen boya sabit eklemek**: ölçümü yalan söyler hâle getirir ve debug
+paneli de o yalanı gösterirdi.
+
+Oyuncuya gösterilen sayılar da iki ondalıktan tek ondalığa indi. İki ondalık,
+ölçünün taşıyamayacağı bir kesinlik gösteriyordu; yüzde birlik fark oyunda
+hiçbir karara girmiyor ama "neden 10 değil" sorusunu her turda soruyor.
+
+## Seviyenin hedefi yükseklik değil, kutu sayısı
+
+Temas gömülmesi tartışması buraya çıktı: hedef yükseklikse ölçüm hep bir tık
+altta kalıyor ve "dört yüksekliğe çık" diyen seviye dört kutuyla geçilmiyordu.
+Toleransla düzeltilebilirdi ama proje sahibinin kararı daha temiz oldu — ölçünün
+türünü değiştirmek.
+
+**Hedef artık kule için gereken kutu sayısı.** Sayılar aynı kaldı (3, 4, 4, 5...)
+çünkü kutu 1 birim; değişen şey ölçünün cinsi. Tam sayı olduğu için ondalık bir
+ölçünün getirdiği bütün sorular ortadan kalkıyor: "dört kutu koy" diyen seviye
+dört kutuda geçiliyor, 3.99'da değil.
+
+Sayılan şey kuledeki kutu, atılan kutu değil: yere düşenler hedefe saymıyor.
+
+**Yıldızın ölçtüğü şey de değişmek zorunda kaldı.** Eski ölçü "kaç kutu
+harcadın" idi ve yalnızca hedef yükseklikken anlamlıydı — eğri oturan kule aynı
+yüksekliğe çıkmak için fazladan kutu istiyordu. Hedef kutu sayısına dönünce o
+ölçü ölüyor: her tur tam hedef kadar kutuyla biterdi ve herkes hep üç yıldız
+alırdı.
+
+Yeni ölçü doğrudan hatayı sayıyor: **düşen kutu**. Hiç düşürmezsen üç yıldız,
+bir kutu düşerse iki, iki kutu düşerse bir, üçüncüde tur biter. Böylece hata
+cezasız değil ama kademeli — ve oyuncunun öğrenmesi gereken bir düzen varken
+öğrenmek hata yapmayı gerektiriyor.
+
+Sonsuz modda tek kutu hâlâ kaybettiriyor ve fark bilerek: orada tur zaten
+"nereye kadar dayanabilirsin" sorusu, seviyede ise geçilecek bir tasarım var.
+
+Düşen kutu iki olayı birden topluyor: kuleyi ıskalayıp yere düşen kutu ile
+kuleden devrilip yere inen kutu. Oyuncu açısından ikisi aynı şey — bir kutu
+kaybettin — ve ayrı ayrı saymak iki farklı ceza üretirdi.
+
+Kayıt "kaç kutu kullandın" olarak tutulmaya devam ediyor (menüde gösterilen
+sayı o), düşen kutu sayısı da aradaki fark: hedefin üstünde harcanan her kutu
+bir düşmüş kutu. Böylece eski kayıtlar yeni yıldız hesabıyla da okunabiliyor.
+
+`BoxLimit` ve `StarBoxes` alanları kalktı: ikisi de yükseklik hedefinin
+türeviydi ve artık karşılığı yok. Kaybetme sınırı tek bir sabit — üç düşen kutu.

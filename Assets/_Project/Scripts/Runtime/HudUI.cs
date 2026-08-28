@@ -104,10 +104,18 @@ namespace PhysicsStack
 
             if (rules.TargetHeight > 0f)
             {
-                return $"{height:0.0} / {rules.TargetHeight:0.0}";
+                // Sayaç kutu sayıyor, yükseklik değil: seviyenin hedefi de kutu
+                // sayısı ve oyuncunun okuduğu sayı ile kazanma kontrolünün
+                // baktığı sayı aynı olmalı. Düşen kutu ancak varken yazılıyor —
+                // sıfırı her turda göstermek, olmayan bir sorunu duyurmak olur.
+                string dropped = controller.DroppedBoxes > 0
+                    ? $"   ·   düşen {controller.DroppedBoxes}"
+                    : string.Empty;
+
+                return $"{controller.TowerBoxes} / {rules.TargetHeight:0} kutu{dropped}";
             }
 
-            return $"{rules.DescribeScore(controller.Score)}   ·   en iyi {Progress.EndlessBest:0.00}";
+            return $"{rules.DescribeScore(controller.Score)}   ·   en iyi {Progress.EndlessBest:0.0}";
         }
     }
 }

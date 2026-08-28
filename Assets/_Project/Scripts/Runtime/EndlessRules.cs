@@ -139,9 +139,9 @@ namespace PhysicsStack
             // kendiliğinden gizli kalıyor.
             hazards.windSpeed = TopWindSpeed * Mathf.InverseLerp(WindFirst, WindFull, height);
             hazards.windResponse = 3f;
-            hazards.windPeriod = height >= WindSwingFirst ? WindSwingPeriod : 0f;
+            hazards.windPeriod = snapshot.Reached(WindSwingFirst) ? WindSwingPeriod : 0f;
 
-            if (height >= CannonFirst)
+            if (snapshot.Reached(CannonFirst))
             {
                 // Sonsuz modda tek namlu. İkincisi tavanı yükseltirdi ve
                 // "18 birimden sonra hiçbir şey artmıyor" kuralı bilerek
@@ -220,7 +220,13 @@ namespace PhysicsStack
         /// </summary>
         public float Score(in StackSnapshot snapshot) => snapshot.PeakHeight;
 
-        public string DescribeScore(float score) => $"{score:0.00} birim";
+        /// <summary>
+        /// Tek ondalık. İki ondalık, ölçünün taşıyamayacağı bir kesinlik
+        /// gösteriyordu: temas gömülmesi yüzünden on kutuluk kule 9.99 okunuyor
+        /// ve oyuncuya "neden 10 değil" dedirtiyor. Yüzde birlik fark oyunda
+        /// hiçbir karara girmiyor.
+        /// </summary>
+        public string DescribeScore(float score) => $"{score:0.0} birim";
 
         /// <summary>
         /// Zorluk ilk 15 kutuda tepeye çıkıyor, sonra sabit kalıyor. Sonsuza kadar

@@ -46,7 +46,8 @@ tasarımı, geçişler.
 ### Gün 5 — İçerik ve kapanış
 Zorluk eğrisi *(bitti)*, seviye başına en iyi skor *(bitti)*, yıldız sistemi
 *(bitti)*, sonsuz moda tehdit *(bitti)*, seviye 9-13 *(bitti)*, menü ve ayarlar
-*(bitti)*, duraklatma *(bitti)*, performans ölçümü *(bitti)*.
+*(bitti)*, duraklatma *(bitti)*, performans ölçümü *(bitti)*, seviye
+hedefinin kutu sayısına dönmesi *(bitti)*.
 
 Kalan: 30 saniyelik kayıt, README'nin son okuması, `v3` etiketi.
 
@@ -57,6 +58,12 @@ yükselten fizik ayarları, kontrol noktası sistemi, kaydırmalı seviye listes
 ayarlar ekranı ve oyun içi duraklatma. Hiçbiri "eklesek güzel olur" diye
 gelmedi; her biri oynarken çıkan somut bir sorunun cevabı ve gerekçeleri
 [KARARLAR.md](KARARLAR.md)'de.
+
+En geç gelen de en büyüğü oldu: seviyenin hedefi yükseklikten kutu sayısına
+döndü, yıldız da harcanan kutu yerine düşürülen kutuyu ölçüyor. Fazın son
+gününde kural değiştirmek risk ama değişen şey oynanış değil, oynanışın
+ölçüsüydü: aynı kuleyi aynı şekilde yapıyorsun, ekrandaki sayı artık ne
+yaptığını doğru anlatıyor.
 
 ## Kapsam dışı — bu fazda da
 

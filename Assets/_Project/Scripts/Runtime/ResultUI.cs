@@ -143,7 +143,7 @@ namespace PhysicsStack
 
             if (level != null)
             {
-                UIKit.StarRow(panel, stars, level.StarsFor(Mathf.RoundToInt(controller.Score)));
+                UIKit.StarRow(panel, stars, level.StarsForBoxes(Mathf.RoundToInt(controller.Score)));
             }
 
             var score = UIKit.Label(panel, Describe(state), 44, TextAlignmentOptions.Center);
@@ -221,12 +221,21 @@ namespace PhysicsStack
 
             if (controller.Mode == StackMode.Endless)
             {
-                return $"kule {controller.FinalHeight:0.00}  ·  en iyi {Progress.EndlessBest:0.00}";
+                return $"kule {controller.FinalHeight:0.0}  ·  en iyi {Progress.EndlessBest:0.0}";
             }
 
             if (state != GameState.Won)
             {
-                return $"kule {controller.FinalHeight:0.00} / hedef {rules.TargetHeight:0.00}";
+                // Kaybın sebebi iki farklı şey olabiliyor ve satır hangisi
+                // olduğunu söylüyor: ya üç kutu düştü ya da kule hedefe
+                // varmadan devrildi. Tek bir "kaybettin" satırı, oyuncunun
+                // neyi düzeltmesi gerektiğini söylemiyor.
+                if (controller.DroppedBoxes >= LevelDefinition.MaxDrops)
+                {
+                    return $"{controller.DroppedBoxes} kutu düştü";
+                }
+
+                return $"kulede {controller.TowerBoxes} / {rules.TargetHeight:0} kutu";
             }
 
             // Derece bu noktada zaten kaydedilmiş durumda, yani "en iyi" bu turu

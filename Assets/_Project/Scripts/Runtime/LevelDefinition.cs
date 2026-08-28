@@ -17,34 +17,23 @@ namespace PhysicsStack
         [Tooltip("Ekranda görünecek ad.")]
         public string title = "Seviye";
 
-        [Tooltip("Kulenin oturmuş hâlde geçmesi gereken yükseklik.")]
-        public float targetHeight = 4f;
+        [Tooltip("Kulede olması gereken kutu sayısı. Kule oturmuş hâlde bu sayıya ulaşınca seviye geçiliyor.")]
+        public int targetBoxes = 4;
 
         /// <summary>
-        /// Üç yıldız için gereken kutu sayısı: hedef yükseklik + 1.
+        /// Kaç kutu düşürmeye izin var. Üçüncüsü turu bitiriyor.
         ///
-        /// Türetiliyor, alan olarak tutulmuyor. Kutular sabit 1 birim yüksekliğinde
-        /// olduğu için hedefe ulaşmanın teorik alt sınırı zaten hedef yüksekliği
-        /// kadar kutu; üstüne bir kutu pay veriyorum çünkü kutular oturduğunda
-        /// aralarında küçük bir temas payı kalıyor ve tam sınırda kalan bir kule
-        /// hedefi ıskalayabiliyor. Yani üç yıldız "kusursuz istifle" demek değil,
-        /// "bir kutuluk israfla" demek.
-        ///
-        /// Ayrı bir alan olsaydı hedef yüksekliği değiştirdiğimde onu güncellemeyi
-        /// unutabilirdim ve yıldız eşiği sessizce yanlış kalırdı.
+        /// Sabit ve bütün seviyelerde aynı: bu bir zorluk kolu değil, oyunun
+        /// kuralı. Seviyeye göre değişseydi oyuncunun her seviyede yeniden
+        /// öğrenmesi gerekirdi — tutunma süresinde de aynı karar verilmişti.
         /// </summary>
-        public int StarBoxes => Mathf.CeilToInt(targetHeight) + 1;
+        public const int MaxDrops = 3;
 
         /// <summary>
-        /// Turun kaybedildiği kutu sayısı. Üç yıldızın iki fazlası son şans;
-        /// üç fazlasını atmak kayıp.
-        ///
-        /// Kutu sınırı eskiden seviye başına elle verilen bir sayıydı. Yıldız
-        /// sistemi gelince ikisi aynı şeyi ölçmeye başladı — elle verilen sınır
-        /// yıldız eşikleriyle çelişebilirdi, mesela sınır üç yıldız sayısının
-        /// altında kalsaydı üç yıldız alınamayan bir seviye ortaya çıkardı.
+        /// Hedefin yükseklik karşılığı. Kutular sabit 1 birim olduğu için sayı
+        /// aynı; hedef çizgisi ve kamera bunu okuyor.
         /// </summary>
-        public int BoxLimit => StarBoxes + 2;
+        public float TargetHeight => targetBoxes;
 
         [Tooltip("Kutu, kule tepesinin en az bu kadar üstünden bırakılmak zorunda.")]
         public float dropGap = 1f;
@@ -68,24 +57,24 @@ namespace PhysicsStack
         public HazardSettings hazards;
 
         /// <summary>
-        /// Seviyenin kaç kutuyla geçildiğine göre yıldız: hedefte üç, her fazla
-        /// kutuda bir eksik.
+        /// Düşürülen kutu sayısına göre yıldız: hiç düşürmeden üç, her düşen
+        /// kutuda bir eksik, üçüncüsünde tur biter.
         ///
-        /// Kutu sayısını yıldıza çeviren yer burası, arayüz değil. Menü, tur
-        /// sonu ekranı ve pop-up aynı soruyu soruyor; üçüne ayrı hesap yazmak
-        /// birinin diğerinden farklı cevap verdiği bir hatayı davet ederdi.
+        /// Yıldızın ölçtüğü şey değişti. Önce "kaç kutu harcadın" idi ve hedef
+        /// yükseklik olduğu sürece anlamlıydı: eğri oturan kule aynı yüksekliğe
+        /// çıkmak için fazladan kutu istiyordu. Hedef kutu sayısına dönünce o
+        /// ölçü öldü — her tur tam hedef kadar kutuyla biterdi ve herkes hep üç
+        /// yıldız alırdı. Yeni ölçü doğrudan hatayı sayıyor.
         /// </summary>
-        public int StarsFor(int boxesUsed)
-        {
-            if (boxesUsed <= 0)
-            {
-                return 0;
-            }
+        public int StarsFor(int droppedBoxes) => Mathf.Clamp(3 - droppedBoxes, 0, 3);
 
-            // Hedeften az kutuyla geçmek mümkün (kutular eğik oturunca kule
-            // beklenenden yüksek çıkabiliyor); üç yıldızın üstü yok.
-            return Mathf.Clamp(3 - (boxesUsed - StarBoxes), 0, 3);
-        }
+        /// <summary>
+        /// Kayıttaki kutu sayısından yıldız. Kayıt "kaç kutu kullandın" olarak
+        /// tutuluyor (menüde gösterilen sayı o), düşen kutu sayısı da aradaki
+        /// fark: hedefin üstünde harcanan her kutu bir düşmüş kutudur.
+        /// </summary>
+        public int StarsForBoxes(int boxesUsed) =>
+            boxesUsed <= 0 ? 0 : StarsFor(boxesUsed - targetBoxes);
 
         /// <summary>
         /// Menüde gösterilen zorluk (1-5). Seviye verisinden türetiliyor.
@@ -107,7 +96,7 @@ namespace PhysicsStack
                 // Yükseklik aralığı 3-6'ydı; son üç seviye 7 ve 8'e çıkınca üst
             // sınır 8 oldu. Aksi hâlde 6'nın üstündeki her hedef aynı görünüyor
             // ve zorluk göstergesi tam da yeni açılan kolu ölçemiyordu.
-            float height = Mathf.InverseLerp(3f, 8f, targetHeight);
+            float height = Mathf.InverseLerp(3f, 8f, targetBoxes);
 
                 float raw =
                     gap * 2f +

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Level11
   m_EditorClassIdentifier: PhysicsStack.Runtime::PhysicsStack.LevelDefinition
   title: Seviye 11
-  targetHeight: 8
+  targetBoxes: 8
   dropGap: 4
   spawnLift: 2.5
   widthVariance: 0.2
