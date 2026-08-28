@@ -69,24 +69,17 @@ namespace PhysicsStack
         /// aynı şey — bir kutu kaybettin. Ayrı ayrı saymak iki farklı ceza
         /// üretirdi ve oyuncunun ikisini birbirinden ayırması için hiçbir sebep
         /// yok.
-        /// </summary>
-        public int DroppedCount => Mathf.Max(0, GroundedCount - 1);
-
-        /// <summary>
-        /// Kutu ıskalandı mı: zemine oturmuş ikinci bir kutu var demek, kulenin
-        /// üstüne konmamış bir kutu var demek.
         ///
-        /// İlk kutu her zaman zemine oturuyor, o kulenin temeli. İkincisi
-        /// zemine oturduysa oyuncu ya kuleyi ıskalamış ya da yığmak yerine
-        /// yan yana dizmeye başlamış. İkincisi de bilerek kapatıldı: geniş bir
-        /// taban kuleyi sağlamlaştırıyor ama oyun "yığ" diyor.
+        /// İlk kutu her zaman zemine oturuyor, o kulenin temeli — sayı ondan
+        /// sonrasını sayıyor. Kutuların yan yana dizilmesi de böylece kapanmış
+        /// oluyor: geniş bir taban kuleyi sağlamlaştırırdı ama oyun "yığ" diyor.
         ///
         /// Bunu ölçmenin başka yolu yoktu. "Kutu kuleye değdi mi" sorusu
         /// çarpışmayla cevaplanabilirdi ama kuleden sekip yere düşen kutu da
         /// değmiş sayılırdı; bakılması gereken şey temas değil, kutunun nerede
         /// durduğu.
         /// </summary>
-        public bool Missed => GroundedCount > 1;
+        public int DroppedCount => Mathf.Max(0, GroundedCount - 1);
 
         /// <summary>
         /// Kule çöktü mü: oturmuş boy, tur boyunca ulaşılan zirvenin bu kadar

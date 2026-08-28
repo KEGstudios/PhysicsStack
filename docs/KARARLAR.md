@@ -1691,3 +1691,58 @@ ayarlara girmesi gerekiyor.
 **Yan not:** ölçüm panelindeki "uyanık cisim sayısı", kare süresini fiziğin
 belirlediği varsayımıyla eklenmişti. Varsayım yanlış çıktı. Sayıyı kaldırmadım —
 varsayımı yanlışlayan ölçümü veren şey oydu.
+
+### Kaliteyi ölçüp kendi düşürmek
+
+Ölçüm bitince tuhaf bir durum kaldı: sorunun çözümü oyunun içindeydi ama
+oyuncunun onu bulması gerekiyordu. `AutoQuality` kare süresini ölçüp gerekirse
+bir kademe düşürüyor.
+
+Ölçümü güvenilir kılan üç kural, üçü de bu projede daha önce düşülmüş
+tuzaklardan: **ısınma süresi** (ilk kareler shader/TMP/ses yüzünden yavaş —
+tanıtım animasyonu tam bu yüzden görünmeden bitiyordu), **takılmaların
+sayılmaması** (arka plana alınan sekme tek bir kareyi saniyelerce gösteriyor;
+bu yük değil kesinti) ve **ortalama yerine oran** (60 Hz + dikey senkronda kare
+süresi 16.7'nin katlarına yuvarlanıyor, yani doğru soru "kaç karede bir
+kaçırdık").
+
+İki susma koşulu: oyuncu kaliteyi bir kez elle seçtiyse ölçüm bir daha
+karışmıyor, ve yalnızca aşağı iniyor. Yukarı deneme, kaliteyi yükseltip ölçüp
+tekrar düşürebilirdi — oyuncunun göreceği şey sebepsiz yanıp sönen bir görüntü
+olurdu.
+
+Düşürme sessiz. Alternatifi tur ortasında "cihazın yavaş" diyen bir kutuydu ve
+o, görüntüyü düzeltirken oyunu bölmek olurdu. Ayarlar ekranı güncel kademeyi
+zaten gösteriyor.
+
+### Düşürme hakkı iki modda aynı sayı
+
+Seviyede iki kutu düşürme hakkı vardı, sonsuzda tek kutu turu bitiriyordu.
+İkisinin de kendi gerekçesi vardı ama oynayınca çöktü: kontrol noktalarıyla
+sonsuz turlar uzadı ve yirmi kutuluk bir tırmanışın tek sakar bırakışla bitmesi
+ceza değil kesinti oldu. Asıl mesele ise şu: aynı el hareketi iki modda farklı
+cezalandırılınca oyuncunun öğrendiği şey kural değil, "hangi moddayım" oluyor.
+
+Sayı `LevelDefinition`'dan `StackRules.MaxDrops`'a taşındı. Seviye verisinde
+durması yanlıştı — bu bir zorluk kolu değil, oyunun kuralı.
+
+Yan iş: paneldeki düşen-kutu sayacı artık iki modda da görünüyor ve hakkın
+tamamını yazıyor ("düşen 1 / 3"). Görünmeyen bir bütçe bütçe değil. `Missed`
+özelliği de kalktı — iki mod da artık sayıya bakıyor, "en az bir tane düştü mü"
+sorusunu soran kimse kalmadı.
+
+### Yeniden başlatmaya onay, ama her zaman değil
+
+Düğmenin onay sormama gerekçesi yazılıydı: "basan oyuncu turu zaten çöpe atmış
+oluyor." Kontrol noktaları o cümleyi geçersiz kıldı. Yine de eşik koydum: dört
+kutudan alçak kulelerde düğme doğrudan çalışıyor, çünkü onayın da bedeli var ve
+boş kulede koruduğu bir şey yok.
+
+Soruda kulenin boyu geçiyor. "Emin misin?" neyi kaybedeceğini söylemiyor; kararı
+verdiren sayı o.
+
+Bir de kendi yorumumla kendi düzenim çelişiyordu: yorum "tehlikeli seçeneği zor
+ulaşılan yere koydum" diyordu, düzen tersini yapıyordu. Düzeni değil gerekçeyi
+düzelttim, çünkü düzen zaten duraklatma paneliyle aynı dili konuşuyor (üstteki
+bulunduğun yerde bırakıyor, alttaki turu bitiriyor) ve buradaki risk refleks
+değil: onay ekranın ortasında, onu açan düğme sağ üst köşede.

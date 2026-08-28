@@ -20,6 +20,25 @@ namespace PhysicsStack
     }
 
     /// <summary>
+    /// Moddan bağımsız kurallar: iki modun da uyduğu sayılar.
+    ///
+    /// Buraya taşınan ilk sayı düşürme hakkı oldu. Önce
+    /// <c>LevelDefinition</c>'da duruyordu ve sonsuz mod kendi kuralını
+    /// uyguluyordu: seviyede iki kutu düşürme hakkı varken sonsuzda tek kutu
+    /// turu bitiriyordu. İki mod aynı el hareketini farklı cezalandırınca
+    /// oyuncunun öğrendiği şey kural değil, "hangi moddayım" oluyor.
+    ///
+    /// Seviye verisinde durmaması ayrıca doğru: bu bir zorluk kolu değil, oyunun
+    /// kuralı. Seviye başına ayarlanabilir olsaydı her seviyede yeniden
+    /// öğrenilmesi gerekirdi.
+    /// </summary>
+    public static class StackRules
+    {
+        /// <summary>Kaçıncı düşen kutu turu bitiriyor.</summary>
+        public const int MaxDrops = 3;
+    }
+
+    /// <summary>
     /// Bir modun kuralları. <see cref="StackGameController"/> artık "kim kazandı"yı
     /// bilmiyor, sadece soruyor.
     ///

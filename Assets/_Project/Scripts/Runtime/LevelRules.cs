@@ -67,7 +67,7 @@ namespace PhysicsStack
             // dayanabilirsin" sorusu, burada ise oyuncunun öğrenmesi gereken bir
             // düzen var ve öğrenmek hata yapmayı gerektiriyor. İki kutuluk pay,
             // yıldızın da ölçüsü — yani hata cezasız değil, kademeli.
-            if (snapshot.DroppedCount >= LevelDefinition.MaxDrops)
+            if (snapshot.DroppedCount >= StackRules.MaxDrops)
             {
                 return RunOutcome.Lost;
             }
@@ -130,6 +130,6 @@ namespace PhysicsStack
 
         public override string ToString() =>
             $"{level.title} · hedef {level.targetBoxes} kutu · " +
-            $"{LevelDefinition.MaxDrops - 1} dusurme hakki · mesafe {level.dropGap:0.0}";
+            $"{StackRules.MaxDrops - 1} dusurme hakki · mesafe {level.dropGap:0.0}";
     }
 }

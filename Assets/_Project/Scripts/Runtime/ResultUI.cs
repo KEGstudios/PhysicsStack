@@ -219,18 +219,22 @@ namespace PhysicsStack
 
             string score = rules.DescribeScore(controller.Score);
 
+            // Kaybın sebebi iki farklı şey olabiliyor ve satır hangisi olduğunu
+            // söylüyor: ya hak kadar kutu düştü ya da kule devrildi. Tek bir
+            // "kaybettin" satırı, oyuncunun neyi düzeltmesi gerektiğini
+            // söylemiyor. İki modda da aynı, çünkü kaybetme kuralı da aynı.
+            bool droppedOut = controller.DroppedBoxes >= StackRules.MaxDrops;
+
             if (controller.Mode == StackMode.Endless)
             {
-                return $"kule {controller.FinalHeight:0.0}  ·  en iyi {Progress.EndlessBest:0.0}";
+                string reason = droppedOut ? "  ·  3 kutu düştü" : string.Empty;
+
+                return $"kule {controller.FinalHeight:0.0}  ·  en iyi {Progress.EndlessBest:0.0}{reason}";
             }
 
             if (state != GameState.Won)
             {
-                // Kaybın sebebi iki farklı şey olabiliyor ve satır hangisi
-                // olduğunu söylüyor: ya üç kutu düştü ya da kule hedefe
-                // varmadan devrildi. Tek bir "kaybettin" satırı, oyuncunun
-                // neyi düzeltmesi gerektiğini söylemiyor.
-                if (controller.DroppedBoxes >= LevelDefinition.MaxDrops)
+                if (droppedOut)
                 {
                     return $"{controller.DroppedBoxes} kutu düştü";
                 }

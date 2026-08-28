@@ -1029,7 +1029,7 @@ namespace PhysicsStack
             return
                 $"zorluk {level.Difficulty}/5{threat}\n" +
                 $"hedef {level.targetBoxes} kutu\n" +
-                $"3 yıldız: hiç düşürmeden  ·  {LevelDefinition.MaxDrops} düşen kutu = kayıp" +
+                $"3 yıldız: hiç düşürmeden  ·  {StackRules.MaxDrops} düşen kutu = kayıp" +
                 record;
         }
 

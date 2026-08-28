@@ -49,7 +49,14 @@ Zorluk eğrisi *(bitti)*, seviye başına en iyi skor *(bitti)*, yıldız sistem
 *(bitti)*, duraklatma *(bitti)*, performans ölçümü *(bitti)*, seviye
 hedefinin kutu sayısına dönmesi *(bitti)*.
 
-Kalan: 30 saniyelik kayıt, README'nin son okuması, `v3` etiketi.
+Gün 5'in listesindeki işler gün 3'ün sonunda bitti; performans ölçümü de beş
+cihazda tamamlandı ve README'nin tutarlılık okuması yapıldı. Kalan iki iş
+bilerek en sona bırakıldı: **30 saniyelik kayıt** ve **`v3` etiketi**. İkisi de
+"o anki hâli" dondurma işi — kayıt bugün alınsaydı iki gün sonraki oyunu değil,
+bugünkü oyunu gösterirdi ve portföyde duracak tek görüntü o.
+
+Yani gün 4 ve 5 boş değil, **serbest**: planın kapattığı işler bitti, kalan süre
+oynayarak çıkan işlere ayrıldı.
 
 ### Plana sonradan giren işler
 

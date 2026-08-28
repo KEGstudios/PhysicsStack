@@ -194,12 +194,19 @@ namespace PhysicsStack
                 return RunOutcome.Lost;
             }
 
-            // Kuleye konmayan kutu turu bitiriyor. Önceden yere düşen kutu
-            // hiçbir şey yapmıyordu: tur devam ediyor, sayaçlar ilerliyor, kule
-            // duruyordu. Yani en güvenli oynayış "kutuyu kenara at" oluyordu ve
-            // bir oyunun en güvenli hamlesi hiçbir şey yapmamaksa orada oyun
-            // yoktur.
-            if (snapshot.Missed)
+            // Düşen kutunun bir bedeli var, ama üçüncüsüne kadar tur bitmiyor.
+            //
+            // Önce yere düşen kutu hiçbir şey yapmıyordu: tur devam ediyor,
+            // sayaçlar ilerliyordu. En güvenli oynayış "kutuyu kenara at"
+            // oluyordu ve bir oyunun en güvenli hamlesi hiçbir şey yapmamaksa
+            // orada oyun yoktur. Onu düzeltirken ceza fazla sert kaçtı: tek
+            // kutu turu bitiriyordu ve kontrol noktalarıyla birlikte bu, yirmi
+            // kutuluk bir tırmanışın tek bir sakar bırakışta bitmesi demekti.
+            //
+            // Şimdiki hak seviyelerdekiyle aynı sayı ve bu bilerek: aynı el
+            // hareketi iki modda farklı cezalandırılınca oyuncunun öğrendiği şey
+            // kural değil, "hangi moddayım" oluyor.
+            if (snapshot.DroppedCount >= StackRules.MaxDrops)
             {
                 return RunOutcome.Lost;
             }

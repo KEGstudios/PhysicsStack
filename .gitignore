@@ -59,6 +59,11 @@ desktop.ini
 
 # ---- Kural: Assets altındaki her dosyanın .meta'sı commit'lenir ----
 # .meta dosyaları asla ignore edilmez; GUID kaybı sahne referanslarını kırar.
+#
+# Tek istisna aşağıdaki iki dosya: test cercevesi bunları build sırasında
+# Assets/Resources altında kendisi üretiyor. Dosyalar depoya ait olmadığı için
+# .meta'ları da ait değil — kural "her dosyanın meta'sı" diyor, üretilen dosya
+# ise deponun dosyası sayılmıyor.
 
 # ---- Build sirasinda repo kokune dusen gecici ciktilar ----
 # Burst ve IL2CPP, WebGL build'inde bunlari calisma dizinine birakiyor.
@@ -71,3 +76,7 @@ desktop.ini
 # AudioProbe klipleri dinlenebilsin diye disa aktariyor; bunlar uretilmis
 # dosyalar, kaynak degil. Kaynak, klibi ureten kodun kendisi.
 /SfxDump/
+
+# ---- Test cercevesinin build sirasinda urettigi gecici dosyalar ----
+/[Aa]ssets/[Rr]esources/PerformanceTestRun*.json
+/[Aa]ssets/[Rr]esources/PerformanceTestRun*.json.meta

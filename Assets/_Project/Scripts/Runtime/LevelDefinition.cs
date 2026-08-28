@@ -21,15 +21,6 @@ namespace PhysicsStack
         public int targetBoxes = 4;
 
         /// <summary>
-        /// Kaç kutu düşürmeye izin var. Üçüncüsü turu bitiriyor.
-        ///
-        /// Sabit ve bütün seviyelerde aynı: bu bir zorluk kolu değil, oyunun
-        /// kuralı. Seviyeye göre değişseydi oyuncunun her seviyede yeniden
-        /// öğrenmesi gerekirdi — tutunma süresinde de aynı karar verilmişti.
-        /// </summary>
-        public const int MaxDrops = 3;
-
-        /// <summary>
         /// Hedefin yükseklik karşılığı. Kutular sabit 1 birim olduğu için sayı
         /// aynı; hedef çizgisi ve kamera bunu okuyor.
         /// </summary>

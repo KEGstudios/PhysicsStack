@@ -25,6 +25,7 @@ namespace PhysicsStack
         const string VolumeKey = "physicsstack.volume";
         const string QualityKey = "physicsstack.quality";
         const string ShakeKey = "physicsstack.shake";
+        const string QualityChosenKey = "physicsstack.qualitychosen";
 
         /// <summary>Ayarlardan biri değişti. Uygulayan taraf bunu dinliyor.</summary>
         public static event Action Changed;
@@ -61,16 +62,43 @@ namespace PhysicsStack
         /// <summary>
         /// Grafik kalitesi. Varsayılan en yüksek: oyunu ilk açan kişinin gördüğü
         /// şey oyunun en iyi hâli olmalı. Düşürmek isteyen zaten arıyor.
+        ///
+        /// Yazmak, oyuncunun kaliteyi kendi eliyle seçtiğini de kaydediyor —
+        /// bu özellik <see cref="AutoQuality"/> için: ölçüme dayalı düşürme
+        /// oyuncunun seçimini ezmemeli.
         /// </summary>
         public static int Quality
         {
             get => Mathf.Clamp(PlayerPrefs.GetInt(QualityKey, HighQuality), LowQuality, HighQuality);
             set
             {
-                PlayerPrefs.SetInt(QualityKey, Mathf.Clamp(value, LowQuality, HighQuality));
-                PlayerPrefs.Save();
-                Changed?.Invoke();
+                PlayerPrefs.SetInt(QualityChosenKey, 1);
+                Store(value);
             }
+        }
+
+        /// <summary>
+        /// Oyuncu kaliteyi ayarlar ekranından bir kez bile seçti mi.
+        ///
+        /// Otomatik düşürmenin susma koşulu bu. Bir oyuncu "biliyorum yavaş,
+        /// yine de yüksekte oynamak istiyorum" diyebilmeli; ölçümün her açılışta
+        /// o kararı geri alması, ayarı ayar olmaktan çıkarırdı.
+        /// </summary>
+        public static bool QualityChosen => PlayerPrefs.GetInt(QualityChosenKey, 0) == 1;
+
+        /// <summary>
+        /// Ölçümün kaliteyi düşürmesi. Değer kalıcı — bir sonraki açılışta oyun
+        /// zaten doğru kademede başlıyor ve oyuncu aynı düşüşü tekrar görmüyor —
+        /// ama "oyuncu seçti" işareti konmuyor, yani ölçüm gerekirse bir kademe
+        /// daha inebiliyor.
+        /// </summary>
+        public static void ApplyMeasuredQuality(int level) => Store(level);
+
+        static void Store(int level)
+        {
+            PlayerPrefs.SetInt(QualityKey, Mathf.Clamp(level, LowQuality, HighQuality));
+            PlayerPrefs.Save();
+            Changed?.Invoke();
         }
 
         /// <summary>

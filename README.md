@@ -757,9 +757,40 @@ yoğunluğunda çiziliyor. Üstüne post-process yığını tam ekran geçişler
 Bunu şablondan zorla sınırlamadım ve sebebi bir tercih: kalite ayarı zaten
 oyuncunun elinde ve `renderScale` aynı işi daha iyi yapıyor — sabit bir DPR
 sınırı güçlü cihazda görüntüyü gereksiz yere bozardı, kalite ayarı ise yalnızca
-ihtiyacı olan cihazda devreye giriyor. Ayarın varsayılanı yüksek; Oppo'da
-oyuncunun bir kez ayarlara girmesi gerekiyor. Otomatik seçim (ilk saniyelerde
-kare süresini ölçüp kaliteyi düşürmek) doğru çözüm ama bu fazın işi değil.
+ihtiyacı olan cihazda devreye giriyor.
+
+### Kaliteyi oyuncuya sordurmamak
+
+Ölçüm bitince geriye tuhaf bir durum kaldı: sorunun çözümü oyunun içinde
+duruyordu ama oyuncunun onu bulması gerekiyordu. Kare hızının düşük olduğunu
+fark eden birinin "acaba grafik ayarı var mıdır" diye aramasını beklemek,
+çözümü olan bir sorunu oyuncuya bırakmak.
+
+`AutoQuality` kare süresini ölçüp gerekirse kaliteyi bir kademe düşürüyor. Üç
+kural ölçümü güvenilir kılıyor ve üçü de daha önce düşülmüş tuzaklardan geliyor:
+
+- **Isınma süresi.** İlk kareler her zaman yavaş: shader derleniyor, TMP atlası
+  doluyor, ses klipleri sentezleniyor. Bu projede aynı tuzağa bir kez düşüldü —
+  tanıtım animasyonu ilk karenin süresi yüzünden görünmeden bitiyordu. Isınmayı
+  ölçmek "her cihaz yavaş" derdi.
+- **Takılmalar sayılmıyor.** Sekme arka plana alınıp geri gelince tek bir kare
+  saniyelerce sürmüş görünüyor. Bu yükün değil, kesintinin işareti; ortalamaya
+  girseydi tek bir sekme değişimi kaliteyi düşürürdü.
+- **Ortalama değil, oran.** Ekran 60 Hz ve dikey senkron açık, yani kare süresi
+  16.7 ms'nin katlarına yuvarlanıyor — bir kare ya yetişiyor ya bir sonrakini
+  bekliyor. Ölçülen şey "ortalama kaç fps" değil, **kaç karede bir kaçırdık**.
+
+İki susma koşulu var. Oyuncu kaliteyi ayarlar ekranından bir kez seçtiyse ölçüm
+bir daha karışmıyor: "biliyorum yavaş, yine de yüksekte oynayacağım"
+diyebilmeli, yoksa ayar ayar olmaktan çıkar. Ve yalnızca aşağı iniyor — yukarı
+deneme yapsaydı kaliteyi bir yükseltip ölçüp tekrar düşürebilirdi ve oyuncu
+ortada sebepsiz yanıp sönen bir görüntü görürdü. Kararlı bir alt kademe, doğru
+ama titreyen bir kademeden iyi.
+
+Düşürme sessiz oluyor. Bunu tartıştım: habersiz bulanıklaşan bir görüntü
+şaşırtıcı. Ama alternatifi turun ortasında "cihazın yavaş" diyen bir kutu ve o,
+görüntüyü düzeltirken oyunu bölmek olurdu. Ayarlar ekranı zaten güncel kademeyi
+gösteriyor, yani soruyu soran oyuncu cevabı bulabiliyor.
 
 Panelde fps'in yanında **son bir saniyenin en kötü karesi** de var, çünkü
 ortalama tek başına yalan söylüyor: saniyede bir kez 120 ms süren bir kare
@@ -959,6 +990,50 @@ kademeli — öğrenilecek bir düzen varken öğrenmek hata yapmayı gerektiriy
 Sonsuz modda tek kutu hâlâ kaybettiriyor: orada tur zaten "nereye kadar
 dayanabilirsin" sorusu.
 
+## Aynı kural iki modda
+
+Düşürme hakkı bir süre iki modda iki farklı sayıydı: seviyede iki kutu
+düşürebiliyordun, sonsuzda tek kutu turu bitiriyordu. İkisi de kendi içinde
+gerekçeliydi — sonsuz mod "nereye kadar dayanabilirsin" sorusu, seviye ise
+öğrenilen bir düzen ve öğrenmek hata yapmayı gerektiriyor.
+
+Oynayınca gerekçe çöktü. Sonsuz moda kontrol noktası girince turlar uzadı;
+yirmi kutuluk, birkaç dakikalık bir tırmanışın tek bir sakar bırakışla bitmesi
+ceza değil, kesinti. Ama asıl mesele şu: aynı el hareketi iki modda farklı
+cezalandırılınca oyuncunun öğrendiği şey kural değil, "hangi moddayım" oluyor.
+
+Sayı `StackRules.MaxDrops`'a taşındı. Önce `LevelDefinition`'da duruyordu ve
+orada durması yanlıştı: bu bir zorluk kolu değil, oyunun kuralı. Seviye başına
+ayarlanabilir olsaydı her seviyede yeniden öğrenilmesi gerekirdi — tutunma
+süresinde de aynı karar verilmişti.
+
+Panelde sayaç artık iki modda da görünüyor ve hakkın tamamını yazıyor
+("düşen 1 / 3"), çünkü bu bir bütçe: oyuncuyu kaç kutunun düştüğünden çok kaç
+hakkının kaldığı ilgilendiriyor. Görünmeyen bir bütçe, bütçe değil.
+
+## Yeniden başlatmanın onayı
+
+Köşedeki yeniden başlat düğmesi hiç onay sormuyordu ve gerekçesi yazılıydı:
+"yeniden başlatmaya basan oyuncu turu zaten çöpe atmış oluyor." Kontrol
+noktaları gelince o cümle doğru olmaktan çıktı — artık çöpe atılacak şey bir tur
+değil, birkaç dakikalık bir tırmanış, ve düğme ekranın en çok dokunulan
+köşesinde duruyor.
+
+Onay yine de her zaman sorulmuyor. Dört kutudan alçak kulelerde düğme doğrudan
+çalışıyor, çünkü sürtünmenin de bedeli var: onay her zaman sorulsaydı en çok
+kullanıldığı anda — ilk kutu eğri oturmuş, oyuncu hemen baştan alıyor — bir tık
+fazladan alır ve koruduğu bir şey olmazdı. Boş kulede onay, sorusu olmayan bir
+soru.
+
+Soruda kulenin boyu geçiyor ("12 kutuluk kule yeniden başlasın mı?"). "Emin
+misin?" oyuncuya neyi kaybedeceğini söylemiyor; kararı verdiren sayı o.
+
+Düğme sırası duraklatma panelindekiyle aynı: üstteki seni bulunduğun yerde
+bırakıyor, alttaki turu bitiriyor. Tehlikeli seçeneği bilerek zor ulaşılan yere
+koymadım, çünkü buradaki risk o değil — onay ekranın ortasında açılıyor, onu
+açan düğme sağ üst köşede, yani refleksle ikinci kez aynı yere basmak
+onaylamaya varmıyor.
+
 ## Sonsuz modun zorluk eğrisi
 
 Sonsuz modda uzun süre hiç tehdit yoktu ve gerekçesini yazmıştım: tek bir şeyin
@@ -1032,6 +1107,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Seviye 12-13 — birleşen tehditler, çift namlu
 - [x] Ayarlar — ses, grafik kalitesi, sarsıntı, oyun içi duraklatma
 - [x] Simgeler — yıldız, dişli, yeniden başlat, altlık (hepsi kodda)
+- [x] Performans — beş cihazda ölçüm, otomatik kalite düşürme
+- [x] Kural birliği — düşürme hakkı iki modda aynı, yeniden başlatma onayı
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı

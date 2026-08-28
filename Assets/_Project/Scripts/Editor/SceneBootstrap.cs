@@ -429,6 +429,15 @@ namespace PhysicsStack.EditorTools
             SetReference(quality, "targetCamera", camera);
             SetReference(quality, "sun", sun);
 
+            // Kare süresini ölçüp gerekirse kaliteyi düşüren bileşen. Yukarıdaki
+            // bileşenden ayrı durmasının sebebi iki farklı soru sormaları: biri
+            // "kalite ne olmalı", diğeri "bu kalite sahnede ne demek".
+            //
+            // Controller'ı yalnızca "tur var mı" diye sormak için tanıyor;
+            // menüde ölçüm yapmıyor.
+            var autoQuality = go.AddComponent<AutoQuality>();
+            SetReference(autoQuality, "controller", controller);
+
             var pause = go.AddComponent<PauseUI>();
             SetReference(pause, "controller", controller);
             SetReference(pause, "palette", palette);

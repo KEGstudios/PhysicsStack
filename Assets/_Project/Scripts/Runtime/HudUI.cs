@@ -102,20 +102,24 @@ namespace PhysicsStack
                 return $"tutun!  {controller.SteadyTimer:0.0} / {controller.HoldTime:0.0}";
             }
 
+            // Düşen kutu ancak varken yazılıyor — sıfırı her turda göstermek,
+            // olmayan bir sorunu duyurmak olur. Görününce hakkın tamamını
+            // gösteriyor ("1 / 3"), çünkü bu bir bütçe: kaç düştüğünden çok kaç
+            // hakkın kaldığı ilgilendiriyor oyuncuyu. İki modda da aynı, çünkü
+            // kural da aynı.
+            string dropped = controller.DroppedBoxes > 0
+                ? $"   ·   düşen {controller.DroppedBoxes} / {StackRules.MaxDrops}"
+                : string.Empty;
+
             if (rules.TargetHeight > 0f)
             {
                 // Sayaç kutu sayıyor, yükseklik değil: seviyenin hedefi de kutu
                 // sayısı ve oyuncunun okuduğu sayı ile kazanma kontrolünün
-                // baktığı sayı aynı olmalı. Düşen kutu ancak varken yazılıyor —
-                // sıfırı her turda göstermek, olmayan bir sorunu duyurmak olur.
-                string dropped = controller.DroppedBoxes > 0
-                    ? $"   ·   düşen {controller.DroppedBoxes}"
-                    : string.Empty;
-
+                // baktığı sayı aynı olmalı.
                 return $"{controller.TowerBoxes} / {rules.TargetHeight:0} kutu{dropped}";
             }
 
-            return $"{rules.DescribeScore(controller.Score)}   ·   en iyi {Progress.EndlessBest:0.0}";
+            return $"{rules.DescribeScore(controller.Score)}   ·   en iyi {Progress.EndlessBest:0.0}{dropped}";
         }
     }
 }
