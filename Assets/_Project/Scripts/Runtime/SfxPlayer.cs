@@ -102,6 +102,11 @@ namespace PhysicsStack
                 [Sfx.Lose] = 0.45f,
                 [Sfx.CannonFire] = 0.45f,
                 [Sfx.BallHit] = 0.50f,
+
+                // Kazanma sesinden bilerek kisik: kontrol noktasi bir odul
+                // degil, bir bilgi. Kazanma kadar bagirirsa oyuncu turun
+                // bittigini sanar.
+                [Sfx.Checkpoint] = 0.40f,
                 [Sfx.UiTap] = 0.40f,
             };
         }
@@ -146,6 +151,12 @@ namespace PhysicsStack
                 // Merminin sesi kutununkinden daha tiz ve daha az gürültülü:
                 // metal-tahta ayrımı kulakta böyle oturuyor.
                 [Sfx.BallHit] = ProceduralAudio.Thud("sfx_ballhit", 260f, 0.14f, 0.35f, 2200f, 79),
+
+                // Iki nota, yukari dogru ve kisa. Kazanma dort notayla cikiyor;
+                // ikisi ayni aileden ama biri "bitti", digeri "burasi saglam"
+                // demek. Ayni sesi kullanip yalnizca sesi kismak, kulaga tur
+                // bitmis gibi gelmesini engellemiyordu.
+                [Sfx.Checkpoint] = ProceduralAudio.Notes("sfx_checkpoint", new[] { 329.63f, 493.88f }, 0.08f, 0.30f),
 
                 [Sfx.UiTap] = ProceduralAudio.Click("sfx_uitap", 0.08f, 2000f, 740f, 97),
             };

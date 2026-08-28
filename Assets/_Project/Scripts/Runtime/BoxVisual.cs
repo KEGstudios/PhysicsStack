@@ -42,9 +42,15 @@ namespace PhysicsStack
         [Tooltip("Uzamanin hedefe yetisme hizi (oran/sn). Ani degisim goze carpiyor.")]
         [SerializeField] float stretchResponse = 4f;
 
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+
+        [Tooltip("Donan kutunun renk carpani. 1 = renk degismez.")]
+        [SerializeField] float solidTint = 0.82f;
+
         Vector3 baseScale;
         Rigidbody body;
         DraggableBody draggable;
+        MaterialPropertyBlock block;
 
         float amplitude;
         float time;
@@ -72,6 +78,50 @@ namespace PhysicsStack
             // Uzama aninda sifirlaniyor: dususten carpmaya gecis ne kadar keskin
             // olursa carpma o kadar sert okunuyor.
             stretch = 0f;
+        }
+
+        /// <summary>
+        /// Kutu bir kontrol noktasinda donduruldu: bir kez ezilip aciliyor ve
+        /// rengi hafifce koyuluyor.
+        ///
+        /// Renk kalici olan kisim ve asil is onda: ses ile ezilme "az once bir
+        /// sey oldu" diyor, renk ise "bu kutular artik sabit" demeye devam
+        /// ediyor. Yalnizca anlik bir geri bildirim verseydim oyuncu birkac kutu
+        /// sonra hangi kismin donmus oldugunu bilemezdi.
+        ///
+        /// Ton carpimi seciliyor, ayri bir "donmus" rengi degil: paletteki her
+        /// kutu kendi renginde kaliyor, yalnizca bir basamak koyuluyor. Tek bir
+        /// gri renk verseydim kule renklerini kaybeder ve donmus kisim oyunun
+        /// disindan gelmis gibi dururdu.
+        /// </summary>
+        public void Solidify()
+        {
+            Impact(speedForMaxSquash * 0.5f);
+
+            if (!TryGetComponent(out Renderer renderer))
+            {
+                return;
+            }
+
+            block ??= new MaterialPropertyBlock();
+            renderer.GetPropertyBlock(block);
+
+            var color = block.GetColor(BaseColor);
+
+            // Blok'ta renk hic yazilmamissa GetColor saydam siyah donuyor; onu
+            // 0.82 ile carpmak kutuyu gorunmez yapardi.
+            if (color.a <= 0f)
+            {
+                return;
+            }
+
+            block.SetColor(BaseColor, new Color(
+                color.r * solidTint,
+                color.g * solidTint,
+                color.b * solidTint,
+                color.a));
+
+            renderer.SetPropertyBlock(block);
         }
 
         void Update()

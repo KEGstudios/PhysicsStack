@@ -61,6 +61,9 @@ namespace PhysicsStack
         [Tooltip("Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.")]
         public float collapseDrop = 0.6f;
 
+        [Tooltip("Kaç kutuda bir kulenin altı dondurulsun? 0 = kontrol noktası yok. Yüksek kuleli seviyeler için.")]
+        public int checkpointEvery;
+
         [Tooltip("Seviyenin çevresel tehditleri. Hepsi yalnızca havadaki kutuya dokunur.")]
         public HazardSettings hazards;
 

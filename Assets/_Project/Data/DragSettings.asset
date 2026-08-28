@@ -16,3 +16,4 @@ MonoBehaviour:
   maxSpeed: 10
   maxAcceleration: 90
   releaseSpeedClamp: 5
+  fallDrag: 1.2

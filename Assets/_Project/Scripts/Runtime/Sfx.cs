@@ -38,6 +38,9 @@ namespace PhysicsStack
         /// <summary>Mermi kutuya çarptı.</summary>
         BallHit,
 
+        /// <summary>Kontrol noktası: kulenin altı donduruldu.</summary>
+        Checkpoint,
+
         /// <summary>Arayüz dokunuşu.</summary>
         UiTap,
     }

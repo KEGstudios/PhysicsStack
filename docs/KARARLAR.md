@@ -990,3 +990,179 @@ klasörü hariç). Bir önceki sürüm ~12 MB'tı; artış TextMeshPro ve yeni a
 kodundan. Ses build'i büyütmedi, çünkü klipler dosya değil kod.
 
 Kalan: sonsuz moda tehdit, 30 saniyelik kayıt, README v3 ve `v3` etiketi.
+
+## Faz 3 · 3. gün
+
+### Aynı taşma, ikinci ekran
+
+Tur sonu ekranında da yazılar sığmıyordu. Sebep seviye kartındakiyle aynı: panel
+ekran yüksekliğinin %40'ı kadar ve kanvas yatay ekranda 1080 birime eşleniyor,
+yani başlık bandı 110 piksele kadar iniyor — 84 puntoluk "KAZANDIN" oraya
+sığmıyor.
+
+Punto aralığı yardımcısı `MenuUI`'nin içinde özel bir metottu; `UIKit`'e taşıdım.
+İki ekranın da aynı kanvas ölçeğini kullandığı düşünülürse sorun ekranların
+değil, bir kutuya sabit punto yazmanın sorunuymuş. Aynı hatayı iki yerde
+düzeltmek, üçüncü ekranda yeniden yapacağım anlamına gelirdi.
+
+### Hız çizgisi: geometriden değil dokudan
+
+Çizgiler görünüyordu ama çizgi gibi durmuyordu — dikdörtgen prizma gibi. Sebep
+basit: dokusuz bir parçacık düz bir dikdörtgen olarak çiziliyor, gerilince de
+kenarları keskin, iki ucu düz kesik bir çubuk oluyor.
+
+Çözüm için üç yol vardı. Parçacığı daha da inceltmek: oranı düzeltir ama keskin
+kenar ve düz uç kalır, çubuk sadece incelir. Trail modülü: gerçek bir iz çizer,
+ama her parçacık için ayrı bir mesh üretiyor ve burada gereken tek şey görüntü.
+Doku: alfası ortada parlak, iki uca ve iki kenara doğru sönen 128×16'lık bir
+görüntü — çizgi hissi buradan geliyor.
+
+Dokuyu kodla üretip PNG olarak yazıyorum. Sanatçısı olmayan bir projede elle
+çizilmiş 8 KB'lık bir dosyanın depoda ne işi olduğunu birkaç ay sonra kimse
+hatırlamaz; formül kodda durunca "çizgi neden böyle görünüyor" sorusunun cevabı
+da kodda oluyor. Yine de dosyaya yazılıyor, çünkü malzeme bir varlık ve
+varlıklar birbirine GUID ile bağlanıyor: çalışma zamanında üretilen bir doku
+sahne kaydedilince boşa düşer.
+
+Doku gelince kalınlık gerçekten görünür oldu ve eski değerler çizgiyi değil
+şeridi çizdiriyordu; kalınlık 0.08–0.14'ten 0.05–0.09'a indi, uzunluk çarpanı
+4.5'ten 7'ye çıktı — hem oranı korumak hem de dokunun sönen uçlarını telafi
+etmek için.
+
+### Sonsuz moda tehdit: yığmak değil, sıraya dizmek
+
+Sonsuz modda uzun süre hiç tehdit yoktu ve gerekçesi şuydu: tek bir şeyin
+(bırakma mesafesinin) sürekli artması, üst üste binen üç şeyden daha okunur bir
+tırmanış verir. Gerekçe hâlâ doğru ama eksikmiş — mesafe 15 kutuda tavana
+vuruyor ve ondan sonrası sabit zorlukta bir tur oluyor. "Tırmanış okunur olsun"
+derken tırmanışın kendisini 15 kutuyla sınırlamışım.
+
+Düzeltme tehditleri üst üste yığmak değil, sıraya dizmek. Her biri bir öncekinin
+doyduğu yerde giriyor ve tek başına öğreniliyor:
+
+| Kutu | Giren şey |
+|---|---|
+| 0–15 | bırakma mesafesi 2.5 → 3.6, genişlik oynaması 0 → 0.25 |
+| 6–14 | rüzgâr 0 → 1.0 m/s, sabit yönlü |
+| 14+ | rüzgâr yön değiştirmeye başlıyor (3.2 sn periyot) |
+| 18+ | namlu devreye giriyor |
+
+Sıra rastgele değil: sabit yönlü rüzgâr bir kez öğrenilip telafi edilen bir şey,
+salınım telafiyi zamanlamaya bağlıyor, namlu ise ritim problemi. Üçü aynı anda
+gelseydi 18. kutuda oyuncu neyi yanlış yaptığını göremezdi. 18'den sonra hiçbir
+şey artmıyor: sonsuza kadar tırmanan bir eğri, oyuncunun becerisinin değil
+eğrinin kazandığı bir yer yaratır.
+
+### Tehdit artık tur başına değil, kutu başına
+
+Bunun için kuralın arayüzü değişti: `Hazards` özelliği `HazardsFor(snapshot)`
+metodu oldu. Eski hâlin gerekçesi belgede yazılıydı — "rüzgâr ve top sahnede
+duran şeyler, her kutuda yeniden pazarlık edilmiyorlar" — ve sonsuz modda
+tehdit tur içinde büyümeye başlayınca o cümle doğru olmaktan çıktı. Seviye
+modunda hiçbir şey değişmiyor: orada cevap anlık görüntüden bağımsız.
+
+Değer kutu başına bir kez hesaplanıyor, kare başına değil. Böylece zorluk
+basamak basamak artıyor ve oyuncu bir kutuyu bir rüzgârla indirip aynı kutu
+inerken başka bir rüzgâr bulmuyor.
+
+Sahnedeki `Wind` ve `Cannon` ayarı `Start`'ta bir kez okuyordu. Rüzgâr artık her
+karede soruyor (birkaç float kopyalamak, "değişti mi" diye haber mekanizması
+kurmaktan ucuz). Namlu ise değişimi yakalayıp yeniden kuruluyor, çünkü turun
+ortasında beliriyor: bandı kulenin o anki tepesinden başlatmak gerekiyor, yoksa
+yumuşatma sıfırdan tırmanırken namlu kulenin içinden geçiyor; ateş sayacı da
+sıfırlanıyor, çünkü belirdiği anda ateş eden bir tehdit öğrenilecek bir ritim
+değil kaza olurdu.
+
+Debug paneline sonsuz moda özel bir satır ekledim: kutu sayısı, rüzgâr hızı,
+salınım periyodu, namlunun durumu. Eğriyi ekranda gösteren başka bir şey yok —
+oyuncu için doğrusu bu, ama ayarı gözle yapmak imkânsız hâle geliyordu.
+
+### 8 kutuluk tavan bir zorluk değil, tasarım sınırıydı
+
+Sonsuz modu ilk denediğimde turlar 8 kutu civarında bitiyordu ve tehdit
+merdiveni 8/16/22'ye kurulmuştu — yani merdivenin tamamı hiç görülmeyen bir
+yerdeydi. İlk tepkim eşikleri aşağı çekmek oldu. Proje sahibinin sorusu doğru
+olanı gösterdi: *"diyelim ileride bu oyun çıkacak, sadece 8 blok üst üste
+koyunca ileri seviyeleri tasarlamak zor olur."* Merdiveni indirmek semptomu
+saklar; asıl mesele kulenin ne kadar yükselebildiği ve bu, üstüne içerik
+tasarlanabilecek alanın kendisi.
+
+Tavanı belirleyen şey ölçülebilirdi ve gerekçesi zaten `BoxDifficulty`'de
+yazılıydı: kutu kule tepesinden 3 birim yukarıdan bırakılıyor, serbest düşüşle
+~7.7 m/s ile çarpıyor. Her yeni kutu kuleye bir çekiç darbesi; kuleyi deviren
+şey tek bir kötü atış değil, her inişte biraz büyüyen sallanma.
+
+Üç kolu birden çevirmek yerine üçünü de aynı şeye — çarpma enerjisine —
+yönlendirdim:
+
+- **Bırakılan kutuya hava sürtünmesi** (`DragSettings.fallDrag = 1.2`). Düşüş
+  hızına tavan koyuyor: 3 birimden düşen kutu ~7.7 yerine ~5.5 m/s ile çarpıyor,
+  yani enerji neredeyse yarıya iniyor. Alternatifleri eledim: bırakma mesafesini
+  kısaltmak oyunun tek risk kolunu söker, yerçekimini azaltmak ise sürüklemeyi
+  ve çöküşü de ağır çekime alır. Sürtünme yalnızca serbest düşüşe dokunuyor.
+- **Açısal sürtünme 0.35 → 0.6.** Sallanma dönme demek; frenlenecek yer burası.
+- **Çözücü tekrarları 12 → 20, hız tekrarları 2 → 4.** Bu bir kolaylaştırma
+  değil, simülasyon kalitesi: temas noktaları daha az kayıyor.
+
+Sabit adımı (0.02) bilerek değiştirmedim. Sürükleme çekirdeği hızı
+`delta / Time.fixedDeltaTime` ile hesaplıyor, yani adımı kısaltmak takibi
+sertleştirir ve his ayarını bozar — hiçbiri "kule daha yüksek olsun" isteğiyle
+ilgili olmayan bir yan etki.
+
+Merdiven de yukarı geri alındı (rüzgâr 6→14, salınım 14, namlu 18). Bırakma
+mesafesinin tavanı şimdilik 3.6'da bırakıldı; aynı turda hem çarpmayı yumuşatıp
+hem mesafeyi büyütseydim, çıkan tur uzunluğunun hangisinden geldiğini
+ölçemezdim.
+
+Bunun bir bedeli var ve peşinen kabul edildi: 8 seviyenin zorluğu eski fiziğe
+göre ayarlanmıştı, hepsi bir miktar kolaylaştı. Zaten istenen de buydu — tavan
+yükselmeden üstüne seviye tasarlanamıyor.
+
+### Kontrol noktası: yükseklik sınırını kaldıran şey
+
+Fizik sağlamlaştıktan sonra sonsuz modda tur 8 kutudan 13'e çıktı. Proje
+sahibinin sorusu bir sonraki sınırı gösterdi: *"ileride seviye 100'e gelirsek
+hâlâ '15 tane stackle' demeyelim, onu da checkpointli yapalım."*
+
+Fizik ayarı tavanı yükseltiyor ama kaldırmıyor: sallanma en alttan başlıyor ve
+her kutu onu biraz büyütüyor, yani belli bir yükseklikten sonra kule oyuncunun
+becerisiyle değil birikmiş salınımla devriliyor. Kontrol noktası tam bu zinciri
+kesiyor — altı sabitlenirse yüksekliğin üst sınırı kalmıyor.
+
+**Ne yapıyor:** belirli kutu sayılarında, o ana kadar oturmuş bütün kutular
+kinematik hâle geliyor. İtilemiyorlar ama hâlâ çarpışıyorlar; kule için yeni bir
+zemin oluyorlar. Yan kazanç: donan cisimler çözücünün dışına çıkıyor, yani 20
+tekrarlı çözücüde 30 kutunun 20'si hesaptan düşüyor.
+
+**Ne zaman:** kutu bırakıldığında değil, kule tam durduğunda. Sallanan bir kuleyi
+dondurmak eğikliği kalıcı hâle getirir ve oyuncunun düzeltme şansı olmadan
+verilmiş bir cezaya dönüşür. Eğikliği düzeltmiyorum da: o eğiklik oyuncunun
+bırakma biçiminden geldi, düzeltmek kuleyi oyuncunun yaptığı şey olmaktan
+çıkarır.
+
+**Hangi sayılarda:** sonsuz modda 10, 25, 45, 70, 100... — aralık her seferinde
+5 kutu büyüyor. Sabit aralık (her 10 kutuda bir) daha basit olurdu ama yanlış
+şeyi ölçer: ilk 10 kutu ile 90'dan 100'e giden 10 kutu aynı iş değil, çünkü
+ikincisinde zorluk çoktan tavana vurmuş. Aralığın büyümesi kontrol noktasının
+ödül olarak değerini koruyor. Dizi yerine döngüyle hesaplanıyor: sonsuz modun
+sonu yok ve tabloyu bir yere kadar yazmak, o yerden sonrasını sessizce farklı
+davranan bir oyun demek.
+
+Seviye modunda `LevelDefinition.checkpointEvery` alanı var, varsayılanı 0 yani
+kapalı. Mevcut sekiz seviyenin hiçbiri buna ihtiyaç duymuyor (kuleleri 3-6
+birim); alanı yine de şimdi ekledim, çünkü asıl sebebi ileride yüksek kule
+isteyen bir seviye tasarlayabilmek.
+
+**Geri bildirim üç katmanlı ve biri kalıcı.** Kısa bir ezilme ve yeni bir ses
+"az önce bir şey oldu" diyor; rengin bir basamak koyulaşması ise "bu kutular
+artık sabit" demeye devam ediyor. Yalnızca anlık geri bildirim verseydim oyuncu
+birkaç kutu sonra hangi kısmın donmuş olduğunu bilemezdi. Renk ayrı bir gri
+"donmuş" tonu değil, paletteki rengin 0.82 ile çarpımı: tek gri renk kuleyi
+renklerinden eder ve donmuş kısım oyunun dışından gelmiş gibi dururdu. Ses de
+kazanma sesinden bilerek farklı — iki nota, kısa. Aynı sesi kısarak kullanmak
+kulağa tur bitmiş gibi gelmesini engellemiyordu.
+
+**Kaybetme kuralı bilerek değişmedi.** Kontrol noktasının üstündeki kısım
+çökerse tur yine bitiyor. "Çöktükten sonra kontrol noktasından devam" ayrı bir
+karar: sonsuz modu affedici bir moda çevirir ve düşen parçaları temizlemeyi de
+gerektirir.

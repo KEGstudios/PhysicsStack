@@ -31,5 +31,8 @@ namespace PhysicsStack
         [Header("Bırakma")]
         [Tooltip("Bırakma anında hız bu değerin üstündeyse buraya kırpılır. Fırlatma kalsın ama kuleyi süpürmesin diye.")]
         public float releaseSpeedClamp = 5f;
+
+        [Tooltip("Bırakılan kutunun hava sürtünmesi (1/sn). Düşüş hızına tavan koyuyor: 0 = serbest düşüş.")]
+        public float fallDrag = 1.2f;
     }
 }

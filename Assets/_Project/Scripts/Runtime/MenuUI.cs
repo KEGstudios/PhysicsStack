@@ -186,7 +186,7 @@ namespace PhysicsStack
             title.rectTransform.anchorMax = new Vector2(0.96f, 0.97f);
             title.rectTransform.offsetMin = Vector2.zero;
             title.rectTransform.offsetMax = Vector2.zero;
-            Fit(title, 34f, 72f);
+            UIKit.Fit(title, 34f, 72f);
 
             int best = Progress.LevelBest(index);
             int stars = level != null ? level.StarsFor(best) : 0;
@@ -199,13 +199,13 @@ namespace PhysicsStack
             info.rectTransform.anchorMax = new Vector2(0.95f, 0.53f);
             info.rectTransform.offsetMin = Vector2.zero;
             info.rectTransform.offsetMax = Vector2.zero;
-            Fit(info, 16f, 34f);
+            UIKit.Fit(info, 16f, 34f);
 
             playButton = UIKit.Button(card, new Rect(0.05f, 0.03f, 0.55f, 0.18f), "Oyna", 46, 0.02f);
             closeButton = UIKit.Button(card, new Rect(0.62f, 0.03f, 0.33f, 0.18f), "Kapat", 42, 0.02f);
 
-            Fit(playButton.Label, 26f, 46f);
-            Fit(closeButton.Label, 24f, 42f);
+            UIKit.Fit(playButton.Label, 26f, 46f);
+            UIKit.Fit(closeButton.Label, 24f, 42f);
         }
 
         /// <summary>
@@ -233,29 +233,6 @@ namespace PhysicsStack
                 $"hedef yükseklik {level.targetHeight:0.0}\n" +
                 $"3 yıldız: {level.StarBoxes} kutu  ·  sınır: {level.BoxLimit}" +
                 record;
-        }
-
-        /// <summary>
-        /// Yazıyı kutusuna sığdırır: sarma açık, punto verilen aralıkta
-        /// küçülebiliyor.
-        ///
-        /// Sabit punto vermek yerine aralık vermenin sebebi ekran oranı. Kanvas
-        /// hem genişliğe hem yüksekliğe eşlendiği için aynı kutu dikey telefonda
-        /// uzun, yatay ekranda basık oluyor; sabit punto ikisinden birinde
-        /// mutlaka taşıyor. Alt sınır okunabilirliğin sınırı — daha küçüğüne
-        /// izin vermektense yazının kırpılması daha dürüst olurdu, ama bu
-        /// aralıkta o noktaya gelinmiyor.
-        ///
-        /// Bunu baştan her etikete koymadım çünkü otomatik boyutlandırma her
-        /// karede ölçüm yapıyor; yalnızca içeriği değişken olan yerlerde var.
-        /// </summary>
-        static void Fit(TMP_Text label, float min, float max)
-        {
-            label.textWrappingMode = TextWrappingModes.Normal;
-            label.overflowMode = TextOverflowModes.Truncate;
-            label.enableAutoSizing = true;
-            label.fontSizeMin = min;
-            label.fontSizeMax = max;
         }
 
         void ClosePopup()

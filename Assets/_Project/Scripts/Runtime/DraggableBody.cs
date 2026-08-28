@@ -215,6 +215,23 @@ namespace PhysicsStack
             isDragged = false;
             isPlaced = true;
 
+            // Bırakılan kutuya hava sürtünmesi. Serbest düşüşte hız yükseklikle
+            // karekök olarak artıyor ve 3 birimden düşen kutu kuleye ~7.7 m/s
+            // ile çarpıyordu; her yeni kutu kuleye bir çekiç darbesiydi ve
+            // sonsuz modda tur 8 kutu civarında bitiyordu. Sürtünme bu hızı
+            // ~5.5 m/s'ye, yani enerjiyi neredeyse yarıya indiriyor.
+            //
+            // Alternatif, bırakma mesafesini kısaltmaktı: zorluğu doğrudan
+            // söker, oyunun tek risk kolu o. Yerçekimini azaltmak da vardı ama
+            // o her şeyi — sürüklemeyi, devrilmeyi, çöküşü — aynı anda ağır
+            // çekime alıyor. Sürtünme yalnızca serbest düşüşe dokunuyor:
+            // oyuncunun kutuyu indirdiği yol da, nişan alma zorluğu da aynı
+            // kalıyor, değişen tek şey çarpmanın sertliği.
+            //
+            // Değer bırakıldıktan sonra silinmiyor: oturmuş kulede de sallanmayı
+            // söndürüyor ve orada da işimize geliyor.
+            rb.linearDamping = settings.fallDrag;
+
             switch (mode)
             {
                 case FollowMode.DirectPosition:
@@ -242,6 +259,45 @@ namespace PhysicsStack
             }
 
             Released?.Invoke(this);
+        }
+
+        /// <summary>Kontrol noktasinda donduruldu mu?</summary>
+        public bool IsFrozen { get; private set; }
+
+        /// <summary>
+        /// Kutuyu kalici olarak sabitler: kinematik hale geliyor, yani artik
+        /// itilemiyor ama hala carpisiyor. Kule icin yeni bir zemin oluyor.
+        ///
+        /// Constraints ile butun eksenleri kilitlemek de olurdu; kinematik olani
+        /// sectim cunku o cismi tamamen cozucunun disina cikariyor - 20 tekrarli
+        /// cozucude 30 kutunun 20'sini hesaptan dusurmek bedava performans.
+        ///
+        /// Hizlar sifirlaniyor: kinematik cisim uzerindeki artik hiz simulasyona
+        /// girmiyor ama Rigidbody'de duruyor ve "duruyor mu" olcumunu yaniltiyor.
+        ///
+        /// Kutu egik dondu diye duzeltmiyorum. Egiklik oyuncunun birakma
+        /// bicimiyle olustu; onu duzeltmek kuleyi oyuncunun yaptigi sey olmaktan
+        /// cikarir. Donan sey kulenin o anki hali.
+        /// </summary>
+        public bool Freeze()
+        {
+            if (IsFrozen)
+            {
+                return false;
+            }
+
+            IsFrozen = true;
+
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+
+            if (visual != null)
+            {
+                visual.Solidify();
+            }
+
+            return true;
         }
 
         void OnCollisionEnter(Collision collision)

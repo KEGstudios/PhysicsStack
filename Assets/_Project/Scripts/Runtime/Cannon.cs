@@ -64,20 +64,38 @@ namespace PhysicsStack
 
         public bool Active { get; private set; }
 
+        /// <summary>Şu an uygulanmış olan ayar; değişince yeniden kuruluyor.</summary>
+        HazardSettings applied;
+
         void Start()
         {
-            // Menüdeyken kural nesnesi yok; namlu hiç görünmüyor.
-            if (controller.Rules == null)
-            {
-                if (body != null)
-                {
-                    body.enabled = false;
-                }
+            // Menüdeyken kural nesnesi yok; namlu hiç görünmüyor. Apply bunu
+            // zaten hallediyor (tehditsiz ayar = kapalı namlu), ama ilk kare
+            // gelmeden önce bir kez çağrılması gerekiyor.
+            Apply(Current());
+        }
 
-                return;
-            }
+        /// <summary>
+        /// Kuralın o an verdiği tehdit ayarı. Menüde kural nesnesi yok.
+        /// </summary>
+        HazardSettings Current() => controller != null && controller.Rules != null
+            ? controller.Hazards
+            : HazardSettings.None;
 
-            var hazards = controller.Rules.Hazards;
+        /// <summary>
+        /// Ayarı sahneye uygular. Eskiden bu iş <c>Start</c>'ta tek seferde
+        /// yapılıyordu; sonsuz modda namlu turun ortasında devreye girdiği için
+        /// artık her değişimde yeniden yapılıyor.
+        ///
+        /// Karşılaştırma alan alan (bkz. <see cref="HazardSettings.Equals"/>):
+        /// controller değeri yalnızca yeni kutu istenirken hesapladığı için iki
+        /// taraf da aynı hesabın çıktısı, değişmediyse bit bit aynı.
+        /// </summary>
+        void Apply(HazardSettings hazards)
+        {
+            bool wasActive = Active;
+
+            applied = hazards;
 
             Active = hazards.cannon;
             interval = Mathf.Max(0.25f, hazards.cannonInterval);
@@ -103,10 +121,32 @@ namespace PhysicsStack
             {
                 body.enabled = Active;
             }
+
+            if (Active && !wasActive)
+            {
+                // Namlu tur ortasında beliriyor olabilir. Bant, kulenin o anki
+                // tepesinden başlıyor: yumuşatma sıfırdan tırmansaydı namlu
+                // kulenin içinden geçerek yukarı çıkardı.
+                initialised = false;
+
+                // Sayaçlar da sıfırlanıyor. Beliren namlunun ilk atışı için tam
+                // süre var; belirdiği anda ateş eden bir tehdit öğrenilecek bir
+                // ritim değil, kaza olurdu.
+                timer = 0f;
+                travelled = 0f;
+                recoil = 0f;
+            }
         }
 
         void Update()
         {
+            var current = Current();
+
+            if (current != applied)
+            {
+                Apply(current);
+            }
+
             if (!Active)
             {
                 return;

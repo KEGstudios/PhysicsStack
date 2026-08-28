@@ -1,3 +1,4 @@
+using System.IO;
 using PhysicsStack;
 using UnityEditor;
 using UnityEngine.Rendering;
@@ -32,6 +33,7 @@ namespace PhysicsStack.EditorTools
         const string LineMaterialPath = "Assets/_Project/Art/Materials/M_Line.mat";
         const string DustMaterialPath = "Assets/_Project/Art/Materials/M_Dust.mat";
         const string StreakMaterialPath = "Assets/_Project/Art/Materials/M_Streak.mat";
+        const string StreakTexturePath = "Assets/_Project/Art/Textures/T_Streak.png";
         const string VolumeProfilePath = "Assets/_Project/Settings/PostProcess.asset";
         const string DragSettingsPath = "Assets/_Project/Data/DragSettings.asset";
         // Uzantı bilerek ".asset": Unity, PhysicsMaterial'ı CreateAsset ile
@@ -290,7 +292,12 @@ namespace PhysicsStack.EditorTools
             // durmuyor ve üst üste konan her kutu yığını biraz daha sallıyor.
             // Sürtünmenin dönme karşılığı bu; yükseltince kule oturuyor ama
             // kutular hâlâ devrilebiliyor.
-            rb.angularDamping = 0.35f;
+            //
+            // 0.35'ten 0.6'ya çıktı. Sebep sonsuz modda ölçülen tavan: tur 8
+            // kutu civarında bitiyordu ve kuleyi deviren şey tek bir kötü atış
+            // değil, her inişte biraz büyüyen sallanmaydı. Sallanma dönme
+            // demek, dönmenin frenlenecek yeri de burası.
+            rb.angularDamping = 0.6f;
 
             // Fizik sabit adımda çalışıyor, çizim kare hızında. Interpolate olmadan
             // hızlı sürüklenen kutu titriyor.
@@ -813,6 +820,15 @@ namespace PhysicsStack.EditorTools
             // aciksa o parcacik hic cizilmiyor. Tozun bu sorunu yok, cunku o
             // gerilmiyor.
             material.SetFloat("_Cull", (float)UnityEngine.Rendering.CullMode.Off);
+
+            // Dokusuz parcacik duz bir dikdortgen olarak ciziliyor. Gerilmis
+            // haldeyken bu, cizgi degil ince bir cubuk gibi duruyordu -
+            // kenarlari keskin, iki ucu duz kesik. Doku yalnizca alfa tasiyor:
+            // ortada parlak, iki uca ve iki kenara dogru sonuyor. Efektin
+            // "cizgi" hissi buradan geliyor, geometriden degil.
+            var texture = CreateStreakTexture();
+            material.mainTexture = texture;
+            material.SetTexture("_BaseMap", texture);
             EditorUtility.SetDirty(material);
 
             var go = new GameObject("SpeedLines", typeof(ParticleSystem));
@@ -830,7 +846,11 @@ namespace PhysicsStack.EditorTools
             // duserken izler 2-4 m/s ile indigi icin geride kaliyorlar - iz
             // birakma etkisi bundan geliyor, ayri bir "kuyruk" koduna gerek yok.
             main.startSpeed = new ParticleSystem.MinMaxCurve(2f, 4f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.14f);
+
+            // Baslangic boyutu cizginin KALINLIGI (uzunluk asagida lengthScale
+            // ile veriliyor). Once 0.08-0.14'tu; doku gelince kalinlik gercekten
+            // gorunur oldu ve o degerler cizgiyi degil seridi cizdiriyordu.
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.09f);
             main.startColor = palette.speedLine;
             main.gravityModifier = 0f;
             main.maxParticles = 200;
@@ -882,11 +902,92 @@ namespace PhysicsStack.EditorTools
             renderer.sharedMaterial = material;
             renderer.renderMode = ParticleSystemRenderMode.Stretch;
             renderer.velocityScale = 0.25f;
-            renderer.lengthScale = 4.5f;
+
+            // Uzunluk carpani buyudu (4.5 -> 7): hem kalinlik yariya indigi icin
+            // ayni oran ancak boyle korunuyor, hem de dokunun iki ucu sondugu
+            // icin gorunen uzunluk cizilen uzunluktan kisa.
+            renderer.lengthScale = 7f;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
 
             return system;
+        }
+
+        /// <summary>
+        /// Hiz cizgisinin dokusunu uretir ve PNG olarak diske yazar.
+        ///
+        /// Neden dosya degil de kod: projede sanatci yok ve elle cizilmis 8 KB'lik
+        /// bir PNG'nin deposunda ne isi oldugunu birkac ay sonra kimse
+        /// hatirlamaz. Formul burada durunca "cizgi neden boyle goruunuyor"
+        /// sorusunun cevabi da kodda oluyor. Dosya, formulun ciktisi.
+        ///
+        /// Neden yine de dosyaya yaziliyor: malzeme bir varlik ve varliklar
+        /// birbirine GUID ile baglaniyor. Calisma zamaninda uretilen bir
+        /// Texture2D'yi malzemeye atayamam, cunku sahne kaydedildiginde
+        /// referans bosa duser.
+        ///
+        /// Alfa iki carpandan olusuyor: uzunluk boyunca sinus (iki uc da
+        /// sonuyor, boylece cizginin bas ve son noktasi duz kesilmis
+        /// gorunmuyor) ve genislik boyunca kenara dogru dusen bir egri
+        /// (kenarlar yumusak). Ustel degerler goze gore secildi: 0.75 uzun
+        /// bir parlak bant birakiyor, 1.6 kenari cabuk soluyor.
+        /// </summary>
+        static Texture2D CreateStreakTexture()
+        {
+            // Uzun ve alcak: doku zaten tek yone geriliyor, dikeyde 16 piksel
+            // yumusak bir kenar icin yeterli. Ikisi de ikinin kuvveti.
+            const int width = 128;
+            const int height = 16;
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            var pixels = new Color32[width * height];
+
+            for (int y = 0; y < height; y++)
+            {
+                float v = (y + 0.5f) / height;
+                float across = Mathf.Pow(1f - Mathf.Abs(v * 2f - 1f), 1.6f);
+
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (x + 0.5f) / width;
+                    float along = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 0.75f);
+
+                    byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01(along * across) * 255f);
+                    pixels[y * width + x] = new Color32(255, 255, 255, alpha);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            string absolute = Path.Combine(Directory.GetCurrentDirectory(), StreakTexturePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(absolute));
+            File.WriteAllBytes(absolute, texture.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(texture);
+
+            // Once Refresh, sonra ImportAsset: klasor az once diskte acildi ve
+            // varlik veritabani onu henuz bilmiyor. Dogrudan ImportAsset
+            // cagirinca "boyle bir yol yok" deyip sessizce gecistiriyor.
+            AssetDatabase.Refresh();
+            AssetDatabase.ImportAsset(StreakTexturePath, ImportAssetOptions.ForceUpdate);
+
+            // Ice aktarma ayarlari elle veriliyor. Varsayilan sikistirma bu
+            // dokunun tek tasidigi bilgiyi - yumusak alfa gecisini - bozuyor
+            // ve cizginin kenarinda blok blok lekeler birakiyor. 8 KB'lik bir
+            // doku icin sikistirmanin kazandiracagi bir sey de yok.
+            if (AssetImporter.GetAtPath(StreakTexturePath) is TextureImporter importer)
+            {
+                importer.textureType = TextureImporterType.Default;
+                importer.alphaIsTransparency = true;
+                importer.alphaSource = TextureImporterAlphaSource.FromInput;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.mipmapEnabled = true;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(StreakTexturePath);
         }
 
         static ParticleSystem CreateDust(Palette palette)

@@ -82,6 +82,24 @@ namespace PhysicsStack
         /// <summary>Debug paneli ölçümleri buradan okuyor.</summary>
         public StackTracker Tracker => tracker;
 
+        /// <summary>
+        /// Turun o anki tehditleri. Sahnedeki <see cref="Wind"/> ve
+        /// <see cref="Cannon"/> burayı okuyor.
+        ///
+        /// Neden kural nesnesinden değil de buradan: sonsuz modda tehdit tur
+        /// içinde büyüyor ve kural bunu anlık görüntüye bakarak hesaplıyor.
+        /// Anlık görüntüyü okumak controller'ın işi — tehditlerin her karede
+        /// kendi başlarına yığını ölçmesi, aynı ölçümün üç yerde yapılması
+        /// demekti. Değer yeni kutu istenirken bir kez hesaplanıyor.
+        /// </summary>
+        public HazardSettings Hazards { get; private set; }
+
+        /// <summary>
+        /// Son kontrol noktasının kutu sayısı; sıfır ise henüz dondurulmadı.
+        /// Debug paneli ve tekrar tetiklenmeyi engelleyen kontrol bunu okuyor.
+        /// </summary>
+        public int LastCheckpoint { get; private set; }
+
         void Awake()
         {
             // Menüden bir istek geldiyse tur onunla başlıyor; gelmediyse ya
@@ -102,6 +120,13 @@ namespace PhysicsStack
             rules = mode == StackMode.Endless
                 ? new EndlessRules(endlessCollapseDrop)
                 : new LevelRules(ResolveLevel());
+
+            // Baslangic degeri bos bir anlik goruntuden geliyor. Seviye modunda
+            // cevap zaten anlik goruntuden bagimsiz, yani ruzgar ilk kareden
+            // itibaren dogru; sonsuz modda ilk kutuda tehdit zaten yok. Burada
+            // gercek yigini okumuyorum, cunku Awake'te tracker'in hazir olup
+            // olmadigi betik sirasina bagli ve o siraya guvenmek istemiyorum.
+            Hazards = rules.HazardsFor(default);
 
             State = GameState.WaitingForDrag;
         }
@@ -135,10 +160,21 @@ namespace PhysicsStack
             RequestNextBox();
         }
 
-        /// <summary>Sıradaki kutuyu ister; nasıl olacağını kural söylüyor.</summary>
+        /// <summary>
+        /// Sıradaki kutuyu ister; nasıl olacağını kural söylüyor. Tehditler de
+        /// burada tazeleniyor: ikisi de "zorluk şu an ne olmalı" sorusunun
+        /// cevabı ve aynı anlık görüntüden okunmaları gerekiyor.
+        ///
+        /// Kutu başına bir kez, kare başına değil. Sonsuz modda rüzgâr böylece
+        /// kutu aralarında basamak basamak artıyor; oyuncu bir kutuyu bir
+        /// rüzgârla indirip aynı kutu inerken başka bir rüzgârla karşılaşmıyor.
+        /// </summary>
         void RequestNextBox()
         {
-            queue.SpawnNext(rules.NextBox(Read(settled: false)));
+            var snapshot = Read(settled: false);
+
+            Hazards = rules.HazardsFor(snapshot);
+            queue.SpawnNext(rules.NextBox(snapshot));
         }
 
         void OnDestroy()
@@ -232,10 +268,40 @@ namespace PhysicsStack
                 return;
             }
 
+            TryCheckpoint(snapshot);
+
             State = GameState.WaitingForDrag;
             RestTimer = 0f;
             SteadyTimer = 0f;
             RequestNextBox();
+        }
+
+        /// <summary>
+        /// Kontrol noktasına gelindiyse kulenin oturmuş kısmını dondurur.
+        ///
+        /// Kule tam durduğu anda çağrılıyor, kutu bırakıldığında değil: sallanan
+        /// bir kuleyi dondurmak eğikliği kalıcı hâle getirir ve oyuncunun
+        /// düzeltme şansı olmadan verilmiş bir cezaya dönüşür.
+        ///
+        /// Kutu sayısı bir kez daha karşılaştırılıyor çünkü kule aynı sayıda
+        /// birden çok kez oturabiliyor (mesela mermi çarpıp yeniden oturunca);
+        /// kural "bu sayı bir kontrol noktası mı" diyor, "bu ilk kez mi" demiyor.
+        /// </summary>
+        void TryCheckpoint(in StackSnapshot snapshot)
+        {
+            if (snapshot.PlacedCount <= LastCheckpoint || !rules.IsCheckpoint(snapshot.PlacedCount))
+            {
+                return;
+            }
+
+            LastCheckpoint = snapshot.PlacedCount;
+
+            // Ses yalnızca gerçekten bir şey donduysa çalıyor: olmayan bir olayı
+            // duyurmak, oyuncuya sistemin ne yaptığını yanlış öğretir.
+            if (tracker.FreezeSettled() > 0)
+            {
+                SfxPlayer.Play(Sfx.Checkpoint);
+            }
         }
 
         /// <summary>

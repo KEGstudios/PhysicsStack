@@ -23,7 +23,21 @@ namespace PhysicsStack
 
         public float HoldTime => level.holdTime;
 
-        public HazardSettings Hazards => level.hazards;
+        /// <summary>Seviyede tehdit sabit: cevap anlık görüntüye bakmıyor.</summary>
+        public HazardSettings HazardsFor(in StackSnapshot snapshot) => level.hazards;
+
+        /// <summary>
+        /// Seviyede kontrol noktası isteğe bağlı ve varsayılanı kapalı: sekiz
+        /// seviyenin hiçbiri buna ihtiyaç duymuyor, kuleleri 3-6 birim.
+        ///
+        /// Alanı yine de şimdi ekledim, çünkü asıl sebebi ileride yüksek kule
+        /// isteyen bir seviye tasarlayabilmek. Verinin hazır olması, o seviyeyi
+        /// tasarlarken mekaniği baştan yazmak zorunda kalmamak demek.
+        /// </summary>
+        public bool IsCheckpoint(int placedCount) =>
+            level.checkpointEvery > 0 &&
+            placedCount > 0 &&
+            placedCount % level.checkpointEvery == 0;
 
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {

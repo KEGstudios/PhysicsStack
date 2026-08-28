@@ -76,59 +76,137 @@ namespace PhysicsStack
 
             canvas = UIKit.CreateCanvas("ResultCanvas", sortOrder: 20);
 
-            // Panel kadrajın tamamını kaplamıyor: altındaki kule görünsün istiyorum,
-            // çünkü oyuncunun ilk sorusu "ne oldu" değil "nasıl devrildi".
-            var panel = UIKit.Panel(
-                canvas.transform,
-                new Vector2(0.06f, 0.30f),
-                new Vector2(0.94f, 0.70f),
-                UIKit.PanelColor);
-
-            string headline = state == GameState.Won ? "KAZANDIN" : "KAYBETTIN";
-
-            // Kazanilan seviyede yildiz siralaniyor; o zaman baslik ve skor
-            // yukari sikisiyor. Yildiz icin yer acmak yerine hepsini sabit
-            // yerlestirseydim, yildizsiz durumlarda ortada bos bir bant kalirdi.
             var level = state == GameState.Won && controller.Mode == StackMode.Level && levels != null
                 ? levels.Get(controller.LevelIndex)
                 : null;
-
-            float titleBottom = level != null ? 0.70f : 0.62f;
-
-            var title = UIKit.Label(panel, headline, 84, TextAlignmentOptions.Top);
-            title.rectTransform.anchorMin = new Vector2(0f, titleBottom);
-            title.rectTransform.anchorMax = new Vector2(1f, 0.95f);
-            title.rectTransform.offsetMin = Vector2.zero;
-            title.rectTransform.offsetMax = Vector2.zero;
-
-            if (level != null)
-            {
-                UIKit.StarRow(panel, new Rect(0.32f, 0.48f, 0.36f, 0.20f), level.StarsFor(Mathf.RoundToInt(controller.Score)));
-            }
-
-            var score = UIKit.Label(panel, Describe(state), 44, TextAlignmentOptions.Top);
-            score.color = UIKit.DimTextColor;
-            score.rectTransform.anchorMin = new Vector2(0f, level != null ? 0.38f : 0.44f);
-            score.rectTransform.anchorMax = new Vector2(1f, level != null ? 0.48f : 0.62f);
-            score.rectTransform.offsetMin = Vector2.zero;
-            score.rectTransform.offsetMax = Vector2.zero;
 
             bool hasNext = state == GameState.Won &&
                            controller.Mode == StackMode.Level &&
                            levels != null &&
                            controller.LevelIndex + 1 < levels.Count;
 
-            if (hasNext)
+            // Panel yatay ekranda daha uzun, daha dar. Kanvas hem genişliğe hem
+            // yüksekliğe eşlendiği için yatayda kanvasın yüksekliği 1080 birime
+            // iniyor: sabit %40'lık bir panel orada 432 birim ediyor ve başlık,
+            // yıldızlar, skor ile üç düğme o bandın içine sığmıyor. Dikeyde aynı
+            // oran 768 birim, yani sorun ekranın değil oranın sabit olmasıydı.
+            //
+            // Panel kadrajın tamamını da kaplamıyor: altındaki kule görünsün
+            // istiyorum, çünkü oyuncunun ilk sorusu "ne oldu" değil "nasıl
+            // devrildi".
+            bool wide = Screen.width > Screen.height;
+            float halfHeight = wide ? 0.33f : 0.21f;
+            float sideMargin = wide ? 0.16f : 0.06f;
+
+            var panel = UIKit.Panel(
+                canvas.transform,
+                new Vector2(sideMargin, 0.5f - halfHeight),
+                new Vector2(1f - sideMargin, 0.5f + halfHeight),
+                UIKit.PanelColor);
+
+            // Bantlar tek yerde ve üst üste binmiyor. Önceki hâlde skor bandı
+            // 0.34-0.48, "Sonraki seviye" düğmesi 0.24-0.42 idi: yazı düğmenin
+            // üstüne taşıyordu. Puntoyu esnetmek bunu düzeltmiyor, çünkü sorun
+            // yazının kutusuna sığmaması değil, kutuların birbirine girmesiydi.
+            float titleTop = 0.97f;
+            float titleBottom;
+            float scoreTop, scoreBottom;
+            Rect stars;
+
+            if (level != null)
             {
-                nextButton = UIKit.Button(panel, new Rect(0.05f, 0.24f, 0.9f, 0.18f), "Sonraki seviye", 46, 0.02f);
-                retryButton = UIKit.Button(panel, new Rect(0.05f, 0.04f, 0.45f, 0.18f), "Tekrar", 42, 0.02f);
-                menuButton = UIKit.Button(panel, new Rect(0.50f, 0.04f, 0.45f, 0.18f), "Menü", 42, 0.02f);
+                titleBottom = 0.79f;
+                stars = hasNext
+                    ? new Rect(0.36f, 0.59f, 0.28f, 0.17f)
+                    : new Rect(0.36f, 0.55f, 0.28f, 0.20f);
+                scoreTop = hasNext ? 0.57f : 0.53f;
+                scoreBottom = hasNext ? 0.46f : 0.40f;
             }
             else
             {
-                retryButton = UIKit.Button(panel, new Rect(0.05f, 0.14f, 0.45f, 0.22f), "Tekrar", 46, 0.02f);
-                menuButton = UIKit.Button(panel, new Rect(0.50f, 0.14f, 0.45f, 0.22f), "Menü", 46, 0.02f);
+                titleBottom = 0.72f;
+                stars = Rect.zero;
+                scoreTop = 0.68f;
+                scoreBottom = 0.48f;
             }
+
+            string headline = state == GameState.Won ? "KAZANDIN" : "KAYBETTIN";
+
+            var title = UIKit.Label(panel, headline, 84, TextAlignmentOptions.Center);
+            Place(title.rectTransform, 0.06f, titleBottom, 0.94f, titleTop);
+
+            // Punto sabit değil aralık: aynı bant dar telefonda uzun, geniş
+            // ekranda basık oluyor ve sabit punto ikisinden birinde mutlaka
+            // taşıyor. Yardımcı UIKit'te, çünkü aynı taşma menüdeki seviye
+            // kartında da çıkmıştı.
+            UIKit.Fit(title, 34f, 84f);
+
+            if (level != null)
+            {
+                UIKit.StarRow(panel, stars, level.StarsFor(Mathf.RoundToInt(controller.Score)));
+            }
+
+            var score = UIKit.Label(panel, Describe(state), 44, TextAlignmentOptions.Center);
+            score.color = UIKit.DimTextColor;
+            Place(score.rectTransform, 0.06f, scoreBottom, 0.94f, scoreTop);
+            UIKit.Fit(score, 18f, 44f);
+
+            if (hasNext)
+            {
+                nextButton = UIKit.Button(panel, new Rect(0.06f, 0.25f, 0.88f, 0.18f), "Sonraki seviye", 46, 0.015f);
+                retryButton = UIKit.Button(panel, new Rect(0.06f, 0.05f, 0.42f, 0.17f), "Tekrar", 42, 0.015f);
+                menuButton = UIKit.Button(panel, new Rect(0.52f, 0.05f, 0.42f, 0.17f), "Menü", 42, 0.015f);
+            }
+            else
+            {
+                // UIButton bir MonoBehaviour degil, yani Unity'nin "yok edilmis"
+                // null'i burada islemiyor: alan onceki kurulumdan kalmis bir
+                // nesneyi tutuyor olabilir ve Update onu hala tiklanabilir sanar.
+                nextButton = null;
+
+                retryButton = UIKit.Button(panel, new Rect(0.06f, 0.10f, 0.42f, 0.22f), "Tekrar", 46, 0.015f);
+                menuButton = UIKit.Button(panel, new Rect(0.52f, 0.10f, 0.42f, 0.22f), "Menü", 46, 0.015f);
+            }
+
+            // Düğme yazıları da esnek: yazı düğmenin dikdörtgenini birebir
+            // dolduruyor, yani "Sonraki seviye" dar ekranda kenarlara değiyordu.
+            if (nextButton != null)
+            {
+                UIKit.Fit(nextButton.Label, 22f, 46f);
+                Inset(nextButton.Label.rectTransform, 0.06f, 0.14f);
+            }
+
+            UIKit.Fit(retryButton.Label, 22f, 46f);
+            UIKit.Fit(menuButton.Label, 22f, 46f);
+            Inset(retryButton.Label.rectTransform, 0.08f, 0.14f);
+            Inset(menuButton.Label.rectTransform, 0.08f, 0.14f);
+        }
+
+        /// <summary>
+        /// Etiketi panelin normalize koordinatlarına oturtur. Dört satırlık aynı
+        /// kalıbı her etiket için tekrar yazmak, bir bandı kaydırırken diğerini
+        /// unutmayı kolaylaştırıyordu.
+        /// </summary>
+        static void Place(RectTransform rect, float xMin, float yMin, float xMax, float yMax)
+        {
+            rect.anchorMin = new Vector2(xMin, yMin);
+            rect.anchorMax = new Vector2(xMax, yMax);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Düğme yazısına iç boşluk verir. UIKit yazıyı düğmenin dikdörtgenine
+        /// birebir oturtuyor; otomatik boyutlandırma da "sığıyor" derken tam
+        /// kenara değmeyi sığmak sayıyor. Boşluk, punto aralığının alt sınırına
+        /// inmeden önce yazının nefes almasını sağlıyor.
+        /// </summary>
+        static void Inset(RectTransform rect, float horizontal, float vertical)
+        {
+            rect.anchorMin = new Vector2(horizontal, vertical);
+            rect.anchorMax = new Vector2(1f - horizontal, 1f - vertical);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         string Describe(GameState state)

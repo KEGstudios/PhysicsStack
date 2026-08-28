@@ -44,8 +44,9 @@ Ses efektleri, düzgün bir yazı tipi, menü ve tur sonu ekranının yeniden
 tasarımı, geçişler.
 
 ### Gün 5 — İçerik ve kapanış
-Zorluk eğrisi, sonsuz moda tehdit, seviye başına en iyi skor, son build,
-30 saniyelik kayıt, README v3.
+Zorluk eğrisi *(bitti)*, seviye başına en iyi skor *(bitti)*, yıldız sistemi
+*(bitti)*, sonsuz moda tehdit *(bitti)*. Kalan: son build, 30 saniyelik kayıt,
+README v3.
 
 ## Kapsam dışı — bu fazda da
 

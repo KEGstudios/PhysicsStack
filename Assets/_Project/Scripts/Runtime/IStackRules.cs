@@ -65,9 +65,35 @@ namespace PhysicsStack
         BoxDifficulty NextBox(in StackSnapshot snapshot);
 
         /// <summary>
-        /// Turun çevresel tehditleri. Kutu başına değil tur başına: rüzgâr ve top
-        /// sahnede duran şeyler, her kutuda yeniden pazarlık edilmiyorlar.
+        /// Turun o anki çevresel tehditleri.
+        ///
+        /// Önce tur başına sabit bir özellikti ("rüzgâr ve top sahnede duran
+        /// şeyler, her kutuda yeniden pazarlık edilmiyorlar"). Sonsuz modda
+        /// tehdidin tur içinde büyümesi gerekince bu doğru olmaktan çıktı.
+        /// Seviye modu için hiçbir şey değişmiyor: orada cevap anlık görüntüden
+        /// bağımsız, hep aynı.
+        ///
+        /// Kutu başına sorulan bir soru, kare başına sorulan bir soru değil:
+        /// tehdit yalnızca yeni kutu istendiğinde yeniden hesaplanıyor, yani
+        /// zorluk basamak basamak artıyor, sürekli kayan bir zemin gibi değil.
         /// </summary>
-        HazardSettings Hazards { get; }
+        HazardSettings HazardsFor(in StackSnapshot snapshot);
+
+        /// <summary>
+        /// Bu kutu sayısına ulaşıldığında kulenin altı dondurulsun mu?
+        ///
+        /// Kontrol noktası, o ana kadar oturmuş bütün kutuları kinematik yapıyor:
+        /// artık itilemiyorlar, kule için yeni bir zemin oluyorlar. Amaç kolaylık
+        /// değil, tavan: sallanma en alttan başlıyor ve her kutu onu biraz daha
+        /// büyütüyor, yani belli bir yükseklikten sonra kule oyuncunun becerisiyle
+        /// değil birikmiş salınımla devriliyor. Altı sabitlenince yüksekliğin
+        /// üst sınırı kalkıyor — "seviye 100'de hâlâ 15 kutu" demek zorunda
+        /// kalmamanın yolu bu.
+        ///
+        /// Kutu sayısına bakıyor, yüksekliğe değil: oyuncunun yaptığı iş kutu
+        /// koymak ve "10 kutuda bir" sayılabilir bir söz, "6 birimde bir" ise
+        /// kutu genişliklerine göre değişen bir söz olurdu.
+        /// </summary>
+        bool IsCheckpoint(int placedCount);
     }
 }

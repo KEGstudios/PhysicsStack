@@ -266,6 +266,35 @@ namespace PhysicsStack
         public static Color StarColor => palette != null ? palette.star : new Color(0.95f, 0.76f, 0.29f);
         public static Color StarEmptyColor => palette != null ? palette.starEmpty : new Color(0.85f, 0.83f, 0.80f);
 
+        /// <summary>
+        /// Yazıyı kutusuna sığdırır: sarma açık, punto verilen aralıkta
+        /// küçülebiliyor.
+        ///
+        /// Sabit punto vermek yerine aralık vermenin sebebi ekran oranı. Kanvas
+        /// hem genişliğe hem yüksekliğe eşlendiği için aynı kutu dikey telefonda
+        /// uzun, yatay ekranda basık oluyor; sabit punto ikisinden birinde
+        /// mutlaka taşıyor. Alt sınır okunabilirliğin sınırı — daha küçüğüne
+        /// izin vermektense yazının kırpılması daha dürüst olurdu, ama bu
+        /// aralıkta o noktaya gelinmiyor.
+        ///
+        /// Bu önce menünün seviye kartında duruyordu. Aynı taşma tur sonu
+        /// ekranında da çıkınca buraya taşıdım: iki ekranın da aynı kanvas
+        /// ölçeğini kullandığı düşünülürse sorun ekranların değil, kutuya
+        /// sabit punto yazmanın sorunuymuş.
+        ///
+        /// Yine de her etikette çağrılmıyor: otomatik boyutlandırma her karede
+        /// ölçüm yapıyor, o yüzden yalnızca içeriği ya da kutusu değişken olan
+        /// yazılarda var.
+        /// </summary>
+        public static void Fit(TMP_Text label, float min, float max)
+        {
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.overflowMode = TextOverflowModes.Truncate;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = min;
+            label.fontSizeMax = max;
+        }
+
         public static TMP_Text Label(Transform parent, string text, float fontSize, TextAlignmentOptions alignment)
         {
             var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));

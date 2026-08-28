@@ -124,6 +124,26 @@ namespace PhysicsStack
                 GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}{gust}", style);
             }
 
+            // Sonsuz modda tehdit eğrisi turun içinde ilerliyor ve ekranda bunu
+            // söyleyen bir şey yok — oyuncu için doğrusu bu, ama eğrinin
+            // ayarını gözle yapmak imkânsız hâle geliyor. Satır yalnızca sonsuz
+            // modda var, çünkü seviye modunda tehdit zaten sabit ve seviyenin
+            // verisinden okunuyor.
+            if (controller.Mode == StackMode.Endless)
+            {
+                var hazards = controller.Hazards;
+                string swing = hazards.windPeriod > 0f ? $" (salınım {hazards.windPeriod:0.0} sn)" : string.Empty;
+
+                string checkpoint = controller.LastCheckpoint > 0
+                    ? $" · donmuş {controller.LastCheckpoint}"
+                    : string.Empty;
+
+                GUILayout.Label(
+                    $"tehdit: kutu {controller.Tracker.PlacedCount} · rüzgâr {hazards.windSpeed:0.00}{swing}" +
+                    $" · namlu {(hazards.cannon ? "açık" : "kapalı")}{checkpoint}",
+                    style);
+            }
+
             // Hız çizgisi satırı bir hata avının kalıntısı. Efekt iki tur
             // boyunca görünmedi ve iki turda da sebebini tahmin ettim; üçüncüde
             // ölçmeye karar verdim. Üç sayı üç ayrı katmanı ayırıyor: düşüş hızı

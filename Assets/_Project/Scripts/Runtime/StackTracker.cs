@@ -203,6 +203,36 @@ namespace PhysicsStack
             }
         }
 
+        /// <summary>
+        /// Oturmuş bütün kutuları dondurur ve kaç tanesinin donduğunu döndürür.
+        ///
+        /// Yalnızca oturmuşlar: havadaki ya da elde tutulan kutuyu dondurmak,
+        /// oyuncunun o an oynadığı kutuyu ortada asılı bırakırdı. Sayıyı
+        /// döndürmesinin sebebi geri bildirim — hiçbir şey donmadıysa ses
+        /// çalmak, olmayan bir olayı duyurmak olur.
+        /// </summary>
+        public int FreezeSettled()
+        {
+            int frozen = 0;
+
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                var body = bodies[i];
+
+                if (body == null || body.IsDragged || !settled.Contains(body))
+                {
+                    continue;
+                }
+
+                if (body.Freeze())
+                {
+                    frozen++;
+                }
+            }
+
+            return frozen;
+        }
+
         /// <summary>Bir parça verilen yüksekliğin altına düştü mü?</summary>
         public bool AnyBelow(float y)
         {

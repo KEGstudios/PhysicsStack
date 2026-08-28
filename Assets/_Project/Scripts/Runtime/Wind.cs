@@ -22,9 +22,16 @@ namespace PhysicsStack
         [SerializeField] StackGameController controller;
         [SerializeField] BoxQueue queue;
 
-        float speed;
-        float response;
-        float period;
+        /// <summary>
+        /// O anki tehdit ayarı. Eskiden <c>Start</c>'ta bir kez okunup
+        /// saklanıyordu; sonsuz modda rüzgâr tur içinde başlayıp şiddetlendiği
+        /// için bu yanlış oldu. Her karede sormak birkaç float kopyalamak
+        /// demek — "değişti mi" diye bir haber mekanizması kurmaktan hem ucuz
+        /// hem de unutulacak bir adımı az.
+        /// </summary>
+        HazardSettings Hazards => controller != null && controller.Rules != null
+            ? controller.Hazards
+            : HazardSettings.None;
 
         /// <summary>
         /// O anki rüzgâr. İşareti yönü, büyüklüğü şiddeti veriyor.
@@ -37,21 +44,7 @@ namespace PhysicsStack
         /// </summary>
         public float CurrentForce { get; private set; }
 
-        public bool Active => speed > 0f;
-
-        void Start()
-        {
-            // Menüdeyken kural nesnesi yok; tehdit de yok.
-            if (controller.Rules == null)
-            {
-                return;
-            }
-
-            var hazards = controller.Rules.Hazards;
-            speed = hazards.windSpeed;
-            period = hazards.windPeriod;
-            response = hazards.windResponse > 0f ? hazards.windResponse : 3f;
-        }
+        public bool Active => Hazards.windSpeed > 0f;
 
         void Update()
         {
@@ -80,6 +73,8 @@ namespace PhysicsStack
             // yetiyordu. Bağıl hıza orantılı kuvvet hem fiziksel olarak doğrusu
             // (rüzgâr hareket eden hava, sabit bir itiş değil) hem de iniş hızına
             // bir tavan koyuyor: kutu rüzgârın hızını geçemiyor.
+            float response = Hazards.windResponse > 0f ? Hazards.windResponse : 3f;
+
             float relative = Ambient(Time.fixedTime) - box.Body.linearVelocity.x;
             box.Body.AddForce(Vector3.right * relative * response, ForceMode.Acceleration);
         }
@@ -91,14 +86,23 @@ namespace PhysicsStack
         /// </summary>
         float Ambient(float time)
         {
-            if (!Active)
+            var hazards = Hazards;
+
+            if (hazards.windSpeed <= 0f)
             {
                 return 0f;
             }
 
-            return period > 0f
-                ? speed * Mathf.Sin(time * 2f * Mathf.PI / period)
-                : speed;
+            // Faz mutlak zamandan geliyor, biriktirilmiyor. Sonsuz modda periyot
+            // tur ortasında açıldığında rüzgâr bu yüzden sinüsün ortasından
+            // devam ediyor, sıfırdan değil — yani bir anlık sıçrama oluyor. O an
+            // havada kutu olmadığı için (tehditler ancak yeni kutu istenirken
+            // tazeleniyor) bunu kabul ettim; fazı biriktirmek iki yerde ayrı
+            // ayrı ilerletmek demekti ve gösterge ile kuvvetin ayrışması,
+            // sıçramadan daha kötü bir hata olurdu.
+            return hazards.windPeriod > 0f
+                ? hazards.windSpeed * Mathf.Sin(time * 2f * Mathf.PI / hazards.windPeriod)
+                : hazards.windSpeed;
         }
     }
 }
