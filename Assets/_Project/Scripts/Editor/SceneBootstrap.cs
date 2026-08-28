@@ -419,7 +419,14 @@ namespace PhysicsStack.EditorTools
             SetReference(windIndicator, "wind", wind);
             SetReference(windIndicator, "palette", palette);
 
-            CreateCannon(cannonMaterial, ballPrefab, controller, tracker, effects);
+            // İki namlu kuruluyor, ikisi de sahnede duruyor ama yalnızca
+            // tehdidin istediği kadarı açılıyor: ikincisi kapalıyken gövdesi
+            // gizli ve Update'i ilk satırda dönüyor. Alternatifi namluyu
+            // çalışma zamanında üretmekti — prefab, referans bağlama ve
+            // "üretilen nesne sahneye ait değil" sorunları için, kazancı
+            // kapalıyken hiçbir şey yapmayan bir nesne olan bir şey.
+            CreateCannon(cannonMaterial, ballPrefab, controller, tracker, effects, queue, index: 0, sideX: -2.25f);
+            CreateCannon(cannonMaterial, ballPrefab, controller, tracker, effects, queue, index: 1, sideX: 2.25f);
 
             // Kamera bileşeni kameranın kendi nesnesinde duruyor ama ölçümü
             // buradaki tracker'dan alıyor; kuyruk da kutuyu kadrajın üstünde
@@ -617,6 +624,35 @@ namespace PhysicsStack.EditorTools
         /// kuruluyor, derleme temiz, log sessiz - ve oyun yanlis calisiyor.
         /// Bulmasi en pahali hata turu bu, o yuzden artik bagiriyor.
         /// </summary>
+        /// <summary>
+        /// Serileştirilmiş bir sayı alanını yazar. Referans yazan kardeşiyle
+        /// aynı sebeple var: alan <c>private</c> ve öyle kalmalı — sırf kurulum
+        /// betiği yazabilsin diye <c>public</c> yapmak, çalışma zamanı kodunun
+        /// arayüzünü kurulum aracına göre şekillendirmek olurdu.
+        /// </summary>
+        static void SetValue(Object target, string propertyName, float value)
+        {
+            var serialized = new SerializedObject(target);
+            var property = serialized.FindProperty(propertyName);
+
+            if (property == null)
+            {
+                Debug.LogError($"[SceneBootstrap] {target.GetType().Name} uzerinde '{propertyName}' alani yok.");
+                return;
+            }
+
+            if (property.propertyType == SerializedPropertyType.Integer)
+            {
+                property.intValue = Mathf.RoundToInt(value);
+            }
+            else
+            {
+                property.floatValue = value;
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         static void SetReference(Object target, string propertyName, Object value)
         {
             var serialized = new SerializedObject(target);
@@ -658,10 +694,13 @@ namespace PhysicsStack.EditorTools
             GameObject ballPrefab,
             StackGameController controller,
             StackTracker tracker,
-            ImpactEffects effects)
+            ImpactEffects effects,
+            BoxQueue queue,
+            int index,
+            float sideX)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Cannon";
+            go.name = $"Cannon{index}";
             go.transform.localScale = new Vector3(0.55f, 0.45f, 0.45f);
 
             // Collider yok: mermi namludan çıkarken kendi gövdesine çarpıp
@@ -680,7 +719,10 @@ namespace PhysicsStack.EditorTools
             SetReference(cannon, "tracker", tracker);
             SetReference(cannon, "ballPrefab", ballPrefab);
             SetReference(cannon, "effects", effects);
+            SetReference(cannon, "queue", queue);
             SetReference(cannon, "body", go.GetComponent<MeshRenderer>());
+            SetValue(cannon, "index", index);
+            SetValue(cannon, "sideX", sideX);
 
             return go;
         }

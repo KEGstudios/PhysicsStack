@@ -19,6 +19,9 @@ namespace PhysicsStack
     {
         [SerializeField] StackGameController controller;
         [SerializeField] StackTracker tracker;
+
+        [Tooltip("Bırakma çizgisini okumak için: namlunun tavanı o çizgi.")]
+        [SerializeField] BoxQueue queue;
         [SerializeField] GameObject ballPrefab;
         [SerializeField] ImpactEffects effects;
 
@@ -36,8 +39,17 @@ namespace PhysicsStack
         [Tooltip("Namlunun x konumu. Oyun alanının hemen dışında: BoxQueue'daki playHalfWidth + kutu yarısı + pay.")]
         [SerializeField] float sideX = -2.25f;
 
+        [Tooltip("Kaçıncı namlu (0 tabanlı). Tehditteki namlu sayısı bundan büyükse bu namlu açılır.")]
+        [SerializeField] int index;
+
         [Tooltip("Seviye verisi bir değer vermezse kullanılan alt kenar payı.")]
-        [SerializeField] float defaultBottomGap = 2f;
+        [SerializeField] float defaultBottomGap = 0.4f;
+
+        [Tooltip("Namlunun bırakma çizgisinin altında kalma payı (birim). Merminin yarıçapını da kapsamalı.")]
+        [SerializeField] float lineClearance = 0.4f;
+
+        [Tooltip("Bırakma çizgisi okunamazsa kule tepesinin bu kadar üstü tavan sayılır.")]
+        [SerializeField] float fallbackCeiling = 2.5f;
 
         [Tooltip("Bandın tabanı kule büyüdükçe bu sürede yetişiyor (sn).")]
         [SerializeField] float followSmoothTime = 0.5f;
@@ -46,10 +58,20 @@ namespace PhysicsStack
         float interval;
         float ballSpeed;
         float patrolSpeed;
-        float patrolSpan;
 
         float timer;
-        float travelled;
+
+        /// <summary>
+        /// Gezinmenin evresi: 0-1 arası bir sayı, mesafe değil.
+        ///
+        /// Önce doğrudan yol biriktiriliyordu ve <c>PingPong</c> ham mesafe
+        /// üzerinden çalışıyordu. Bandın yüksekliği sabitken bu doğruydu; artık
+        /// bant kule ile bırakma çizgisi arasında ve her kutuda değişiyor, ham
+        /// mesafeyle çalışan bir PingPong ise aralık değişince çıktısını
+        /// sıçratıyor. Evre normalize olunca bant büyüyüp küçülürken namlu
+        /// kendi yolunun aynı noktasında kalıyor.
+        /// </summary>
+        float phase;
 
         /// <summary>
         /// Bandın yumuşatılmış tabanı.
@@ -60,7 +82,12 @@ namespace PhysicsStack
         /// </summary>
         float smoothedBottom;
         float bottomVelocity;
+        float smoothedTop;
+        float topVelocity;
         bool initialised;
+
+        /// <summary>Bandın en az bu kadar yüksek olduğu varsayılıyor; sıfıra bölmeyi de bu engelliyor.</summary>
+        const float MinSpan = 0.5f;
 
         public bool Active { get; private set; }
 
@@ -97,24 +124,13 @@ namespace PhysicsStack
 
             applied = hazards;
 
-            Active = hazards.cannon;
+            Active = hazards.cannonCount > index;
             interval = Mathf.Max(0.25f, hazards.cannonInterval);
             ballSpeed = hazards.cannonBallSpeed;
             patrolSpeed = hazards.cannonPatrolSpeed;
 
-            // Bandın yüksekliği sabit bir sayı, kadrajdan ya da spawn yüksekliğinden
-            // türetilmiyor. İlk hâlinde bant "kule tepesi ile kutunun beliriş
-            // yüksekliği arası" idi ve ikisi de her kutuda değiştiği için namlunun
-            // gezinme aralığı her turda başka bir sayı oluyordu — PingPong da
-            // aralık değişince çıktısını sıçratıyor. Sabit bant hem bu hatayı
-            // kökünden kesiyor hem de tehdidi öngörülebilir kılıyor: oyuncu
-            // namlunun nereye kadar çıkacağını biliyor.
-            patrolSpan = Mathf.Max(1f, hazards.cannonPatrolSpan);
-
-            // Bant kulenin hemen üstünde değil, kule ile kutunun bırakıldığı yerin
-            // arasında duruyor. İlk denemede 0.9 idi ve namlu kuleye fazla yakın
-            // kalıyordu: tehdit, kutuyu indirirken değil neredeyse yerleşirken
-            // devreye giriyordu — yani oyuncunun düzeltme şansı olmayan bir anda.
+            // Bandın tabanı kule tepesinin bu kadar üstünde. Küçük bir sayı:
+            // namlu artık kulenin tepesine kadar iniyor.
             bottomGap = hazards.cannonBottomGap > 0f ? hazards.cannonBottomGap : defaultBottomGap;
 
             if (body != null)
@@ -132,8 +148,16 @@ namespace PhysicsStack
                 // Sayaçlar da sıfırlanıyor. Beliren namlunun ilk atışı için tam
                 // süre var; belirdiği anda ateş eden bir tehdit öğrenilecek bir
                 // ritim değil, kaza olurdu.
-                timer = 0f;
-                travelled = 0f;
+                //
+                // İkinci namlu yarım tur kaymış başlıyor: hem gezinmesi hem
+                // atışı. Aynı fazda başlasalardı iki namlu tek bir tehdit gibi
+                // davranırdı — aynı anda, aynı yükseklikten iki mermi, oyuncu
+                // için tek bir mermiyle aynı problem. Kaydırınca iki namlu
+                // koridoru bölüşüyor ve ortaya bir ritim çıkıyor.
+                float offset = (index % 2) * 0.5f;
+
+                timer = interval * offset;
+                phase = offset;
                 recoil = 0f;
             }
         }
@@ -159,20 +183,39 @@ namespace PhysicsStack
                 return;
             }
 
+            // Bandın iki ucu da artık oyunun kendi işaretlerinden geliyor:
+            // tabanı kulenin tepesi, tavanı bırakma çizgisi. Yani namlu kutuyu
+            // indirdiğin koridorda geziniyor, ne kulenin içine giriyor ne de
+            // çizginin üstüne çıkıyor. Çizginin üstü güvenli alan: oyuncunun
+            // kutuyu tuttuğu ve nişan aldığı yer orası, orada vurulmak
+            // öğrenilebilir bir tehdit değil, kaza.
+            //
+            // Önce bant sabit yükseklikteydi ve kule tepesinin belli bir pay
+            // üstünden başlıyordu. Öngörülebilirdi ama koridorla ilgisi yoktu:
+            // bırakma mesafesi büyük seviyelerde namlu çizginin epey üstüne
+            // çıkıyor, küçük olanlarda kuleye fazla yaklaşıyordu.
             float targetBottom = tracker.HighestSettledPointY() + bottomGap;
+            float targetTop = Ceiling() - lineClearance;
 
             if (!initialised)
             {
                 smoothedBottom = targetBottom;
+                smoothedTop = targetTop;
                 initialised = true;
             }
 
             smoothedBottom = Mathf.SmoothDamp(
                 smoothedBottom, targetBottom, ref bottomVelocity, followSmoothTime);
 
-            // Aralık sabit olduğu için PingPong sürekli: namlu bandın altı ile üstü
-            // arasında düzgün gidip geliyor, ritmi öğrenilebiliyor.
-            travelled += patrolSpeed * Time.deltaTime;
+            smoothedTop = Mathf.SmoothDamp(
+                smoothedTop, targetTop, ref topVelocity, followSmoothTime);
+
+            float span = Mathf.Max(MinSpan, smoothedTop - smoothedBottom);
+
+            // Evre normalize: hız birim/saniye olarak veriliyor ama bandın
+            // yüksekliğine bölünüyor, yani namlu dar koridorda daha sık gidip
+            // geliyor ve gezinme hızı her yerde aynı hissediliyor.
+            phase += patrolSpeed * Time.deltaTime / span;
             // Geri tepme namlunun disa dogru kacmasi: atisin cikmis oldugunu
             // gosteren en ucuz sey. Yon sideX'in isaretinden turetiliyor ki
             // namluyu karsi kenara tasimak tek bir sayi degistirmek olsun.
@@ -180,7 +223,7 @@ namespace PhysicsStack
 
             transform.position = new Vector3(
                 sideX + Mathf.Sign(sideX) * recoil,
-                smoothedBottom + Mathf.PingPong(travelled, patrolSpan),
+                smoothedBottom + span * Mathf.PingPong(phase, 1f),
                 0f);
 
             timer += Time.deltaTime;
@@ -190,6 +233,21 @@ namespace PhysicsStack
                 timer = 0f;
                 Fire();
             }
+        }
+
+        /// <summary>
+        /// Bandın tavanı: eldeki kutunun bırakma çizgisi. Kuyruk bağlı değilse
+        /// ya da elde kutu yoksa kule tepesinin sabit bir pay üstü kullanılıyor
+        /// — namlunun bir kare için kulenin içine dalmasındansa biraz yukarıda
+        /// beklemesi iyi.
+        /// </summary>
+        float Ceiling()
+        {
+            var box = queue != null ? queue.Current : null;
+
+            return box != null
+                ? box.DropLineY
+                : tracker.HighestSettledPointY() + fallbackCeiling;
         }
 
         void Fire()

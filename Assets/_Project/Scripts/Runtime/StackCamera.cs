@@ -244,6 +244,12 @@ namespace PhysicsStack
         /// Yine de kadrajın üst kenarına takılıyor: kule kameranın yetişemeyeceği
         /// kadar hızlı büyürse kutu ekran dışına çıkmasın diye.
         /// </summary>
+        /// <summary>
+        /// Kadrajın üstünde arayüzün kapladığı yer (birim). Kutunun beliriş
+        /// noktası bunun altında kalmalı.
+        /// </summary>
+        public float UiMargin => (FrameTopY - FrameBottomY) * HudUI.TopBandFraction;
+
         public float SpawnHeight(float aboveTower, float minHeight, float marginFromTop)
         {
             float towerTop = tracker != null ? tracker.HighestSettledPointY() : 0f;
@@ -254,7 +260,11 @@ namespace PhysicsStack
             // kalıyor, o yüzden ayrı bir durum kontrolü gerekmiyor.
             float desired = Mathf.Max(towerTop + aboveTower, minHeight);
 
-            return Mathf.Min(desired, FrameTopY - marginFromTop);
+            // Üst pay sabit bir sayı değil, kadrajın oranı. Sabit 1 birim
+            // payla kutu kadrajın hemen dibinde beliriyordu ve kule yükselip
+            // kadraj genişledikçe o bir birim, panelin kapladığı yerin çok
+            // altında kalıyordu: kutu yazının arkasında beliriyordu.
+            return Mathf.Min(desired, FrameTopY - Mathf.Max(marginFromTop, UiMargin));
         }
     }
 }

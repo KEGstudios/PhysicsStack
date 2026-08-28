@@ -1166,3 +1166,243 @@ kulağa tur bitmiş gibi gelmesini engellemiyordu.
 çökerse tur yine bitiyor. "Çöktükten sonra kontrol noktasından devam" ayrı bir
 karar: sonsuz modu affedici bir moda çevirir ve düşen parçaları temizlemeyi de
 gerektirir.
+
+## Faz 3 · 3. günün ikinci yarısı
+
+### Menü ikiye ayrıldı
+
+Tek ekranda oyunun adı, sekiz seviyelik ızgara, sonsuz mod ve ses düğmesi
+vardı. Sekiz seviye ekrana ancak sığıyordu; dokuzuncu sığmayacaktı. Izgarayı
+küçültmek çözüm değildi — düğmeler zaten yıldız sırası taşıyor ve küçülünce
+yıldızlar okunmaz oluyor.
+
+Ayrıca ilk açılışta oyuncuya sorulan soru "hangi seviye" değil "hangi mod".
+Izgarayı ilk ekrana koymak o soruyu sekiz seçenekle birlikte soruyordu. Artık
+ana ekranda iki düğme var (Seviyeler, Sonsuz Mod), seviye listesi ayrı bir
+ekranda ve orada sonsuz mod yok: aynı seçeneğin iki yerde durması, listenin
+sonuna inen oyuncu için "bunun burada ne işi var" sorusu doğururdu.
+
+Oyunun adı bir kez ortada duruyor, sonra yukarı kayıp başlık oluyor. Aynı yazı
+hem tanıtım hem başlık işini görüyor; ayrı bir açılış ekranı kurmak bir saniye
+sonra çöpe atılacak ikinci bir kanvas demekti. Animasyon oturumda bir kez
+oynuyor ve ekrana dokununca atlanıyor — her seviye dönüşünde tekrar izlemek,
+üçüncü seferde bekleme süresine dönüşür.
+
+Punto da animasyonun parçası: ad ortadayken kutusu büyük, yukarıdayken küçük ve
+otomatik boyutlandırma puntoyu kutuya göre kendi buluyor. Yani animasyon tek bir
+sayıyla (0 → 1) sürüyor, iki ayrı şey (konum ve punto) senkronda tutulmuyor.
+
+### Kaydırmalı liste, EventSystem olmadan
+
+uGUI'nin `ScrollRect`'i EventSystem, input modülü ve `GraphicRaycaster` istiyor.
+Bu projede o altyapı hiç kurulu değil — dokunuş okuması baştan beri
+`RectangleContainsScreenPoint` ile yapılıyor. Yalnızca bu liste için EventSystem
+kurmak, bütün dokunuş okumasını ikinci bir sisteme taşımak olurdu.
+
+Kaydırmayı elle yazdım: sürükleme, sönen atalet, sınırlarda durma, fare
+tekerleği. Kırpma için `RectMask2D` kullanılıyor — o bir çizim özelliği,
+EventSystem istemiyor.
+
+İki ayrıntı oynanışta belirleyici:
+
+- **Dokunuş bırakışta okunuyor, basışta değil.** Kaydırılabilen bir listede
+  basış anında karar vermek, listeyi kaydırmak isteyen her parmağın altındaki
+  seviyeyi açardı. Oyunun geri kalanında karar basışta veriliyor ve orada
+  doğrusu o: sabit bir düğmenin altında kaydırma diye bir ihtimal yok.
+- **Dokunuş mu kaydırma mı, toplam yol üzerinden.** Baştan sona mesafeye
+  bakılsaydı parmağını aşağı indirip geri getiren biri "hiç kaymamış" sayılırdı.
+
+Satır yüksekliği görünen satır sayısına bağlı (3.4), seviye sayısına değil:
+dokuzuncu seviye eklenince düğmeler küçülmüyor, liste uzuyor. Buçuklu sayı da
+bilinçli — dördüncü satırın bir kısmı görünüyor ve listenin devam ettiğini
+söyleyen şey bu. Kaydırma çubuğu koymak yerine içeriğin kendisini kırptım;
+çubuk, dokunmatik bir ekranda kimsenin tutmadığı bir şey.
+
+### Üç yeni seviye: yeni kol yükseklik
+
+Seviye 9-11 eklendi. Bunlar eğriyi mesafeyle değil **yükseklikle** sürdürüyor:
+hedef 6'dan 7 ve 8'e çıkıyor, bırakma mesafesi 3.5-4.0'da kalıyor. Sebebi kendi
+notum — mesafe 8. seviyede zaten oynanabilirlik tavanına dayanmıştı; 4 birimden
+düşen kutu ~9 m/s ile çarpıyor ve kuleyi süpürüyor. İkinci kolu açan şey düşüş
+sürtünmesi ve fizik ayarlarıydı.
+
+9. seviyede tehdit yok. Sekizinci seviyeden sonra bu bir geri adım gibi
+görünebilir ama orada sorulan soru "yüksek kule kurabiliyor musun" ve yanına
+ikinci bir soru koymak cevabı bulanıklaştırırdı — sonsuz moddaki merdivenle aynı
+mantık.
+
+Kontrol noktası bu üç seviyeye konmadı. Sistem duruyor ve `checkpointEvery`
+alanı kapalı; yüksek kule isteyen bir seviye ileride tasarlanırsa hazır.
+
+Zorluk göstergesinin yükseklik aralığı da 3-6'dan 3-8'e çıktı. Aksi hâlde 6'nın
+üstündeki her hedef aynı görünüyordu, yani gösterge tam da yeni açılan kolu
+ölçemiyordu. Yeni dağılım: 1, 2, 2, 2, 3, 3, 4, 4, 3, 4, 5.
+
+Sonsuz modun kilidi 8. seviyede kaldı, sona taşınmadı: sonsuz mod bir bitirme
+ödülü değil, ikinci bir oynama biçimi. On birinci seviyeye bağlasaydım
+oyuncuların çoğu onu hiç görmezdi.
+
+### Görünmeyen animasyon: hata çalışmamak değil, çizilmeden bitmekti
+
+Tanıtım Unity'de hiç oynamıyordu. İlk şüphem statik alanın Play oturumları
+arasında yaşamasıydı (Editor'de "Enter Play Mode Options" açıkken olabiliyor);
+onu `RuntimeInitializeOnLoadMethod` ile sıfırladım ama asıl sebep başkaydı.
+
+Animasyonu duvar saatiyle sürüyordum. Sahne açılırken ilk kareler çok uzun
+sürüyor — shader derlemesi, TMP atlasının üretilmesi, ses kliplerinin
+sentezlenmesi hep orada. `Time.unscaledDeltaTime` o karede saniyeler
+gösterebiliyor, yani 1.15 saniyelik animasyon **tek bir karede** başlayıp
+bitiyordu. Ekranda hiçbir şey görünmemesinin sebebi animasyonun çalışmaması
+değil, çizilmeden bitmesiydi.
+
+Çözüm, tanıtım saatinin bir karede ilerleyebileceği adımı sınırlamak (0.05 sn).
+Süre artık kareye bağlı: en kötü ihtimalle tanıtım biraz uzun sürer ama mutlaka
+çizilir. Açılış animasyonu için doğru takas bu — oynanışta tersi doğru olurdu,
+orada fizik duvar saatini takip etmeli.
+
+### Oynanıştan gelen üç düzeltme
+
+**1. Kutu panelin arkasında beliriyordu.** Beliriş noktası kadrajın üstünden
+sabit 1 birim aşağıda tutuluyordu. Kule yükseldikçe kamera geri çekiliyor,
+kadraj büyüyor ve o bir birim, panelin kapladığı yerin çok altında kalıyor —
+yani kutu yazının arkasında beliriyordu. Pay artık sabit değil, kadrajın oranı
+(`HudUI.TopBandFraction`). Sayı panelin kendi dosyasında duruyor: kamerada ayrı
+bir kopya olsaydı paneli aşağı kaydırdığım gün ikisi sessizce ayrışırdı.
+
+Kameranın ayırdığı tepe boşluğu da bu payı içeriyor. İçermeseydi kadraj kutunun
+tam üstünde biter, kırpma kuralı da kutuyu panelin altına indirmek için düşüş
+mesafesini sessizce kısaltırdı — oyunun tek risk kolu, kule yükseldikçe
+kendiliğinden gevşerdi.
+
+**2. Sabit beliriş noktası oyunu çözüyordu.** Yatay rastgelelik Faz 2'de
+bilerek kaldırılmıştı: *"zorluk atışın kendisinden gelmeli, kutunun nereye
+düştüğünü şansın belirlemesinden değil."* Gerekçe doğru ama açığı varmış —
+kutu her seferinde aynı yerde belirince parmağı hiç kıpırdatmadan aynı noktaya
+arka arkaya dokunmak kusursuz bir kule veriyor. Oyun oynanmadan çözülüyor.
+
+Geri gelen şey eskisi değil: rastgele olan tek şey kutunun **belirdiği** yer.
+Nereye ineceğine hâlâ tamamen oyuncu karar veriyor, çünkü kutu zaten
+sürüklenerek indiriliyor. Yani şans sonucu değil yalnızca başlangıç noktasını
+belirliyor; aynı seviye iki kez oynandığında problem aynı, tek fark her kutu
+için gerçekten bir hamle yapmak zorunda olmak.
+
+Arka arkaya iki kutu arasında en az bir mesafe şartı var. Olmasaydı rastgelelik
+işini yapmazdı: iki kutu tesadüfen aynı yere düştüğünde sabit noktanın açığı o
+iki kutu boyunca geri gelirdi.
+
+**3. Namlunun bandı artık oyunun kendi işaretlerinden geliyor.** Bant sabit
+yükseklikteydi ve kule tepesinin belli bir pay üstünden başlıyordu.
+Öngörülebilirdi ama koridorla ilgisi yoktu: bırakma mesafesi büyük seviyelerde
+namlu bırakma çizgisinin epey üstüne çıkıyor, küçüklerinde kuleye fazla
+yaklaşıyordu.
+
+Artık tabanı kulenin tepesi, tavanı bırakma çizgisi. Namlu tam da kutuyu
+indirdiğin koridorda geziniyor; çizginin üstü güvenli alan, çünkü orası
+oyuncunun kutuyu tutup nişan aldığı yer ve orada vurulmak öğrenilebilir bir
+tehdit değil, kaza.
+
+Bunun bir bedeli vardı: bant artık her kutuda değişiyor ve `PingPong` ham
+mesafe üzerinden çalışırken aralık değişince çıktısını sıçratıyor — bandın sabit
+tutulmasının asıl sebebi de buydu. Çözüm bandı sabitlemek değil, evreyi
+normalize etmek: gezinme 0-1 arası bir sayı üzerinden yürüyor ve bant büyüyüp
+küçülürken namlu kendi yolunun aynı noktasında kalıyor. Hız da banda bölünüyor,
+yani dar koridorda daha sık gidip geliyor ama gezinme hızı her yerde aynı
+hissediliyor.
+
+`cannonPatrolSpan` alanı tamamen kalktı: bandın yüksekliği artık veri değil,
+türetilen bir şey. Veride kalsaydı iki ayrı yerden gelen iki tavan olurdu.
+
+### Sayaç yanlış şeyi sayıyordu
+
+Sonsuz modda oynarken çıktı ve ikisi de aynı hatanın iki yüzüymüş: hem tehdit
+merdiveni hem kontrol noktası **atılan kutu sayısına** bakıyordu, kulenin boyuna
+değil. Kutuları kulenin yanına atınca sayaç ilerliyor, rüzgâr geliyor, top
+çıkıyor — ama kule 7 birimde duruyor. Yani hem zorluk hem ödül, ikisini de hak
+eden şeyden bağımsız veriliyordu.
+
+Bütün eşikler kule boyuna çevrildi: bırakma mesafesi eğrisi, rüzgârın başladığı
+ve dolduğu nokta, salınım, namlu ve kontrol noktaları. Sayılar aynı kaldı çünkü
+kutu boyu 1 birim — "15 kutu" ile "15 birim" düzgün yığılmış bir kulede zaten
+aynı şey. Değişen tek şey artık yalnızca kuleye konan kutunun sayılması.
+
+Kontrol noktasının sorusu da değişmek zorunda kaldı. Kutu sayısı ayrık, yani
+"bu sayı bir kontrol noktası mı" diye sorulabiliyordu; yükseklik sürekli ve kule
+9.98'den 10.03'e geçiyor. Arayüz artık "verilen yükseklikten sonraki ilk kontrol
+noktası nerede" diye soruyor, controller da o eşiği geçince donduruyor.
+
+### Iskalanan kutu artık kaybettiriyor
+
+Aynı turda ortaya çıkan ikinci sorun: kutuyu kulenin yanına atmak hiçbir şey
+yapmıyordu. Tur devam ediyor, kule duruyor, ceza yok. Yani en güvenli oynayış
+"kutuyu kenara at" oluyordu — bir oyunun en güvenli hamlesi hiçbir şey
+yapmamaksa orada oyun yoktur.
+
+Ölçü zemine oturmuş kutu sayısı: biri kulenin temeli, fazlası ıska. Bunu
+çarpışmayla ölçmek ("kutu kuleye değdi mi") yanlış olurdu, çünkü kuleden sekip
+yere düşen kutu da değmiş sayılırdı; bakılması gereken şey temas değil, kutunun
+nerede durduğu.
+
+Kural iki modda da geçerli. Seviyede ıskanın cezası eskiden "bir kutu daha az"
+idi, yani sınırı geniş seviyelerde cezasızlıktı. Aynı kuralın her yerde geçerli
+olması ayrıca önemli: oyuncu ıskanın ne demek olduğunu bir kez öğreniyor.
+
+Bunun bilerek kabul edilen bir yan etkisi var: geniş taban kurmak — kutuları yan
+yana dizip üstüne yığmak — artık mümkün değil. Kuleyi sağlamlaştıran bir
+stratejiydi ama oyun "yığ" diyor, "diz" demiyor.
+
+### Seviye 12-13: birleşimler ve ikinci namlu
+
+Buraya kadar her seviye tek bir soru soruyordu. Son iki seviye soruların
+birlikte sorulabildiği yer, ve sıra yine bilinçli: önce **iki farklı tehdit**
+(rüzgâr + namlu), sonra **aynı tehdidin iki katı** (çift namlu). İkisini de aynı
+seviyeye koysaydım kaybın sebebi okunmazdı.
+
+`HazardSettings.cannon` alanı `bool`'dan `cannonCount`'a çevrildi. İki namlu
+sahnede baştan duruyor; tehdidin istediği kadarı açılıyor, kapalı olan gövdesini
+gizleyip `Update`'in ilk satırında dönüyor. Alternatifi namluyu çalışma zamanında
+üretmekti — prefab, referans bağlama ve "üretilen nesne sahneye ait değil"
+sorunları için, kazancı kapalıyken hiçbir şey yapmayan bir nesne olan bir şey.
+
+İkinci namlu **yarım tur kaymış** başlıyor: hem gezinmesi hem atışı. Aynı fazda
+başlasalardı iki namlu tek bir tehdit gibi davranırdı — aynı anda, aynı
+yükseklikten iki mermi, oyuncu için tek bir mermiyle aynı problem. Kaydırınca
+iki namlu koridoru bölüşüyor ve ortaya bir ritim çıkıyor.
+
+Çift namluda atış aralığı da uzadı (2.2 → 3.0). Oyuncuya gelen mermi sıklığı
+zaten iki katı; aralık aynı kalsaydı koridor sürekli dolu olur ve ortaya
+beceriyle değil şansla geçilen bir seviye çıkardı.
+
+Rüzgâr ve namluyu birleştirmek için ayrı bir "hem rüzgâr hem namlu" üreticisi
+yazmadım; var olan ayara rüzgâr ekleyen bir sarmalayıcı var. Ayrı üretici
+yazmak, üçüncü tehditte üç üreticiye çıkardı.
+
+### Ölçülmemiş performans ve doğrulanmamış platform
+
+İki açığı da yazıya geçirdim.
+
+**APK hiçbir zaman telefonda çalışmadı** — elimde Android cihaz yok. Build hattı
+çalışıyor ve APK derleniyor, ama cihazda çalıştığı doğrulanmadı. Dokunmatik
+girdi ve performans telefonun tarayıcısındaki WebGL sürümüyle test edildi; girdi
+yolu ikisinde de aynı (`Pointer` katmanı) ama IL2CPP/ARM64 çıktısının cihazdaki
+davranışı bilinmiyor. README'de bunu yazmadan "Android hedefli" demek,
+doğrulanmamış bir şeyi doğrulanmış göstermek olurdu.
+
+**Performans hiç ölçülmemişti.** Debug paneline kare hızı, son bir saniyenin en
+kötü karesi ve uyanık cisim sayısı eklendi.
+
+Üçünün de ayrı bir sebebi var. Ortalama fps tek başına yalan söylüyor: saniyede
+bir kez 120 ms süren bir kare ortalamayı 58'in altına indirmiyor ama oyuncunun
+hissettiği tek şey o. Uyanık cisim sayısı da yanında, çünkü bu oyunda kare
+süresini belirleyen şey çizim değil fizik — ve dondurulmuş kutular çözücünün
+dışında olduğu için toplam kutu sayısı yanlış ölçü.
+
+Ölçüm panel kapalıyken de işliyor: açıldığı anda sıfırdan başlasaydı, bir
+takılmayı fark edip paneli açtığımda takılma çoktan geçmiş olurdu. Ölçek dışı
+zaman kullanılıyor, çünkü çöküşteki zaman yavaşlatması devredeyken
+`Time.deltaTime` gerçek kare süresini değil oyunun yavaşlatılmış süresini verir
+— yani tam da en çok kare düşen anda ölçüm yalan söylerdi.
+
+Paneli telefonda açmanın yolu da eklendi: sol üst köşeye çift dokunuş. Klavye
+yok, Inspector yok, yani panel telefonda pratikte hiç açılamıyordu — tam da en
+çok ölçüm gereken yerde. Çift dokunuş şart, çünkü tek dokunuş oyunun içinde bir
+hamle.

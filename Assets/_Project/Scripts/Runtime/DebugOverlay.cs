@@ -37,6 +37,22 @@ namespace PhysicsStack
         GUIStyle style;
         GUIStyle boxStyle;
 
+        /// <summary>
+        /// Yumuşatılmış kare hızı ve son bir saniyenin en kötüsü.
+        ///
+        /// İkisi birlikte duruyor çünkü tek başına ortalama yalan söylüyor:
+        /// saniyede bir kez 120 ms süren bir kare, ortalamayı 58 fps'ten
+        /// aşağı indirmiyor ama oyuncunun hissettiği tek şey o. Takılma
+        /// aranırken bakılacak sayı ikincisi.
+        /// </summary>
+        float smoothedFps;
+        float worstFrame;
+        float worstWindow;
+        float worstShown;
+
+        /// <summary>Köşeye yapılan son dokunuşun zamanı; çift dokunuş bununla ölçülüyor.</summary>
+        float lastCornerTap = -1f;
+
         void Awake()
         {
             if (controller == null)
@@ -59,9 +75,92 @@ namespace PhysicsStack
         /// </summary>
         void Update()
         {
+            MeasureFrame();
+
             if (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
             {
                 visible = !visible;
+            }
+
+            CornerTap();
+        }
+
+        /// <summary>
+        /// Telefonda paneli açmanın yolu: sol üst köşeye çift dokunuş.
+        ///
+        /// Klavye yok, Inspector yok — yani telefonda panel pratikte hiç
+        /// açılamıyordu ve tam da en çok ölçüm gereken yer orası: kare hızını
+        /// ancak çalıştığı cihazda ölçmenin anlamı var.
+        ///
+        /// Çift dokunuş şart, çünkü tek dokunuş oyunun içinde bir hamle: kutu
+        /// köşeye yakın bir yerde tutulurken panel açılıp kapanırdı. Köşe de
+        /// bilerek küçük ve oyun alanının dışında.
+        /// </summary>
+        void CornerTap()
+        {
+            var pointer = Pointer.current;
+
+            if (pointer == null || !pointer.press.wasPressedThisFrame)
+            {
+                return;
+            }
+
+            Vector2 position = pointer.position.ReadValue();
+
+            if (position.x > Screen.width * 0.14f || position.y < Screen.height * 0.93f)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+
+            if (now - lastCornerTap < 0.5f)
+            {
+                visible = !visible;
+                lastCornerTap = -1f;
+                return;
+            }
+
+            lastCornerTap = now;
+        }
+
+        /// <summary>
+        /// Kare süresi ölçümü. Panel kapalıyken de işliyor: ölçüm açıldığı anda
+        /// sıfırdan başlasaydı, bir takılmayı fark edip paneli açtığımda
+        /// takılma çoktan geçmiş olurdu.
+        ///
+        /// Ölçek dışı zaman kullanılıyor. Çöküşte zaman yavaşlatması devrede ve
+        /// <c>Time.deltaTime</c> orada gerçek kare süresini değil, oyunun
+        /// yavaşlatılmış süresini verir — yani tam da en çok kare düşen anda
+        /// ölçüm yalan söylerdi.
+        /// </summary>
+        void MeasureFrame()
+        {
+            float delta = Time.unscaledDeltaTime;
+
+            if (delta <= 0f)
+            {
+                return;
+            }
+
+            // Üstel ortalama: dizi tutmaya gerek yok ve sayı okunabilir hızda
+            // değişiyor. Kare başına doğrudan 1/delta yazmak, ekranda okunamayan
+            // bir titreme üretiyor.
+            smoothedFps = smoothedFps <= 0f
+                ? 1f / delta
+                : Mathf.Lerp(smoothedFps, 1f / delta, 0.1f);
+
+            worstFrame = Mathf.Max(worstFrame, delta);
+            worstWindow += delta;
+
+            // Pencere bir saniye: gösterilen "en kötü" sayı, son bir saniyenin
+            // en kötüsü. Tur boyunca en kötüyü tutsaydım, oyunun ilk karesindeki
+            // yükleme takılması bütün turu kirletirdi.
+            if (worstWindow >= 1f)
+            {
+                worstShown = worstFrame;
+                worstFrame = 0f;
+                worstWindow = 0f;
             }
         }
 
@@ -124,6 +223,16 @@ namespace PhysicsStack
                 GUILayout.Label($"çizgi {current.DropLineY:0.00} · mesafe {current.DropLineY - height:0.00}{gust}", style);
             }
 
+            // Performans satırı. Ölçülmüş sayı olmadan "akıcı çalışıyor"
+            // demenin bir değeri yok; bu satır o cümleyi kurabilmek için var.
+            // Uyanık cisim sayısı da yanında duruyor, çünkü bu oyunda kare
+            // süresini belirleyen şey çizim değil fizik: donmuş kutular
+            // çözücünün dışında ve sayı onları saymıyor.
+            GUILayout.Label(
+                $"fps {smoothedFps:0} · en kötü kare {worstShown * 1000f:0} ms" +
+                $" · cisim {controller.Tracker.Count} (uyanık {controller.Tracker.AwakeCount()})",
+                style);
+
             // Sonsuz modda tehdit eğrisi turun içinde ilerliyor ve ekranda bunu
             // söyleyen bir şey yok — oyuncu için doğrusu bu, ama eğrinin
             // ayarını gözle yapmak imkânsız hâle geliyor. Satır yalnızca sonsuz
@@ -134,13 +243,20 @@ namespace PhysicsStack
                 var hazards = controller.Hazards;
                 string swing = hazards.windPeriod > 0f ? $" (salınım {hazards.windPeriod:0.0} sn)" : string.Empty;
 
-                string checkpoint = controller.LastCheckpoint > 0
-                    ? $" · donmuş {controller.LastCheckpoint}"
+                // Eşiklerin hepsi kule boyuna bağlı, o yüzden satır da boyu
+                // yazıyor: kutu sayısı burada yanıltıcı olurdu, ikisi ancak
+                // hiç ıskalanmamış bir turda aynı sayı.
+                string checkpoint = controller.LastCheckpoint > 0f
+                    ? $" · donmuş {controller.LastCheckpoint:0.0}"
                     : string.Empty;
 
+                string next = float.IsInfinity(controller.NextCheckpoint)
+                    ? string.Empty
+                    : $" · sonraki {controller.NextCheckpoint:0.0}";
+
                 GUILayout.Label(
-                    $"tehdit: kutu {controller.Tracker.PlacedCount} · rüzgâr {hazards.windSpeed:0.00}{swing}" +
-                    $" · namlu {(hazards.cannon ? "açık" : "kapalı")}{checkpoint}",
+                    $"tehdit: boy {height:0.0} · rüzgâr {hazards.windSpeed:0.00}{swing}" +
+                    $" · namlu {hazards.cannonCount}{checkpoint}{next}",
                     style);
             }
 

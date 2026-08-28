@@ -61,8 +61,8 @@ namespace PhysicsStack
         [Tooltip("Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.")]
         public float collapseDrop = 0.6f;
 
-        [Tooltip("Kaç kutuda bir kulenin altı dondurulsun? 0 = kontrol noktası yok. Yüksek kuleli seviyeler için.")]
-        public int checkpointEvery;
+        [Tooltip("Kaç birim yükseklikte bir kulenin altı dondurulsun? 0 = kontrol noktası yok. Yüksek kuleli seviyeler için.")]
+        public float checkpointEvery;
 
         [Tooltip("Seviyenin çevresel tehditleri. Hepsi yalnızca havadaki kutuya dokunur.")]
         public HazardSettings hazards;
@@ -104,22 +104,44 @@ namespace PhysicsStack
             get
             {
                 float gap = Mathf.InverseLerp(2f, 4f, dropGap);
-                float height = Mathf.InverseLerp(3f, 6f, targetHeight);
+                // Yükseklik aralığı 3-6'ydı; son üç seviye 7 ve 8'e çıkınca üst
+            // sınır 8 oldu. Aksi hâlde 6'nın üstündeki her hedef aynı görünüyor
+            // ve zorluk göstergesi tam da yeni açılan kolu ölçemiyordu.
+            float height = Mathf.InverseLerp(3f, 8f, targetHeight);
 
                 float raw =
                     gap * 2f +
                     height * 1.5f +
                     (hazards.windSpeed > 0f ? 1.2f : 0f) +
-                    (hazards.cannon ? 1.6f : 0f);
+                    hazards.cannonCount * 1.6f;
 
                 return Mathf.Clamp(1 + Mathf.RoundToInt(raw / 5.3f * 4f), 1, 5);
             }
         }
 
-        /// <summary>Seviyedeki tehdidin adı; yoksa boş.</summary>
-        public string HazardLabel =>
-            hazards.cannon ? "top atıcı" :
-            hazards.windSpeed > 0f ? "rüzgâr" :
-            string.Empty;
+        /// <summary>
+        /// Seviyedeki tehditlerin adı; yoksa boş. İkisi birden varsa ikisi de
+        /// yazılıyor: kartta yalnızca birini göstermek, seviyeyi olduğundan
+        /// sade tanıtmak olurdu.
+        /// </summary>
+        public string HazardLabel
+        {
+            get
+            {
+                string cannon =
+                    hazards.cannonCount >= 2 ? "iki top atıcı" :
+                    hazards.cannonCount == 1 ? "top atıcı" :
+                    string.Empty;
+
+                string wind = hazards.windSpeed > 0f ? "rüzgâr" : string.Empty;
+
+                if (cannon.Length > 0 && wind.Length > 0)
+                {
+                    return $"{wind} ve {cannon}";
+                }
+
+                return cannon.Length > 0 ? cannon : wind;
+            }
+        }
     }
 }

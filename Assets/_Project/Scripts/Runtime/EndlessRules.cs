@@ -11,8 +11,10 @@ namespace PhysicsStack
     /// bir mod, bir süre sonra oyun değil test ortamı olur.
     ///
     /// Eğrinin basamakları oynanışta ölçülen tur uzunluğuna göre yerleşti:
-    /// rüzgâr 6'da başlayıp 14'te doluyor, 14'te salınmaya başlıyor, namlu 18'de
-    /// giriyor. İlk hâlinde sırasıyla 8, 18, 16 ve 22'ydi ve turlar 8 kutu
+    /// rüzgâr 6 birimde başlayıp 14'te doluyor, 14'te salınmaya başlıyor, namlu
+    /// 18'de giriyor. Bütün eşikler **kule boyu**, atılan kutu sayısı değil:
+    /// kutu sayısıyla çalışırken kutuları kulenin yanına atarak merdiveni
+    /// tırmandırmak mümkündü. İlk hâlinde sırasıyla 8, 18, 16 ve 22'ydi ve turlar 8 kutu
     /// civarında bitiyordu — yani merdivenin tamamı hiç görülmeyen bir yere
     /// kurulmuştu.
     ///
@@ -32,8 +34,19 @@ namespace PhysicsStack
     {
         readonly float collapseDrop;
 
-        /// <summary>Zorluğun tepeye ulaşması için gereken kutu sayısı.</summary>
-        const int RampBoxes = 15;
+        /// <summary>
+        /// Zorluğun tepeye ulaşması için gereken kule boyu (birim).
+        ///
+        /// Bütün eşikler kutu sayısından yüksekliğe çevrildi. Sebebi oynanışta
+        /// çıktı: kutuları kulenin yanına atarak sayacı ilerletebiliyordun,
+        /// rüzgâr ve top geliyordu ama kule 7 birimde duruyordu. Zorluk,
+        /// zorluğu hak eden şeyden bağımsız artıyordu.
+        ///
+        /// Sayılar aynı kaldı çünkü kutu boyu 1 birim: "15 kutu" ile "15 birim"
+        /// düzgün yığılmış bir kulede zaten aynı şey. Değişen tek şey, artık
+        /// yalnızca kuleye konan kutunun sayılması.
+        /// </summary>
+        const float RampHeight = 15f;
 
         const float StartDropGap = 2.5f;
 
@@ -51,31 +64,31 @@ namespace PhysicsStack
 
         const float EndWidthVariance = 0.25f;
 
-        /// <summary>Rüzgârın ilk esintisi ve tam şiddete ulaştığı kutu sayısı.</summary>
-        const int WindFirst = 6;
-        const int WindFull = 14;
+        /// <summary>Rüzgârın ilk esintisi ve tam şiddete ulaştığı kule boyu (birim).</summary>
+        const float WindFirst = 6f;
+        const float WindFull = 14f;
 
         /// <summary>Tepe rüzgâr hızı. Seviye 7'dekiyle aynı.</summary>
         const float TopWindSpeed = 1f;
 
         /// <summary>
-        /// Rüzgârın yön değiştirmeye başladığı kutu ve periyodu (sn). Şiddetin
-        /// dolduğu kutuyla aynı: rüzgâr önce güçleniyor, tavana vurunca artmayı
+        /// Rüzgârın yön değiştirmeye başladığı boy ve periyodu (sn). Şiddetin
+        /// dolduğu boyla aynı: rüzgâr önce güçleniyor, tavana vurunca artmayı
         /// bırakıp huysuzlaşıyor. Aynı anda hem güçlenip hem salınsaydı ikisini
         /// birbirinden ayırmak mümkün olmazdı.
         /// </summary>
-        const int WindSwingFirst = WindFull;
+        const float WindSwingFirst = WindFull;
         const float WindSwingPeriod = 3.2f;
 
-        /// <summary>Namlunun devreye girdiği kutu sayısı.</summary>
-        const int CannonFirst = 18;
+        /// <summary>Namlunun devreye girdiği kule boyu (birim).</summary>
+        const float CannonFirst = 18f;
 
-        /// <summary>İlk kontrol noktası ve sonraki aralıkların başlangıcı.</summary>
-        const int FirstCheckpoint = 10;
-        const int CheckpointGap = 15;
+        /// <summary>İlk kontrol noktası ve sonraki aralıkların başlangıcı (birim).</summary>
+        const float FirstCheckpoint = 10f;
+        const float CheckpointGap = 15f;
 
-        /// <summary>Her kontrol noktasından sonra aralığın büyüme miktarı.</summary>
-        const int CheckpointGapGrowth = 5;
+        /// <summary>Her kontrol noktasından sonra aralığın büyüme miktarı (birim).</summary>
+        const float CheckpointGapGrowth = 5f;
 
         /// <param name="collapseDrop">Kule zirvesinin bu kadar altına düşerse çökmüş sayılır.</param>
         public EndlessRules(float collapseDrop = 0.6f)
@@ -117,29 +130,31 @@ namespace PhysicsStack
         /// </summary>
         public HazardSettings HazardsFor(in StackSnapshot snapshot)
         {
-            int placed = snapshot.PlacedCount;
+            float height = snapshot.Height;
 
             var hazards = HazardSettings.None;
 
             // InverseLerp kırpıyor: 6'dan önce sıfır, 14'ten sonra bir. Eşiği
             // ayrıca kontrol etmeye gerek yok ve rüzgâr sıfırken gösterge de
             // kendiliğinden gizli kalıyor.
-            hazards.windSpeed = TopWindSpeed * Mathf.InverseLerp(WindFirst, WindFull, placed);
+            hazards.windSpeed = TopWindSpeed * Mathf.InverseLerp(WindFirst, WindFull, height);
             hazards.windResponse = 3f;
-            hazards.windPeriod = placed >= WindSwingFirst ? WindSwingPeriod : 0f;
+            hazards.windPeriod = height >= WindSwingFirst ? WindSwingPeriod : 0f;
 
-            if (placed >= CannonFirst)
+            if (height >= CannonFirst)
             {
-                hazards.cannon = true;
+                // Sonsuz modda tek namlu. İkincisi tavanı yükseltirdi ve
+                // "18 birimden sonra hiçbir şey artmıyor" kuralı bilerek
+                // konmuştu; ikinci namlu seviye tarafının işi.
+                hazards.cannonCount = 1;
 
                 // Seviye 8'dekinden yumuşak: orada namlu bilinen bir kule
-                // yüksekliğine karşı ayarlanmıştı, burada oyuncu ona 18 kutu
+                // yüksekliğine karşı ayarlanmıştı, burada oyuncu ona 18 birim
                 // yorulmuş ve rüzgârla boğuşurken geliyor.
                 hazards.cannonInterval = 2.4f;
                 hazards.cannonBallSpeed = 6.5f;
                 hazards.cannonPatrolSpeed = 1.5f;
-                hazards.cannonBottomGap = 2.2f;
-                hazards.cannonPatrolSpan = 3.5f;
+                hazards.cannonBottomGap = 0.4f;
             }
 
             return hazards;
@@ -158,28 +173,33 @@ namespace PhysicsStack
         /// tabloyu bir yere kadar yazmak, o yerden sonrasını sessizce farklı
         /// davranan bir oyun demek.
         /// </summary>
-        public bool IsCheckpoint(int placedCount)
+        public float CheckpointAfter(float height)
         {
-            if (placedCount < FirstCheckpoint)
-            {
-                return false;
-            }
+            float next = FirstCheckpoint;
+            float gap = CheckpointGap;
 
-            int next = FirstCheckpoint;
-            int gap = CheckpointGap;
-
-            while (next < placedCount)
+            while (next <= height)
             {
                 next += gap;
                 gap += CheckpointGapGrowth;
             }
 
-            return next == placedCount;
+            return next;
         }
 
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
             if (snapshot.AnyFallen)
+            {
+                return RunOutcome.Lost;
+            }
+
+            // Kuleye konmayan kutu turu bitiriyor. Önceden yere düşen kutu
+            // hiçbir şey yapmıyordu: tur devam ediyor, sayaçlar ilerliyor, kule
+            // duruyordu. Yani en güvenli oynayış "kutuyu kenara at" oluyordu ve
+            // bir oyunun en güvenli hamlesi hiçbir şey yapmamaksa orada oyun
+            // yoktur.
+            if (snapshot.Missed)
             {
                 return RunOutcome.Lost;
             }
@@ -210,7 +230,7 @@ namespace PhysicsStack
         /// </summary>
         public BoxDifficulty NextBox(in StackSnapshot snapshot)
         {
-            float t = Mathf.Clamp01((float)snapshot.PlacedCount / RampBoxes);
+            float t = Mathf.Clamp01(snapshot.Height / RampHeight);
             return new BoxDifficulty(
                 Mathf.Lerp(StartDropGap, EndDropGap, t),
                 Mathf.Lerp(0f, EndWidthVariance, t));

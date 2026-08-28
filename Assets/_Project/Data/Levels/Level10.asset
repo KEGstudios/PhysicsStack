@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5dac964fe768c7841aa527272751de61, type: 3}
-  m_Name: Level06
+  m_Name: Level10
   m_EditorClassIdentifier: PhysicsStack.Runtime::PhysicsStack.LevelDefinition
-  title: Seviye 6
-  targetHeight: 5
-  dropGap: 3.5
+  title: Seviye 10
+  targetHeight: 7
+  dropGap: 4
   spawnLift: 0
-  widthVariance: 0.15
+  widthVariance: 0.2
   holdTime: 1.5
   collapseDrop: 0.6
   checkpointEvery: 0
   hazards:
-    windSpeed: 0.7
+    windSpeed: 0.9
     windResponse: 3
-    windPeriod: 0
+    windPeriod: 3
     cannonCount: 0
     cannonInterval: 0
     cannonBallSpeed: 0

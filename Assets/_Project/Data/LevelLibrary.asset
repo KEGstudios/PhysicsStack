@@ -21,4 +21,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 28af825d1f8d02e4c87904199d1f2244, type: 2}
   - {fileID: 11400000, guid: 39d7898e8b156c24bb7f868216fed816, type: 2}
   - {fileID: 11400000, guid: 0ca4bc83ef0cfcf438b87066427cd74d, type: 2}
+  - {fileID: 11400000, guid: 9d05be434f0541944a867ade05b08cb8, type: 2}
+  - {fileID: 11400000, guid: 88735c2b110f61a488797c2c0f964a90, type: 2}
+  - {fileID: 11400000, guid: bc6a79781cb98da429ac18be08943317, type: 2}
+  - {fileID: 11400000, guid: f2915642cfb3b304f8fd275114520215, type: 2}
+  - {fileID: 11400000, guid: 7546724a2bdb75840929274275154bae, type: 2}
   endlessUnlockIndex: 7

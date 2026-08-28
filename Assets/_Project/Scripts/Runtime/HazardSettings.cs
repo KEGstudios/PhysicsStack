@@ -24,8 +24,8 @@ namespace PhysicsStack
         [Tooltip("Rüzgârın yön değiştirme periyodu (sn). 0 = sabit yön.")]
         public float windPeriod;
 
-        [Tooltip("Kenarda gezinen top atıcı açık mı?")]
-        public bool cannon;
+        [Tooltip("Kaç namlu var? 0 = yok, 1 = sol kenar, 2 = iki kenar.")]
+        public int cannonCount;
 
         [Tooltip("İki atış arası süre (sn).")]
         public float cannonInterval;
@@ -36,17 +36,14 @@ namespace PhysicsStack
         [Tooltip("Namlunun aşağı yukarı gezinme hızı (m/s).")]
         public float cannonPatrolSpeed;
 
-        [Tooltip("Bandın alt kenarı kule tepesinin bu kadar üstünde.")]
+        [Tooltip("Bandın alt kenarı kule tepesinin bu kadar üstünde. Küçük bir pay: namlu kulenin tepesine kadar iniyor.")]
         public float cannonBottomGap;
-
-        [Tooltip("Namlunun gezindiği bandın yüksekliği (birim). Bant kule tepesinden başlar.")]
-        public float cannonPatrolSpan;
 
         /// <summary>Hiçbir tehdit yok.</summary>
         public static HazardSettings None => default;
 
         /// <summary>Bu ayarlarda dokunulacak bir tehdit var mı?</summary>
-        public bool Any => windSpeed > 0f || cannon;
+        public bool Any => windSpeed > 0f || cannonCount > 0;
 
         /// <summary>
         /// Alan alan karşılaştırma. Sonsuz modda tehditler tur içinde değiştiği
@@ -60,12 +57,11 @@ namespace PhysicsStack
             windSpeed == other.windSpeed &&
             windResponse == other.windResponse &&
             windPeriod == other.windPeriod &&
-            cannon == other.cannon &&
+            cannonCount == other.cannonCount &&
             cannonInterval == other.cannonInterval &&
             cannonBallSpeed == other.cannonBallSpeed &&
             cannonPatrolSpeed == other.cannonPatrolSpeed &&
-            cannonBottomGap == other.cannonBottomGap &&
-            cannonPatrolSpan == other.cannonPatrolSpan;
+            cannonBottomGap == other.cannonBottomGap;
 
         public override bool Equals(object obj) => obj is HazardSettings other && Equals(other);
 
@@ -73,11 +69,11 @@ namespace PhysicsStack
             windSpeed,
             windResponse,
             windPeriod,
-            cannon,
+            cannonCount,
             cannonInterval,
             cannonBallSpeed,
             cannonPatrolSpeed,
-            cannonPatrolSpan);
+            cannonBottomGap);
 
         public static bool operator ==(HazardSettings left, HazardSettings right) => left.Equals(right);
 

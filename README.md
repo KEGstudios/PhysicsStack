@@ -4,9 +4,9 @@
 mesafe üstünden bırakmak zorundasın** — yerleştirme bir koyma değil, bir atış.
 Kule hedefi geçip orada **tutunursa** kazanıyorsun.
 
-İki mod var: sekiz seviyelik seri (her seviyenin kendi sorusu var — bırakma
-mesafesi, yıldız için kutu bütçesi, rüzgâr, top atıcı) ve seriyi bitirince açılan
-sonsuz mod. Sonsuzda zorluk seviyeler arasında değil turun **içinde** artıyor:
+İki mod var: on üç seviyelik seri (her seviyenin kendi sorusu var — bırakma
+mesafesi, yıldız için kutu bütçesi, rüzgâr, top atıcı, yükseklik, ve sondaki
+ikisinde bunların birleşimi) ve sekizinci seviyede açılan sonsuz mod. Sonsuzda zorluk seviyeler arasında değil turun **içinde** artıyor:
 tehditler sırayla devreye giriyor, belirli kutu sayılarında da kulenin altı
 donarak yeni bir zemin oluyor. Sanatçısı olmayan bir projede görsel ve ses
 tamamen koddan geliyor: pastel palet, elle yazılmış gökyüzü shader'ı ve dosyadan
@@ -662,10 +662,55 @@ geçen bir hata, yeşil görünen kırık bir build demek olurdu.
 kısmı 32-bit çalıştırmıyor; ilk build uzun sürüyor (C++ runtime da derleniyor) ama
 telefonda çalışmayan bir APK'yı hızlı almanın değeri yok.
 
+**Ne test edildi, ne edilmedi.** APK derleniyor ve build hattı çalışıyor, ama
+elimde Android cihaz olmadığı için **APK hiçbir zaman bir telefonda
+çalıştırılmadı.** Dokunmatik girdi ve performans, telefonun tarayıcısında WebGL
+sürümü üzerinden test edildi — girdi yolu ikisinde de aynı (Input System'in
+`Pointer` katmanı), ama IL2CPP/ARM64 çıktısının cihazda nasıl davrandığı
+bilinmiyor. Bunu yazmadan "Android hedefli" demek, doğrulanmamış bir şeyi
+doğrulanmış gibi göstermek olurdu.
+
 Ekran yönü portre kilitli. Prototipte yataydı — kamera yatay kadraj için kuruluydu.
 Faz 2'de kamera görünür genişliği sabitleyecek şekilde yeniden yazılınca portreye
 geçmek mümkün oldu; kule yukarı büyüyen bir oyunun doğal yönü de bu ve tek elle
 oynanabiliyor.
+
+## Menü: tek ekran yetmedi
+
+Tek ekranda oyunun adı, sekiz seviyelik ızgara, sonsuz mod ve ses düğmesi vardı.
+Sekiz seviye ekrana ancak sığıyordu, dokuzuncu sığmayacaktı — ızgarayı küçültmek
+de çözüm değildi, çünkü düğmeler yıldız sırası taşıyor ve küçülünce yıldızlar
+okunmaz oluyor.
+
+Asıl mesele daha basitti: ilk açılışta oyuncuya sorulan soru "hangi seviye"
+değil, "hangi mod". Izgarayı ilk ekrana koymak o soruyu sekiz seçenekle birlikte
+soruyordu. Artık ana ekranda iki düğme var ve seviye listesi ayrı bir ekranda.
+
+Oyunun adı bir kez ortada duruyor, sonra yukarı kayıp başlık oluyor. Ayrı bir
+açılış ekranı kurmak, bir saniye sonra çöpe atılacak ikinci bir kanvas demekti;
+aynı yazı iki işi de görüyor. Punto da animasyonun parçası: ad ortadayken kutusu
+büyük, yukarıdayken küçük ve otomatik boyutlandırma puntoyu kutuya göre kendi
+buluyor — yani animasyon tek bir sayıyla sürüyor, konum ve punto diye iki şey
+senkronda tutulmuyor. Oturumda bir kez oynuyor ve dokununca atlanıyor.
+
+### Kaydırmalı liste, EventSystem olmadan
+
+uGUI'nin `ScrollRect`'i EventSystem, input modülü ve `GraphicRaycaster` istiyor.
+Bu projede o altyapı hiç kurulu değil; yalnızca bu liste için kurmak, bütün
+dokunuş okumasını ikinci bir sisteme taşımak olurdu. Kaydırmayı elle yazdım:
+sürükleme, sönen atalet, sınırlarda durma, fare tekerleği. Kırpma `RectMask2D`
+ile — o bir çizim özelliği, EventSystem istemiyor.
+
+İki ayrıntı oynanışta belirleyici oldu. **Dokunuş bırakışta okunuyor, basışta
+değil:** kaydırılabilen bir listede basış anında karar vermek, listeyi kaydırmak
+isteyen her parmağın altındaki seviyeyi açardı. **Dokunuş mu kaydırma mı sorusu
+toplam yol üzerinden cevaplanıyor:** baştan sona mesafeye bakılsaydı parmağını
+aşağı indirip geri getiren biri "hiç kaymamış" sayılırdı.
+
+Satır yüksekliği görünen satır sayısına bağlı (3.4), seviye sayısına değil:
+dokuzuncu seviye eklenince düğmeler küçülmüyor, liste uzuyor. Buçuklu sayı da
+bilinçli — dördüncü satırın bir kısmı görünüyor ve listenin devam ettiğini
+söyleyen şey bu.
 
 ## Kulenin tavanını yükseltmek
 
@@ -781,7 +826,7 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Gün 8 — Bırakma mesafesi mekaniği, 8 seviyelik veri ve zorluk eğrisi
 - [x] Gün 9 — Rüzgâr ve top atıcı, tehdit koridoru, uyarlanır kadraj
 - [x] Gün 10 — Menü, tur sonu ekranı, ilerleme kaydı
-- [x] Kapanış — WebGL yayını, telefon testi, README v2
+- [x] Kapanış — WebGL yayını, telefon tarayıcısında test, README v2
 
 **Faz 3 — bitmiş gibi görünen sürüm** ([plan](docs/FAZ3.md))
 
@@ -791,6 +836,9 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] İçerik — yıldız sistemi, seviye kartı, türetilen kutu ekonomisi ve zorluk
 - [x] Sonsuz mod — tur içinde sıraya dizilen tehditler
 - [x] Yükseklik tavanı — düşüş sürtünmesi, fizik ayarları, kontrol noktası
+- [x] Menü — tanıtım, ana ekran, kaydırmalı seviye listesi
+- [x] Seviye 9-11 — eğrinin yeni kolu: yükseklik
+- [x] Seviye 12-13 — birleşen tehditler, çift namlu
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı

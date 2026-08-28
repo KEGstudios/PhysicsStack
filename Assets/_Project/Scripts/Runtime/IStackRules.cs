@@ -80,20 +80,25 @@ namespace PhysicsStack
         HazardSettings HazardsFor(in StackSnapshot snapshot);
 
         /// <summary>
-        /// Bu kutu sayısına ulaşıldığında kulenin altı dondurulsun mu?
+        /// Verilen yükseklikten sonraki ilk kontrol noktası. Yoksa
+        /// <c>float.PositiveInfinity</c>.
         ///
         /// Kontrol noktası, o ana kadar oturmuş bütün kutuları kinematik yapıyor:
         /// artık itilemiyorlar, kule için yeni bir zemin oluyorlar. Amaç kolaylık
         /// değil, tavan: sallanma en alttan başlıyor ve her kutu onu biraz daha
         /// büyütüyor, yani belli bir yükseklikten sonra kule oyuncunun becerisiyle
-        /// değil birikmiş salınımla devriliyor. Altı sabitlenince yüksekliğin
-        /// üst sınırı kalkıyor — "seviye 100'de hâlâ 15 kutu" demek zorunda
-        /// kalmamanın yolu bu.
+        /// değil birikmiş salınımla devriliyor.
         ///
-        /// Kutu sayısına bakıyor, yüksekliğe değil: oyuncunun yaptığı iş kutu
-        /// koymak ve "10 kutuda bir" sayılabilir bir söz, "6 birimde bir" ise
-        /// kutu genişliklerine göre değişen bir söz olurdu.
+        /// Ölçü **yükseklik**, atılan kutu sayısı değil. İlk hâlinde kutu sayısına
+        /// bakıyordu ve oynanışta hemen kırıldı: kutuları kulenin yanına
+        /// atarsan sayaç ilerliyor, kule yerinde sayıyor. Yani ödül, ödülü hak
+        /// eden şeyden bağımsız veriliyordu. Aynı hata zorluk eğrisinde de
+        /// vardı ve aynı sebeple düzeldi.
+        ///
+        /// "Sonraki nokta" biçiminde sorulmasının sebebi yüksekliğin sürekli
+        /// olması: "bu sayı bir kontrol noktası mı" diye sorulabilecek bir kutu
+        /// sayısı yok artık, kule 9.98'den 10.03'e geçiyor.
         /// </summary>
-        bool IsCheckpoint(int placedCount);
+        float CheckpointAfter(float height);
     }
 }

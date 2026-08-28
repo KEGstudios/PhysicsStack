@@ -95,10 +95,13 @@ namespace PhysicsStack
         public HazardSettings Hazards { get; private set; }
 
         /// <summary>
-        /// Son kontrol noktasının kutu sayısı; sıfır ise henüz dondurulmadı.
-        /// Debug paneli ve tekrar tetiklenmeyi engelleyen kontrol bunu okuyor.
+        /// Sıradaki kontrol noktasının yüksekliği. Sonsuzsa bu modda kontrol
+        /// noktası yok. Debug paneli de bunu okuyor.
         /// </summary>
-        public int LastCheckpoint { get; private set; }
+        public float NextCheckpoint { get; private set; } = float.PositiveInfinity;
+
+        /// <summary>Son dondurmanın yapıldığı kule boyu; sıfır ise henüz dondurulmadı.</summary>
+        public float LastCheckpoint { get; private set; }
 
         void Awake()
         {
@@ -127,6 +130,7 @@ namespace PhysicsStack
             // gercek yigini okumuyorum, cunku Awake'te tracker'in hazir olup
             // olmadigi betik sirasina bagli ve o siraya guvenmek istemiyorum.
             Hazards = rules.HazardsFor(default);
+            NextCheckpoint = rules.CheckpointAfter(0f);
 
             State = GameState.WaitingForDrag;
         }
@@ -283,18 +287,23 @@ namespace PhysicsStack
         /// bir kuleyi dondurmak eğikliği kalıcı hâle getirir ve oyuncunun
         /// düzeltme şansı olmadan verilmiş bir cezaya dönüşür.
         ///
-        /// Kutu sayısı bir kez daha karşılaştırılıyor çünkü kule aynı sayıda
-        /// birden çok kez oturabiliyor (mesela mermi çarpıp yeniden oturunca);
-        /// kural "bu sayı bir kontrol noktası mı" diyor, "bu ilk kez mi" demiyor.
+        /// Ölçü kule boyu, atılan kutu sayısı değil. Kutu sayısıyla çalışırken
+        /// kutuları kulenin yanına atmak da sayacı ilerletiyordu: ödül, ödülü
+        /// hak eden şeyden bağımsız veriliyordu.
+        ///
+        /// Sıradaki eşik hemen bir sonrakine taşınıyor, çünkü yükseklik sürekli
+        /// bir sayı: "bu değer bir kontrol noktası mı" diye sorulamıyor, kule
+        /// 9.98'den 10.03'e geçiyor.
         /// </summary>
         void TryCheckpoint(in StackSnapshot snapshot)
         {
-            if (snapshot.PlacedCount <= LastCheckpoint || !rules.IsCheckpoint(snapshot.PlacedCount))
+            if (snapshot.Height < NextCheckpoint)
             {
                 return;
             }
 
-            LastCheckpoint = snapshot.PlacedCount;
+            LastCheckpoint = snapshot.Height;
+            NextCheckpoint = rules.CheckpointAfter(snapshot.Height);
 
             // Ses yalnızca gerçekten bir şey donduysa çalıyor: olmayan bir olayı
             // duyurmak, oyuncuya sistemin ne yaptığını yanlış öğretir.
@@ -326,6 +335,7 @@ namespace PhysicsStack
                 height,
                 peakHeight,
                 tracker.PlacedCount,
+                tracker.GroundedCount(),
                 tracker.AnyBelow(killHeight),
                 settled,
                 SteadyTimer);

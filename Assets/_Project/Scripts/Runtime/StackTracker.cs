@@ -28,6 +28,12 @@ namespace PhysicsStack
         [Tooltip("Kutunun 'oturdu' sayılması için kesintisiz durması gereken süre (sn).")]
         [SerializeField] float settleDelay = 0.2f;
 
+        [Tooltip("Zeminin üst yüzeyi (dünya y).")]
+        [SerializeField] float groundY;
+
+        [Tooltip("Kutunun altı zeminin bu kadar yakınındaysa zemine oturmuş sayılır (birim).")]
+        [SerializeField] float groundTolerance = 0.08f;
+
         readonly List<DraggableBody> bodies = new();
 
         /// <summary>Kutu başına kesintisiz durma süresi; oturma kararı buna bakıyor.</summary>
@@ -231,6 +237,69 @@ namespace PhysicsStack
             }
 
             return frozen;
+        }
+
+        /// <summary>
+        /// Fizik çözücüsünün hâlâ hesapladığı kutu sayısı: uyuyan ve
+        /// dondurulmuş olanlar sayılmıyor.
+        ///
+        /// Bu oyunda kare süresini belirleyen şey çizim değil fizik, ve
+        /// maliyeti belirleyen de toplam kutu sayısı değil bu sayı. Kontrol
+        /// noktasının performans kazancı da tam olarak burada görünüyor.
+        /// </summary>
+        public int AwakeCount()
+        {
+            int count = 0;
+
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                var body = bodies[i];
+
+                if (body == null)
+                {
+                    continue;
+                }
+
+                var rb = body.Body;
+
+                if (rb != null && !rb.isKinematic && !rb.IsSleeping())
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Zemine oturmuş kutu sayısı. Yalnızca oturmuşlar sayılıyor: elde
+        /// tutulan ya da havada olan kutu zeminin yakınından geçerken sayılsaydı
+        /// oyuncu kutuyu aşağı indirdiği anda ıskalamış sayılırdı.
+        ///
+        /// Ölçü collider'ın alt kenarı, transform değil: kutu yan yattığında
+        /// merkezi alçalıyor ama zemine oturmuş olması değişmiyor.
+        /// </summary>
+        public int GroundedCount()
+        {
+            int count = 0;
+
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                var body = bodies[i];
+
+                if (body == null || !settled.Contains(body))
+                {
+                    continue;
+                }
+
+                if (body.TryGetComponent(out Collider collider) &&
+                    collider.bounds.min.y <= groundY + groundTolerance)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         /// <summary>Bir parça verilen yüksekliğin altına düştü mü?</summary>

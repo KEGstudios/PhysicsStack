@@ -18,6 +18,17 @@ namespace PhysicsStack
     /// </summary>
     public sealed class HudUI : MonoBehaviour
     {
+        /// <summary>
+        /// Panelin kadrajın üstünde kapladığı oran. Kamera bunu okuyor: kutunun
+        /// belirdiği yer bu bandın altında kalmalı, yoksa kule yükselip kutu
+        /// yukarı çıktıkça beliriş noktası yazının arkasına giriyor.
+        ///
+        /// Sayı burada duruyor çünkü sahibi bu ekran. Kamerada ayrı bir sayı
+        /// olsaydı paneli aşağı kaydırdığım gün ikisi sessizce ayrışırdı.
+        /// Aşağıdaki yerleşim 0.83'te başlıyor; üstüne biraz pay bırakıldı.
+        /// </summary>
+        public const float TopBandFraction = 0.20f;
+
         [SerializeField] StackGameController controller;
         [SerializeField] Palette palette;
 

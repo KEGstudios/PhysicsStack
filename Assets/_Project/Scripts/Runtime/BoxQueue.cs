@@ -45,6 +45,12 @@ namespace PhysicsStack
         [Tooltip("Kutunun beliriş noktası. Yüksekliği kule ve kadraj belirliyor, x/z buradan.")]
         [SerializeField] Vector3 spawnPosition = new(0f, 7f, 0f);
 
+        [Tooltip("Kutunun beliriş noktasının yanal oynama payı (birim). 0 = her kutu aynı yerde belirir.")]
+        [SerializeField] float spawnSpread = 1.2f;
+
+        [Tooltip("Arka arkaya iki kutunun beliriş noktası arasındaki en küçük fark (birim).")]
+        [SerializeField] float spawnMinStep = 0.6f;
+
         public event Action<DraggableBody> BoxSpawned;
 
         public DraggableBody Current { get; private set; }
@@ -61,6 +67,9 @@ namespace PhysicsStack
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         int spawnCount;
+
+        /// <summary>Bir önceki kutunun beliriş x'i; yeni kutu ondan yeterince uzağa düşsün diye.</summary>
+        float lastSpawnX;
 
         /// <summary>Son kutunun belirdiği yükseklik. Top atıcı gezinme koridorunun tavanı bu.</summary>
         public float LastSpawnHeight { get; private set; }
@@ -87,7 +96,12 @@ namespace PhysicsStack
             // hesaplayan taraf söylüyor: kamera tahmin etmek zorunda kalmıyor.
             if (stackCamera != null)
             {
-                stackCamera.ReserveHeadroom(aboveTower + spawnMarginFromTop);
+                // Ayrılan boşluk arayüz payını da içeriyor. İçermeseydi kamera
+                // kadrajı kutunun tam üstünde bitirir, aşağıdaki kırpma da
+                // kutuyu panelin altına indirmek için düşüş mesafesini sessizce
+                // kısaltırdı — yani oyunun tek risk kolu, kule yükseldikçe
+                // kendiliğinden gevşerdi.
+                stackCamera.ReserveHeadroom(aboveTower + Mathf.Max(spawnMarginFromTop, stackCamera.UiMargin));
             }
 
             // Kutu yığının biraz üstünde belirmeli: hem kameranın gördüğü yerde
@@ -96,11 +110,21 @@ namespace PhysicsStack
                 ? stackCamera.SpawnHeight(aboveTower, minSpawnHeight, spawnMarginFromTop)
                 : towerTop + aboveTower;
 
-            // Yatay rastgelelik kaldırıldı. Kutu her seferinde aynı yerde beliriyor:
-            // zorluk atışın kendisinden gelmeli, kutunun nereye düştüğünü şansın
-            // belirlemesinden değil. Rastgelelik varken aynı seviyeyi iki kez
-            // oynamak iki farklı problem çözmek demekti.
-            Vector3 position = new(spawnPosition.x, height, spawnPosition.z);
+            // Yatay rastgelelik bir ara kaldırılmıştı ve gerekçesi şuydu: zorluk
+            // atışın kendisinden gelmeli, kutunun nereye düştüğünü şansın
+            // belirlemesinden değil. Oynayınca o gerekçenin açığı görüldü —
+            // sabit beliriş noktası dejenere bir strateji üretiyor: parmağı
+            // hiç kıpırdatmadan aynı yere arka arkaya dokunmak kusursuz bir
+            // kule veriyor, yani oyun oynanmadan çözülüyor.
+            //
+            // Geri getirilen şey eskisi değil. Rastgele olan tek şey kutunun
+            // **belirdiği** yer; nereye ineceğine hâlâ tamamen oyuncu karar
+            // veriyor, çünkü kutu zaten sürüklenerek indiriliyor. Yani şans
+            // sonucu değil, sadece başlangıç noktasını belirliyor: aynı seviye
+            // iki kez oynandığında problem aynı, tek fark her kutu için
+            // gerçekten bir hamle yapmak zorunda olmak.
+            float spawnX = PickSpawnX(scale.x * 0.5f);
+            Vector3 position = new(spawnX, height, spawnPosition.z);
 
             LastSpawnHeight = height;
 
@@ -127,6 +151,39 @@ namespace PhysicsStack
             Current = body;
             BoxSpawned?.Invoke(body);
             return body;
+        }
+
+        /// <summary>
+        /// Beliriş x'i. İki kural var: oyun alanının içinde kalmak ve bir
+        /// öncekinden yeterince uzağa düşmek.
+        ///
+        /// İkincisi olmadan rastgelelik işini yapmıyor — art arda gelen iki
+        /// kutu tesadüfen aynı yere düştüğünde, sabit beliriş noktasının
+        /// açığı o iki kutu boyunca geri geliyor. Rastgelelik burada bir çeşni
+        /// değil, dejenere stratejiyi kapatan bir kural; kapattığından emin
+        /// olmak gerekiyor.
+        /// </summary>
+        float PickSpawnX(float halfWidth)
+        {
+            float limit = Mathf.Max(0f, playHalfWidth - halfWidth);
+            float spread = Mathf.Min(spawnSpread, limit);
+
+            if (spread <= 0f)
+            {
+                return spawnPosition.x;
+            }
+
+            float x = UnityEngine.Random.Range(-spread, spread);
+
+            if (Mathf.Abs(x - lastSpawnX) < spawnMinStep)
+            {
+                x = lastSpawnX + (x >= lastSpawnX ? spawnMinStep : -spawnMinStep);
+            }
+
+            x = Mathf.Clamp(x, -spread, spread);
+            lastSpawnX = x;
+
+            return spawnPosition.x + x;
         }
 
         void ApplyColor(GameObject instance, int index)

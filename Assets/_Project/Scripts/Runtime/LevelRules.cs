@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace PhysicsStack
 {
     /// <summary>
@@ -27,23 +29,40 @@ namespace PhysicsStack
         public HazardSettings HazardsFor(in StackSnapshot snapshot) => level.hazards;
 
         /// <summary>
-        /// Seviyede kontrol noktası isteğe bağlı ve varsayılanı kapalı: sekiz
-        /// seviyenin hiçbiri buna ihtiyaç duymuyor, kuleleri 3-6 birim.
+        /// Seviyede kontrol noktası isteğe bağlı ve varsayılanı kapalı: on bir
+        /// seviyenin hiçbiri buna ihtiyaç duymuyor, kuleleri 3-8 birim.
         ///
-        /// Alanı yine de şimdi ekledim, çünkü asıl sebebi ileride yüksek kule
-        /// isteyen bir seviye tasarlayabilmek. Verinin hazır olması, o seviyeyi
+        /// Alanı yine de ekledim, çünkü asıl sebebi ileride yüksek kule isteyen
+        /// bir seviye tasarlayabilmek. Verinin hazır olması, o seviyeyi
         /// tasarlarken mekaniği baştan yazmak zorunda kalmamak demek.
         /// </summary>
-        public bool IsCheckpoint(int placedCount) =>
-            level.checkpointEvery > 0 &&
-            placedCount > 0 &&
-            placedCount % level.checkpointEvery == 0;
+        public float CheckpointAfter(float height)
+        {
+            float every = level.checkpointEvery;
+
+            if (every <= 0f)
+            {
+                return float.PositiveInfinity;
+            }
+
+            return (Mathf.Floor(height / every) + 1f) * every;
+        }
 
         public RunOutcome Evaluate(in StackSnapshot snapshot)
         {
             // Düşme kontrolü oturmayı beklemiyor: sürükleme sırasında devrilen
             // eski bir kutu da turu bitirir.
             if (snapshot.AnyFallen)
+            {
+                return RunOutcome.Lost;
+            }
+
+            // Kuleye konmayan kutu seviyede de kaybettiriyor. Eskiden yalnızca
+            // kutu bütçesinden düşüyordu, yani ıskanın cezası "bir kutu daha az"
+            // idi; bu, sınırı geniş olan seviyelerde cezasızlık demekti. İki
+            // modda da aynı kuralın geçerli olması ayrıca önemli: oyuncu
+            // ıskanın ne demek olduğunu bir kez öğreniyor.
+            if (snapshot.Missed)
             {
                 return RunOutcome.Lost;
             }

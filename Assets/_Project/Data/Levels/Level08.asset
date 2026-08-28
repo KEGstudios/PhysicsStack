@@ -19,13 +19,13 @@ MonoBehaviour:
   widthVariance: 0.15
   holdTime: 1.5
   collapseDrop: 0.6
+  checkpointEvery: 0
   hazards:
     windSpeed: 0
     windResponse: 0
     windPeriod: 0
-    cannon: 1
+    cannonCount: 1
     cannonInterval: 2
     cannonBallSpeed: 7
     cannonPatrolSpeed: 1.6
-    cannonBottomGap: 2
-    cannonPatrolSpan: 3.5
+    cannonBottomGap: 0.4
