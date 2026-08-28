@@ -39,6 +39,7 @@ namespace PhysicsStack
             Intro,
             Home,
             Levels,
+            Settings,
         }
 
         /// <summary>
@@ -117,8 +118,24 @@ namespace PhysicsStack
 
         UIButton levelsButton;
         UIButton endlessButton;
-        UIButton muteButton;
+        UIButton settingsButton;
         UIButton backButton;
+
+        GameObject settingsRoot;
+        SettingsControls settingsControls;
+        UIButton resetButton;
+        UIButton settingsBackButton;
+
+        /// <summary>
+        /// Sıfırlama düğmesine bir kez basıldı mı? İkinci basış siliyor.
+        ///
+        /// Onay penceresi açmak yerine düğmenin kendisini soruya çevirdim: tek
+        /// düğmelik bir kararın ayrı bir pencere kurmaya değmediğini düşünüyorum
+        /// ve pencere kapatma dokunuşunu da yönetmek gerekirdi. Ekrandan
+        /// çıkınca soru sıfırlanıyor, yani yarım kalmış bir onay geri
+        /// dönüldüğünde silmeye devam etmiyor.
+        /// </summary>
+        bool resetArmed;
 
         RectTransform viewport;
         RectTransform content;
@@ -166,6 +183,8 @@ namespace PhysicsStack
 
             BuildHome();
             BuildLevels();
+            BuildSettings();
+            BuildSettingsIcon();
 
             // Ad en son kuruluyor: uGUI hiyerarşi sırasına göre çizdiği için
             // böylece hem listenin hem kartın üstünde kalıyor.
@@ -179,7 +198,14 @@ namespace PhysicsStack
 
             homeRoot.SetActive(true);
             levelsRoot.SetActive(false);
+            settingsRoot.SetActive(false);
             homeGroup.alpha = introShown ? 1f : 0f;
+
+            // Tanıtım sırasında gizli: ekranda yalnızca oyunun adı olsun.
+            // Ayarlar ekranında da gizli, çünkü orada zaten ayarlardasın ve
+            // hiçbir şey yapmayan bir düğme, bozuk bir düğmeden ayırt
+            // edilemiyor.
+            settingsButton.SetVisible(introShown);
         }
 
         /// <summary>
@@ -195,6 +221,32 @@ namespace PhysicsStack
             rect.anchorMax = Vector2.Lerp(new Vector2(0.94f, 0.62f), new Vector2(0.94f, 0.96f), t);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Köşedeki dişli. Simge dosyadan gelmiyor, yıldız gibi kodla
+        /// çiziliyor — projede hazır varlık yok ve bu kural simgeler için de
+        /// geçerli.
+        ///
+        /// Yazılı bir "Ayarlar" düğmesi de vardı; köşe simgesi hem daha az yer
+        /// kaplıyor hem de mobil oyunlarda aranan yer orası. Tek kaybı
+        /// keşfedilebilirlik ve dişli simgesi bu işi zaten evrensel olarak
+        /// yapıyor.
+        ///
+        /// Ana ekranın değil kanvasın çocuğu: seviye listesinde de duruyor.
+        /// Ekranlar arası taşınan tek şey bu ve sebebi basit — ayar, oyuncunun
+        /// aklına listeye baktığı sırada da gelebiliyor.
+        /// </summary>
+        void BuildSettingsIcon()
+        {
+            // Sağ üst köşe ve kenara yaslı. Alt köşedeydi; üst köşe hem mobil
+            // oyunların alışkanlığı hem de başparmağın oyun sırasında durduğu
+            // yerden uzak.
+            settingsButton = UIKit.IconButton(
+                canvas.transform,
+                new Rect(0.855f, 0.875f, 0.115f, 0.085f),
+                UIKit.Gear,
+                UIKit.DimTextColor);
         }
 
         void BuildHome()
@@ -214,9 +266,6 @@ namespace PhysicsStack
             UIKit.Fit(levelsButton.Label, 28f, 52f);
 
             BuildEndless(rect);
-
-            muteButton = UIKit.Button(rect, new Rect(0.28f, 0.10f, 0.44f, 0.09f), MuteLabel(), 34);
-            UIKit.Fit(muteButton.Label, 20f, 34f);
         }
 
         /// <summary>
@@ -279,6 +328,135 @@ namespace PhysicsStack
 
             backButton = UIKit.Button(root, new Rect(0.28f, 0.05f, 0.44f, 0.09f), "Geri", 40);
             UIKit.Fit(backButton.Label, 22f, 40f);
+        }
+
+        /// <summary>
+        /// Ayarlar ekranı: ses seviyesi, grafik kalitesi, kamera sarsıntısı ve
+        /// ilerlemeyi sıfırlama.
+        ///
+        /// Dördü de "oyuncunun oyun hakkındaki tercihi" başlığına giriyor ve
+        /// hepsi kalıcı. Buraya koymadığım şeyler de var: kare hızı sınırı ve
+        /// çözünürlük ayrı seçenek değil, grafik kalitesinin içinde — üç ayrı
+        /// kol vermek, oyuncuya kendi sorununu teşhis ettirmek olurdu.
+        /// </summary>
+        void BuildSettings()
+        {
+            settingsRoot = new GameObject("Settings", typeof(RectTransform));
+            var root = settingsRoot.GetComponent<RectTransform>();
+
+            root.SetParent(canvas.transform, false);
+            root.anchorMin = Vector2.zero;
+            root.anchorMax = Vector2.one;
+            root.offsetMin = Vector2.zero;
+            root.offsetMax = Vector2.zero;
+
+            // Ses, kalite ve sarsıntı denetimleri ayrı bir sınıfta: aynı üç
+            // denetim duraklatma panelinde de var ve iki kopya tutmak,
+            // dördüncü ayarda birini güncellemeyi unutmak demekti.
+            var block = UIKit.Panel(root, new Vector2(0.08f, 0.30f), new Vector2(0.92f, 0.84f), new Color(0f, 0f, 0f, 0f));
+
+            settingsControls = new SettingsControls();
+            settingsControls.Build(block);
+
+            resetButton = UIKit.Button(root, new Rect(0.14f, 0.17f, 0.72f, 0.10f), ResetText(), 34);
+            UIKit.Fit(resetButton.Label, 18f, 34f);
+
+            settingsBackButton = UIKit.Button(root, new Rect(0.28f, 0.04f, 0.44f, 0.09f), "Geri", 40);
+            UIKit.Fit(settingsBackButton.Label, 22f, 40f);
+
+            RefreshSettings();
+        }
+
+        string ResetText() => resetArmed
+            ? "emin misin? tekrar dokun"
+            : "İlerlemeyi sıfırla";
+
+        void RefreshSettings()
+        {
+            resetButton.Label.text = ResetText();
+            settingsControls.Refresh();
+        }
+
+        void ShowSettings()
+        {
+            homeRoot.SetActive(false);
+            levelsRoot.SetActive(false);
+            settingsRoot.SetActive(true);
+            settingsButton.SetVisible(false);
+
+            screen = MenuScreen.Settings;
+
+            resetArmed = false;
+
+            RefreshSettings();
+        }
+
+        /// <summary>
+        /// Ayarlar ekranı. Ses çubuğu sürüklenebiliyor, geri kalanı dokunuş.
+        ///
+        /// Ses çubuğunda karar basışta veriliyor ama sürükleme bırakışa kadar
+        /// devam ediyor: parmağını çubuğun üstüne koyup kaydıran biri sesi
+        /// ayarlarken duymak istiyor, bıraktığında değil.
+        /// </summary>
+        void UpdateSettings()
+        {
+            var pointer = Pointer.current;
+
+            if (pointer == null)
+            {
+                return;
+            }
+
+            Vector2 position = pointer.position.ReadValue();
+
+            if (settingsControls.Dragging(pointer.press.isPressed, position))
+            {
+                return;
+            }
+
+            if (!pointer.press.wasPressedThisFrame)
+            {
+                return;
+            }
+
+            if (settingsControls.Press(position))
+            {
+                return;
+            }
+
+            if (resetButton.Contains(position))
+            {
+                TapReset();
+                return;
+            }
+
+            if (settingsBackButton.Contains(position))
+            {
+                SfxPlayer.Play(Sfx.UiTap);
+                ShowHome();
+            }
+        }
+
+        void TapReset()
+        {
+            if (!resetArmed)
+            {
+                resetArmed = true;
+                SfxPlayer.Play(Sfx.UiTap);
+                RefreshSettings();
+                return;
+            }
+
+            Progress.Clear();
+            resetArmed = false;
+
+            // Kilitler değişti, yani seviye listesi artık yanlış. Yeniden
+            // kurmak yerine sahneyi baştan yüklüyorum: menü kendini zaten
+            // sıfırdan kuruyor ve iki ayrı "listeyi tazele" yolu tutmak,
+            // ikisinin ayrışması demek.
+            SfxPlayer.Play(Sfx.Lose);
+            RunRequest.Clear();
+            SceneManager.LoadScene(gameObject.scene.buildIndex);
         }
 
         /// <summary>
@@ -362,8 +540,6 @@ namespace PhysicsStack
             content.anchoredPosition = new Vector2(0f, scroll);
         }
 
-        static string MuteLabel() => Progress.Muted ? "ses: kapalı" : "ses: açık";
-
         void Update()
         {
             switch (screen)
@@ -378,6 +554,10 @@ namespace PhysicsStack
 
                 case MenuScreen.Levels:
                     UpdateLevels();
+                    return;
+
+                case MenuScreen.Settings:
+                    UpdateSettings();
                     return;
             }
         }
@@ -421,6 +601,8 @@ namespace PhysicsStack
             introShown = true;
             screen = MenuScreen.Home;
             screenTime = 0f;
+
+            settingsButton.SetVisible(true);
         }
 
         void UpdateHome()
@@ -447,9 +629,10 @@ namespace PhysicsStack
                 return;
             }
 
-            if (muteButton != null && muteButton.Contains(position))
+            if (settingsButton.Contains(position))
             {
-                ToggleMute();
+                SfxPlayer.Play(Sfx.UiTap);
+                ShowSettings();
             }
         }
 
@@ -470,7 +653,9 @@ namespace PhysicsStack
         void ShowHome()
         {
             levelsRoot.SetActive(false);
+            settingsRoot.SetActive(false);
             homeRoot.SetActive(true);
+            settingsButton.SetVisible(true);
 
             screen = MenuScreen.Home;
         }
@@ -509,6 +694,13 @@ namespace PhysicsStack
 
             if (pointer.press.wasPressedThisFrame)
             {
+                if (settingsButton.Contains(position))
+                {
+                    SfxPlayer.Play(Sfx.UiTap);
+                    ShowSettings();
+                    return;
+                }
+
                 if (backButton.Contains(position))
                 {
                     SfxPlayer.Play(Sfx.UiTap);
@@ -683,6 +875,11 @@ namespace PhysicsStack
 
             popup.name = "LevelPopup";
 
+            // Kart açıkken köşedeki simge de kapanıyor: karartma perdesinin
+            // üstünde duran tıklanabilir bir düğme, perdenin "arkası şu an
+            // kapalı" mesajını bozar.
+            settingsButton.SetVisible(false);
+
             // Kart yükseklikte cömert. İlk ölçüler dikey telefonda sığıyordu ama
             // yatay ekranda kanvas 1920x1080 referans birime oturuyor ve kart
             // kısalıyor: aynı dört satır aynı puntoda artık sığmıyordu. Ekrandan
@@ -759,25 +956,8 @@ namespace PhysicsStack
             playButton = null;
             closeButton = null;
             selectedLevel = -1;
-        }
 
-        /// <summary>
-        /// Ses açma/kapama. Yalnızca menüde: oyunun içinde bir ayar düğmesi
-        /// olması, parmağın sürekli ekranda olduğu bir oyunda yanlışlıkla
-        /// basılacak bir hedef eklemek demekti.
-        ///
-        /// Ayarı <see cref="Progress"/> tutuyor, yani sekmeyi kapatıp açınca
-        /// tercih duruyor. Sessiz oynamak isteyen birinin bunu her açılışta
-        /// tekrar söylemesi gerekmiyor.
-        /// </summary>
-        void ToggleMute()
-        {
-            Progress.Muted = !Progress.Muted;
-            muteButton.Label.text = MuteLabel();
-
-            // Ses tıkı kapatırken değil açarken çalıyor. Kapatma dokunuşunun
-            // sesi çıksaydı, "sesi kapattım ama ses geldi" diye okunurdu.
-            SfxPlayer.Play(Sfx.UiTap);
+            settingsButton.SetVisible(true);
         }
 
         void Launch(StackMode mode, int levelIndex)

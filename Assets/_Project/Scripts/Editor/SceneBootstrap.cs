@@ -76,7 +76,7 @@ namespace PhysicsStack.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var camera = CreateCamera();
-            CreateLight(palette);
+            var sun = CreateLight(palette);
             CreateSky(palette);
             CreatePostProcessing(camera);
             CreateGround(groundMaterial);
@@ -97,7 +97,7 @@ namespace PhysicsStack.EditorTools
             // atandiginda da sessizce bos yaziliyor. Bu hata iki kez isirdi ve
             // ikisinde de tek belirtisi renklerin yanlis olmasiydi.
             palette = LoadOrCreatePalette();
-            CreateSystems(camera, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels, palette, cannonMaterial, lineMaterial, dust, speedLines);
+            CreateSystems(camera, sun, boxPrefab, ballPrefab, dragSettings, targetLine, dropLine, levels, palette, cannonMaterial, lineMaterial, dust, speedLines);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -127,7 +127,7 @@ namespace PhysicsStack.EditorTools
             return camera;
         }
 
-        static void CreateLight(Palette palette)
+        static Light CreateLight(Palette palette)
         {
             var go = new GameObject("Directional Light", typeof(Light));
             go.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
@@ -157,6 +157,8 @@ namespace PhysicsStack.EditorTools
             RenderSettings.ambientSkyColor = palette.skyTop * 0.8f;
             RenderSettings.ambientEquatorColor = palette.skyBottom;
             RenderSettings.ambientGroundColor = palette.ground * 0.7f;
+
+            return light;
         }
 
         /// <summary>
@@ -327,6 +329,7 @@ namespace PhysicsStack.EditorTools
 
         static void CreateSystems(
             Camera camera,
+            Light sun,
             GameObject boxPrefab,
             GameObject ballPrefab,
             DragSettings settings,
@@ -418,6 +421,17 @@ namespace PhysicsStack.EditorTools
             var windIndicator = go.AddComponent<WindIndicator>();
             SetReference(windIndicator, "wind", wind);
             SetReference(windIndicator, "palette", palette);
+
+            // Grafik kalitesini uygulayan bileşen. Kamerayı ve ışığı tanıması
+            // gerekiyor, o yüzden burada kuruluyor: ayar sınıfı statik ve
+            // sahneyi tanımıyor, menü de kamerayı tanımıyor.
+            var quality = go.AddComponent<QualityRuntime>();
+            SetReference(quality, "targetCamera", camera);
+            SetReference(quality, "sun", sun);
+
+            var pause = go.AddComponent<PauseUI>();
+            SetReference(pause, "controller", controller);
+            SetReference(pause, "palette", palette);
 
             // İki namlu kuruluyor, ikisi de sahnede duruyor ama yalnızca
             // tehdidin istediği kadarı açılıyor: ikincisi kapalıyken gövdesi

@@ -1406,3 +1406,138 @@ Paneli telefonda açmanın yolu da eklendi: sol üst köşeye çift dokunuş. Kl
 yok, Inspector yok, yani panel telefonda pratikte hiç açılamıyordu — tam da en
 çok ölçüm gereken yerde. Çift dokunuş şart, çünkü tek dokunuş oyunun içinde bir
 hamle.
+
+### İlk gerçek performans ölçümü
+
+iPhone 16 Plus, Safari, WebGL: 59-61 fps.
+
+Sayıyı olduğundan büyük okumamak gerekiyor. Cihazın ekranı 60 Hz ve WebGL
+`requestAnimationFrame`'e bağlı çalışıyor, yani ölçülen şey oyunun tavanı değil
+ekranın tavanı. Söylediği şey "oyun kareleri yetiştiriyor", söylemediği şey "ne
+kadar payla". README'ye de bu ayrımla yazıldı; "60 fps'te çalışıyor" diye
+yazmak, ölçmediğim bir şeyi ölçmüş gibi göstermek olurdu.
+
+Eksik kalan ölçüm, son bir saniyenin en kötü karesi — asıl bilgi orada. Ortalama
+60'ta sabitken bile tek tek uzun kareler oyuncunun hissettiği tek şey olabilir
+ve bu oyunda onları üretecek iki aday belli: kutu oturduğu anda yapılan
+dondurma ve mermi çarpışmaları.
+
+## Ayarlar ekranı
+
+Menüye üçüncü bir ekran girdi: ses seviyesi, grafik kalitesi, kamera sarsıntısı,
+ilerlemeyi sıfırlama.
+
+**Ayarlar `Progress`'ten ayrı bir sınıfta.** İkisi farklı şeyler: ilerleme oyunun
+oyuncu hakkında bildikleri, ayarlar oyuncunun oyun hakkındaki tercihleri. Aynı
+yerde dursalardı "ilerlemeyi sıfırla" düğmesi tercihleri de silerdi — ve o
+düğme tam da bu ekranda.
+
+**Ses artık aç/kapa değil, seviye.** Eskiden tek bir mute bayrağı vardı ve
+`SfxPlayer`'ın içinde ayrıca serileştirilmiş bir "master" çarpanı duruyordu; iki
+yerden gelen tek bir sayıydı. Master alanı kalktı, çarpan doğrudan oyuncunun
+ayarı.
+
+**Grafik kalitesi üç kademe ve üç kolu birden çeviriyor:** çözünürlük ölçeği
+(0.65 / 0.85 / 1.0), post-process ve gölge. Ayrı ayrı seçenek vermedim — üç kol
+vermek oyuncuya kendi sorununu teşhis ettirmek olurdu.
+
+Kolların sırası ölçümden geliyor. Telefon testinde iPhone 13, **1. seviyede**
+tavanın altına düşüyordu; sahnede iki üç kutu varken maliyet fizikte olamaz.
+Tarayıcı oyunu cihazın piksel yoğunluğunda çiziyor (telefonda 3 kata kadar, yani
+dokuz katı piksel) ve post-process tam ekran geçişler ekliyor. En güçlü kol bu
+yüzden çözünürlük ölçeği. Gölge en son feda ediliyor, çünkü kutuların birbirine
+göre yüksekliği büyük ölçüde gölgeden okunuyor.
+
+Post-process orta kademede de açık: kapatınca sahne "ayarları düşürülmüş" değil
+"bozuk" görünüyor.
+
+**Kamera sarsıntısı kapatılabilir** ve sebebi tercihten çok erişilebilirlik:
+sarsılan kadraj bazı insanlarda mide bulantısı yapıyor, yani oyunu oynanamaz
+kılan türden bir şey. Kapalıyken sarsıntı hiç başlamıyor, genliği sıfırlanmıyor.
+
+**Sıfırlama düğmesi kendi onayını soruyor:** ilk dokunuşta "emin misin? tekrar
+dokun" oluyor. Ayrı bir onay penceresi tek düğmelik bir karar için fazlaydı ve
+o pencerenin kapatma dokunuşunu da yönetmek gerekirdi. Ekrandan çıkınca soru
+sıfırlanıyor.
+
+**Çubuk elle yazıldı**, uGUI'nin `Slider`'ı yerine — kaydırmalı listede olduğu
+gibi, o bileşen de EventSystem istiyor. Gereken şey iki dikdörtgen ve bir bölme
+işlemi. Dokunma hedefi görünen çubuktan kalın: çizgi ince olmalı ama parmağın
+ince bir çizgiyi tutturması gerekmemeli.
+
+Kaliteyi sahneye uygulayan ayrı bir bileşen var, çünkü kamera ve ışık sahneye
+ait. Menü ekranı ikisini de tanımıyor; yalnızca "ayar değişti" diyor, uygulayan
+taraf dinliyor.
+
+### Köşedeki dişli
+
+Yazılı "Ayarlar" düğmesi yerine mobil oyunların alışkanlığı: köşede küçük bir
+simge. Projede hazır varlık olmadığı için simge de kodla çiziliyor — yıldızla
+aynı kural.
+
+Yıldızdan farkı çokgen değil kutupsal bir fonksiyon olması: her piksel için
+merkeze uzaklık ve açı hesaplanıyor, sonra "bu açıda dişlinin yarıçapı ne" diye
+soruluyor. Diş profilini çokgen köşesiyle yazmak sekiz diş için 32 köşe demekti
+ve yuvarlatılmış diş ucu çıkmazdı.
+
+Profil, kosinüsün yumuşatılmış eşiği. Keskin bir kare dalga dişleri testere
+gibi gösteriyor, düz kosinüs ise dişli değil çiçek üretiyor; aradaki geçişi
+`SmoothStep` veriyor. Ortadaki delik simgeyi dişli yapan şey — onsuz görüntü
+sekiz kollu bir güneşe benziyor ve ayar simgesi olarak okunmuyor.
+
+Şekli Unity'yi açmadan doğruladım: aynı formülü ayrı bir betikte çalıştırıp
+terminale bastırdım. Simge için bu, build alıp bakmaktan çok daha kısa bir yol
+ve yanlış bir formülün Editor'de "acaba renk mi yanlış" diye aranmasını da
+engelliyor.
+
+Dokunma hedefi simgeden büyük: simge dikdörtgenin içine oranı korunarak
+yerleşiyor ama dokunulan alan dikdörtgenin tamamı. Küçük bir simgeye tam isabet
+ettirmek zorunda kalmak, parmakla oynanan bir oyunda gereksiz bir zorluk.
+
+Simge ana ekranın değil kanvasın çocuğu, yani seviye listesinde de duruyor:
+ayar, oyuncunun aklına listeye baktığı sırada da gelebiliyor. Tanıtımda,
+ayarlar ekranında ve seviye kartı açıkken gizli. Sonuncusunun sebebi:
+karartma perdesinin üstünde duran tıklanabilir bir düğme, perdenin "arkası şu
+an kapalı" mesajını bozar.
+
+Oyunun **içinde** ayar simgesi yok ve bu bilinçli. Parmağın sürekli ekranda
+olduğu bir oyunda köşeye tıklanabilir bir hedef koymak, yanlışlıkla basılacak
+bir şey eklemek demek — hele kutu sürüklenirken.
+
+### Dişli köşeye taşındı, oyunun içine de girdi
+
+Simge artık yuvarlak köşeli bir altlığın içinde ve sağ üst köşede. Altlık iki iş
+yapıyor: simge tek başına dururken küçük ve kaybolmuş görünüyordu, altlık hem
+onu bir düğmeye çeviriyor hem de dokunulacak yeri gösteriyor. Altlık da kodla
+çiziliyor — köşe yarıçapı kenarın %28'i; daha azı fark edilmiyor, daha fazlası
+kare değil hap görünüyor.
+
+Asıl değişiklik simgenin **tur sırasında da** olması. Bu, daha önce bilerek
+yapılmamıştı ("parmağın sürekli ekranda olduğu bir oyunda köşeye tıklanabilir
+hedef koymak, yanlışlıkla basılacak bir şey eklemek demek") ve o itiraz hâlâ
+geçerli; ama karşılığında iki şey kazanıldı ve ikisi de itirazdan ağır bastı.
+
+**Duraklatma.** Oyunun içinde ayar düğmesi olacaksa oyunun durması şart: fizik
+dönerken ses çubuğunu sürüklemek, kule devrilirken ayar yapmak demek — ve oyuncu
+ayarı açtığı için kaybediyorsa o düğme bir tuzak. Duraklatma zaten eksikti;
+telefonda gelen bir bildirim ya da yarıda bırakılan bir tur için de gerekiyor.
+
+**Girdi çakışması.** Dişliye dokunmak aynı anda altındaki kutuyu da yakalıyordu:
+iki okuyucu (düğme ve sürükleme) aynı basışı görüyor ve ikisi de kendi işini
+yapıyor. uGUI'de bunu `EventSystem` çözüyor. Kurmadım — projedeki bütün dokunuş
+okuması `Pointer` üzerinden yürüyor ve EventSystem'i yalnızca "üstümde düğme var
+mı" sorusu için eklemek, ikinci bir girdi sistemi getirip ikisini senkronda
+tutmak olurdu. Sorunun tamamı bir dikdörtgen listesi ve bir döngü: oyunun
+içindeki düğmeler kendilerini kaydediyor, sürükleme basıştan önce listeye
+bakıyor. Kayıt kalkarken siliniyor, yoksa yok edilmiş bir dikdörtgen sahnede
+görünmez bir engel bırakırdı.
+
+Ayar denetimleri (ses, kalite, sarsıntı) ayrı bir sınıfa taşındı, çünkü artık
+iki yerde çiziliyorlar: menüdeki ayarlar ekranı ve duraklatma paneli. İki kopya
+tutmak, dördüncü bir ayar eklendiğinde birini güncellemeyi unutmak demekti.
+Duraklatma panelinde ilerlemeyi sıfırlama yok: tur ortasında verilecek bir karar
+değil.
+
+HUD'un yazı bandı da sağ kenara kadar gitmiyor artık — dişliye yer bırakıyor.
+İkisini aynı yere koyup birinin diğerini örtmesini beklemek, düzeltmesi kolay
+ama fark edilmesi zor bir hata olurdu.

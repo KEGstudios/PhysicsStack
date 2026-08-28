@@ -56,10 +56,15 @@ namespace PhysicsStack
             Place(readout.rectTransform, 0.83f, 0.89f);
         }
 
+        /// <summary>
+        /// Panel sağ kenara kadar gitmiyor: sağ üst köşede duraklatma dişlisi
+        /// var. Yazıyı ortalayıp dişliyi üstüne bindirmek, iki şeyi aynı yere
+        /// koyup birinin diğerini örtmesini beklemek olurdu.
+        /// </summary>
         static void Place(RectTransform rect, float bottom, float top)
         {
             rect.anchorMin = new Vector2(0.06f, bottom);
-            rect.anchorMax = new Vector2(0.94f, top);
+            rect.anchorMax = new Vector2(0.82f, top);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
         }

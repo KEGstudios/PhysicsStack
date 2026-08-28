@@ -45,8 +45,18 @@ tasarımı, geçişler.
 
 ### Gün 5 — İçerik ve kapanış
 Zorluk eğrisi *(bitti)*, seviye başına en iyi skor *(bitti)*, yıldız sistemi
-*(bitti)*, sonsuz moda tehdit *(bitti)*. Kalan: son build, 30 saniyelik kayıt,
-README v3.
+*(bitti)*, sonsuz moda tehdit *(bitti)*, seviye 9-13 *(bitti)*, menü ve ayarlar
+*(bitti)*, duraklatma *(bitti)*, performans ölçümü *(bitti)*.
+
+Kalan: 30 saniyelik kayıt, README'nin son okuması, `v3` etiketi.
+
+### Plana sonradan giren işler
+
+Faz 3'ün planında olmayan ama oynanışta ortaya çıkan işler: yığma tavanını
+yükselten fizik ayarları, kontrol noktası sistemi, kaydırmalı seviye listesi,
+ayarlar ekranı ve oyun içi duraklatma. Hiçbiri "eklesek güzel olur" diye
+gelmedi; her biri oynarken çıkan somut bir sorunun cevabı ve gerekçeleri
+[KARARLAR.md](KARARLAR.md)'de.
 
 ## Kapsam dışı — bu fazda da
 

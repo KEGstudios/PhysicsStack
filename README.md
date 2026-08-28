@@ -611,6 +611,126 @@ git clone <repo-url>
 Unity Hub'dan 6000.5.10f1 ile aç. İlk açılış paketleri çözümlediği için uzun sürer.
 Sahne: `Assets/_Project/Scenes/Main.unity`.
 
+## Simgeleri nasıl çizdim
+
+Projede hazır varlık yok — bu kural sanat için konmuştu ama simgeler de sanat.
+Dört simge var (yıldız, dişli, yeniden başlat, altlık) ve dördü de çalışma
+zamanında piksel piksel çiziliyor.
+
+Alternatifleri baştan eledim. **Yazı karakteri** (★, ⚙, ↻) en ucuzu görünüyordu
+ama TMP yalnızca font atlasındaki karakterleri çizebiliyor: fontta o karakter
+yoksa ekranda boş kare çıkıyor ve bunu ancak build alıp bakınca görüyorum.
+**Hazır sprite** ise projenin tek kuralını bozardı. **SVG** için paket
+gerekiyor ve dört simge için bir bağımlılık fazla.
+
+Ortak yöntem üç adım. Önce boş bir `Texture2D`, sonra her piksel için "bu nokta
+şeklin içinde mi" sorusu, sonra `Sprite.Create`. Dokuya yalnızca **alfa**
+yazılıyor, renk hep beyaz: rengi `Image` bileşeni veriyor, yani aynı doku hem
+dolu hem boş yıldızı çiziyor ve palet değişince simge de değişiyor.
+
+Kenar yumuşatma elle yapılıyor: her piksel 3×3 örnekleniyor ve içeride kalan
+örnek sayısı alfayı veriyor. Tek örnekle eğik kenarlar merdiven gibi çıkıyor ve
+64 pikselde bu doğrudan görünüyor.
+
+Şeklin kendisini tarif etme biçimi simgeden simgeye değişiyor ve seçim hep aynı
+soruya bakıyor: bu şekli anlatmanın en kısa yolu ne?
+
+- **Yıldız — çokgen.** On köşe (beş dış, beş iç) ve klasik ışın atma testi:
+  noktadan sağa bir ışın atıp kaç kenarı kestiğini sayıyorsun; tek sayıysa
+  içeridesin. İç yarıçapın dışa oranı 0.42; büyüğü şişman bir çiçek, küçüğü
+  ince bir patlama.
+- **Dişli — kutupsal fonksiyon.** Köşe listesi yazmak sekiz diş için 32 köşe
+  demekti ve yuvarlak diş ucu çıkmazdı. Onun yerine her piksel için merkeze
+  uzaklık ve açı hesaplanıyor, sonra "bu açıda dişlinin yarıçapı ne" diye
+  soruluyor. Cevap kosinüsün yumuşatılmış eşiği: keskin bir kare dalga dişleri
+  testere gibi gösteriyor, düz kosinüs ise dişli değil çiçek üretiyor. Ortadaki
+  delik şart — onsuz simge sekiz kollu bir güneşe benziyor.
+- **Yeniden başlat — yay artı üçgen.** Yay, halkanın belli bir açı
+  aralığındaki parçası. Ok ucu yayın bittiği noktaya oturan bir üçgen: tabanı
+  yarıçap yönünde, ucu teğet yönünde, yani ok yayın devamına bakıyor ve iki
+  parça ek yeri belli olmadan birleşiyor.
+- **Altlık — yuvarlatılmış dikdörtgen.** İç dikdörtgene olan uzaklık: nokta iç
+  dikdörtgenin dışındaysa yalnızca taşan bileşenler sayılıyor, kenarlarda bu
+  sıfır kaldığı için yalnızca dört köşe yuvarlanıyor.
+
+Şekilleri Unity'yi açmadan doğruladım: aynı formülü ayrı bir betikte çalıştırıp
+terminale karakterlerle bastırdım. Bir simge için bu, build alıp bakmaktan çok
+daha kısa yol — ve yanlış bir formülün Editor'de "acaba renk mi yanlış, alfa mı
+yanlış" diye aranmasını da engelliyor. Hız çizgilerinde tam olarak o hatayı
+yapmıştım.
+
+Maliyeti merak edilirse: dördü toplam 4 doku, 64×64, tek seferlik. İlk
+istendiklerinde üretiliyor ve statik alanda duruyorlar.
+
+## Ayarlar
+
+Menünün üçüncü ekranı: ses seviyesi, grafik kalitesi, kamera sarsıntısı,
+ilerlemeyi sıfırlama.
+
+Ayarları ilerlemeden ayrı bir sınıfta tuttum. İkisi farklı şeyler — ilerleme
+oyunun oyuncu hakkında bildikleri, ayarlar oyuncunun oyun hakkındaki tercihleri
+— ve aynı yerde dursalardı "ilerlemeyi sıfırla" düğmesi tercihleri de silerdi.
+
+**Grafik kalitesi üç kademe ve tek bir kol gibi görünse de üç şeyi birden
+çeviriyor:** çözünürlük ölçeği (0.65 / 0.85 / 1.0), post-process ve gölge. Ayrı
+ayrı seçenek vermedim; üç kol vermek oyuncuya kendi sorununu teşhis ettirmek
+olurdu. Sıra ölçümden geliyor: iPhone 13 birinci seviyede tavanın altına
+düşüyordu ve sahnede iki üç kutu varken maliyet fizikte olamaz, o yüzden en
+güçlü kol doldurma oranına dokunan çözünürlük ölçeği. Gölge en son feda
+ediliyor, çünkü kutuların birbirine göre yüksekliği büyük ölçüde ondan okunuyor.
+
+**Kamera sarsıntısı kapatılabilir** ve sebebi tercihten çok erişilebilirlik:
+sarsılan kadraj bazı insanlarda mide bulantısı yapıyor.
+
+Ayarlara köşedeki dişli simgesinden giriliyor — o da dosyadan gelmiyor, kodla
+çiziliyor (bkz. [Simgeleri nasıl çizdim](#simgeleri-nasıl-çizdim)). Aynı simge
+tur sırasında da var ve orada oyunu duraklatıyor: fizik dönerken ses çubuğu
+sürüklemek, kule devrilirken ayar yapmak demek olurdu.
+
+Ses çubuğu da kaydırmalı liste gibi elle yazıldı — uGUI'nin `Slider`'ı yine
+EventSystem istiyor, gereken şey ise iki dikdörtgen ve bir bölme işlemi. Dokunma
+hedefi görünen çubuktan kalın: çizgi ince olmalı ama parmağın ince bir çizgiyi
+tutturması gerekmemeli.
+
+## Ölçülen performans
+
+Uzun süre buraya hiçbir şey yazmadım, çünkü ölçmemiştim: "akıcı çalışıyor"
+cümlesi ölçüm olmadan bir iddia değil, bir izlenim.
+
+Şu an elimdeki tek gerçek ölçüm:
+
+| Cihaz | Ortam | Seviye | Sonuç |
+|---|---|---|---|
+| iPhone 16 Plus | Safari, WebGL | 1 | 59-61 fps |
+| iPhone 13 | Safari, WebGL | 1 | 55-60 fps |
+
+İki sayının da ne söylediğine dikkat etmek gerekiyor. İki cihazın da ekranı
+60 Hz ve WebGL `requestAnimationFrame`'e bağlı çalışıyor, yani üstteki satırda
+ölçülen şey **oyunun tavanı değil ekranın tavanı**: "oyun kareleri
+yetiştiriyor" diyor, "ne kadar payla" demiyor.
+
+Asıl bilgi alttaki satırda. iPhone 13, **1. seviyede** — yani sahnede iki üç
+kutu varken — tavanın altına düşüyor. Sahnede fizik yok denecek kadar az, yani
+maliyet fizikte değil. En güçlü aday doldurma oranı: proje varsayılan WebGL
+şablonunu kullanıyor ve şablondaki `config.devicePixelRatio = 1;` satırı yorumda,
+yani oyun cihazın tam piksel yoğunluğunda çiziliyor — iPhone 13'te DPR 3, kabaca
+dokuz katı piksel. Üstüne post-process yığını tam ekran geçişler ekliyor.
+
+Bu bir hipotez, ölçüm değil. Doğrulaması, aynı cihazda kutu sayısı artarken
+düşüşün büyüyüp büyümediğine bakmak: büyüyorsa fizik, sabit kalıyorsa doldurma
+oranı.
+
+Panelde fps'in yanında **son bir saniyenin en kötü karesi** de var, çünkü
+ortalama tek başına yalan söylüyor: saniyede bir kez 120 ms süren bir kare
+ortalamayı 58'in altına indirmiyor ama oyuncunun hissettiği tek şey o. Yanındaki
+üçüncü sayı uyanık cisim sayısı — bu oyunda kare süresini belirleyen şey çizim
+değil fizik, ve dondurulmuş kutular çözücünün dışında olduğu için toplam kutu
+sayısı yanlış ölçü olurdu.
+
+Paneli telefonda açmanın yolu sol üst köşeye çift dokunmak: klavye ve Inspector
+olmadan panel açılamıyordu, yani ölçü aleti tam da en çok gerektiği yerde
+elimde değildi.
+
 ## Telefon build'i
 
 ```bash
@@ -839,6 +959,8 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Menü — tanıtım, ana ekran, kaydırmalı seviye listesi
 - [x] Seviye 9-11 — eğrinin yeni kolu: yükseklik
 - [x] Seviye 12-13 — birleşen tehditler, çift namlu
+- [x] Ayarlar — ses, grafik kalitesi, sarsıntı, oyun içi duraklatma
+- [x] Simgeler — yıldız, dişli, yeniden başlat, altlık (hepsi kodda)
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı

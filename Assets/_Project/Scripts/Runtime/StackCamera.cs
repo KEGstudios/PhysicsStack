@@ -103,6 +103,13 @@ namespace PhysicsStack
         /// <summary>Carpma ya da cokus aninda cagriliyor; sertlik dunya birimi.</summary>
         public void Shake(float amount)
         {
+            // Ayar kapalıysa sarsıntı hiç başlamıyor. Genliği sıfırlamak yerine
+            // burada kesmek, sarsıntının hesabını da kapatıyor.
+            if (!GameSettings.Shake)
+            {
+                return;
+            }
+
             shake = Mathf.Min(Mathf.Max(shake, amount), maxShake);
         }
 

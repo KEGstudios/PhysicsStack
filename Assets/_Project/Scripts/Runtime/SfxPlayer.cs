@@ -27,9 +27,6 @@ namespace PhysicsStack
     {
         public static SfxPlayer Instance { get; private set; }
 
-        [Tooltip("Bütün seslerin ortak çarpanı.")]
-        [SerializeField, Range(0f, 1f)] float masterVolume = 0.75f;
-
         [Tooltip("Aynı anda çalabilecek ses sayısı.")]
         [SerializeField] int voiceCount = 10;
 
@@ -199,7 +196,7 @@ namespace PhysicsStack
 
         void PlayInternal(Sfx id, float volume, float pitch)
         {
-            if (Progress.Muted || clips == null || !clips.TryGetValue(id, out var clip))
+            if (GameSettings.Muted || clips == null || !clips.TryGetValue(id, out var clip))
             {
                 return;
             }
@@ -211,7 +208,10 @@ namespace PhysicsStack
             // sıradaki sesi çalmadan önce her seferinde yazmak gerekiyor.
             // PlayOneShot perdeyi parametre olarak almıyor.
             source.pitch = pitch;
-            source.PlayOneShot(clip, levels[id] * volume * masterVolume);
+            // Genel seviye artık oyuncunun ayarı. Serileştirilmiş bir "master"
+            // alanı da vardı ve ikisi çarpılıyordu; iki yerden gelen tek bir
+            // sayı, ayarı yarıya indirilmiş gibi çalışıyordu.
+            source.PlayOneShot(clip, levels[id] * volume * GameSettings.Volume);
         }
     }
 }

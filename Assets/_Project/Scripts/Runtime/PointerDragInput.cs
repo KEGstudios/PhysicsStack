@@ -67,7 +67,16 @@ namespace PhysicsStack
 
             if (pointer.press.wasPressedThisFrame)
             {
-                TryPick(screenPosition);
+                // Arayüz önce. Oyunun içinde tek bir düğme var (duraklatma
+                // dişlisi) ama o düğmeye dokunmak aynı anda altındaki kutuyu da
+                // yakalıyordu: iki okuyucu aynı basışı görüyor ve ikisi de kendi
+                // işini yapıyor. uGUI'de bunu EventSystem çözüyor; burada
+                // dokunuşu zaten kendimiz okuduğumuz için tek gereken kayıtlı
+                // dikdörtgenlere bakmak.
+                if (!UIBlocker.Blocks(screenPosition))
+                {
+                    TryPick(screenPosition);
+                }
             }
             else if (pointer.press.isPressed && held != null)
             {

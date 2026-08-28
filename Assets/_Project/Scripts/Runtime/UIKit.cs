@@ -198,6 +198,323 @@ namespace PhysicsStack
             }
         }
 
+        static Sprite roundedSquare;
+
+        /// <summary>
+        /// Köşeleri yuvarlatılmış kare. Simge altlığı olarak kullanılıyor.
+        ///
+        /// uGUI'nin varsayılan <c>Image</c>'ı keskin köşeli bir dikdörtgen
+        /// çiziyor ve paletin geri kalanı yumuşak; keskin köşeli tek bir kutu
+        /// arayüzün içinde yabancı duruyor. Dokuz dilimli hazır bir sprite
+        /// kullanmak da olurdu ama o yine dosya demek.
+        ///
+        /// Köşe yarıçapı kenarın %28'i: daha azı fark edilmiyor, daha fazlası
+        /// kare değil hap görünüyor.
+        /// </summary>
+        public static Sprite RoundedSquare
+        {
+            get
+            {
+                if (roundedSquare != null)
+                {
+                    return roundedSquare;
+                }
+
+                const int size = 64;
+                const int samples = 3;
+                const float radius = size * 0.28f;
+
+                var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+
+                var pixels = new Color32[size * size];
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        int inside = 0;
+
+                        for (int sy = 0; sy < samples; sy++)
+                        {
+                            for (int sx = 0; sx < samples; sx++)
+                            {
+                                float px = x + (sx + 0.5f) / samples;
+                                float py = y + (sy + 0.5f) / samples;
+
+                                // Köşeye olan uzaklık: nokta iç dikdörtgenin
+                                // dışındaysa yalnızca taşan bileşenler sayılıyor.
+                                // Kenarlarda bu sıfır kalıyor, yani yalnızca dört
+                                // köşe yuvarlanıyor.
+                                float dx = Mathf.Max(Mathf.Abs(px - size * 0.5f) - (size * 0.5f - radius), 0f);
+                                float dy = Mathf.Max(Mathf.Abs(py - size * 0.5f) - (size * 0.5f - radius), 0f);
+
+                                if (dx * dx + dy * dy <= radius * radius)
+                                {
+                                    inside++;
+                                }
+                            }
+                        }
+
+                        byte alpha = (byte)(255 * inside / (samples * samples));
+                        pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                    }
+                }
+
+                texture.SetPixels32(pixels);
+                texture.Apply();
+
+                roundedSquare = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f));
+                return roundedSquare;
+            }
+        }
+
+        static Sprite gear;
+
+        /// <summary>
+        /// Dişli simgesi. Yıldız gibi çalışma zamanında çiziliyor.
+        ///
+        /// Yıldızdan farkı çokgen değil, kutupsal bir fonksiyon olması: her
+        /// piksel için merkeze uzaklık ve açı hesaplanıyor, sonra "bu açıda
+        /// dişlinin yarıçapı ne" diye soruluyor. Diş profilini çokgen köşesiyle
+        /// yazmak sekiz diş için 32 köşe demekti ve yuvarlatılmış diş ucu
+        /// çıkmazdı.
+        ///
+        /// Diş profili kosinüsün yumuşatılmış eşiği: keskin bir kare dalga
+        /// dişleri testere gibi gösteriyor, düz kosinüs ise dişli değil çiçek.
+        /// Aradaki geçişi <c>SmoothStep</c> veriyor.
+        ///
+        /// Ortadaki delik simgeyi dişli yapan şey: onsuz görüntü sekiz kollu bir
+        /// güneşe benziyor ve ayar simgesi olarak okunmuyor.
+        /// </summary>
+        public static Sprite Gear
+        {
+            get
+            {
+                if (gear != null)
+                {
+                    return gear;
+                }
+
+                const int size = 64;
+                const int samples = 3;
+                const int teeth = 8;
+
+                // Oranlar dokunun yarısına göre. Diş ucu 0.47'de: kenara daha
+                // fazla yaklaşınca kenar yumuşatma için yer kalmıyor ve simge
+                // dokunun sınırında kırpılmış görünüyor.
+                const float toothRadius = 0.47f;
+                const float bodyRadius = 0.36f;
+                const float holeRadius = 0.17f;
+
+                var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+
+                var pixels = new Color32[size * size];
+                float center = size * 0.5f;
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        int inside = 0;
+
+                        for (int sy = 0; sy < samples; sy++)
+                        {
+                            for (int sx = 0; sx < samples; sx++)
+                            {
+                                float px = x + (sx + 0.5f) / samples - center;
+                                float py = y + (sy + 0.5f) / samples - center;
+
+                                float radius = Mathf.Sqrt(px * px + py * py) / size;
+
+                                if (radius < holeRadius)
+                                {
+                                    continue;
+                                }
+
+                                float angle = Mathf.Atan2(py, px);
+                                float wave = Mathf.Cos(angle * teeth);
+                                float profile = Mathf.SmoothStep(bodyRadius, toothRadius, Mathf.InverseLerp(-0.4f, 0.4f, wave));
+
+                                if (radius <= profile)
+                                {
+                                    inside++;
+                                }
+                            }
+                        }
+
+                        byte alpha = (byte)(255 * inside / (samples * samples));
+                        pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                    }
+                }
+
+                texture.SetPixels32(pixels);
+                texture.Apply();
+
+                gear = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f));
+                return gear;
+            }
+        }
+
+        static Sprite retry;
+
+        /// <summary>
+        /// Yeniden başlatma simgesi: ucu oklu bir çember yayı.
+        ///
+        /// Dişli gibi kutupsal çiziliyor. Yay, halkanın belli bir açı
+        /// aralığındaki parçası; ok ucu ise yayın bittiği noktaya oturan bir
+        /// üçgen. Üçgenin tabanı yarıçap yönünde, ucu teğet yönünde: böylece ok
+        /// yayın devamına bakıyor ve iki parça ek yeri belli olmadan birleşiyor.
+        ///
+        /// Boşluk sağ tarafta ve yaklaşık 65 derece. Daha darı okun sığmadığı,
+        /// daha genişi çemberin çember olarak okunmadığı yer.
+        /// </summary>
+        public static Sprite Retry
+        {
+            get
+            {
+                if (retry != null)
+                {
+                    return retry;
+                }
+
+                const int size = 64;
+                const int samples = 3;
+
+                const float ring = 0.30f;
+                const float thickness = 0.085f;
+
+                var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                {
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+
+                float start = 50f * Mathf.Deg2Rad;
+                float end = 345f * Mathf.Deg2Rad;
+
+                // Ok ucu yayın başladığı yerde ve saat yönüne bakıyor: yayın
+                // hangi yöne döndüğünü söyleyen tek şey bu.
+                var head = ArrowHead(start, ring, thickness);
+
+                var pixels = new Color32[size * size];
+                float center = size * 0.5f;
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        int inside = 0;
+
+                        for (int sy = 0; sy < samples; sy++)
+                        {
+                            for (int sx = 0; sx < samples; sx++)
+                            {
+                                var point = new Vector2(
+                                    (x + (sx + 0.5f) / samples - center) / size,
+                                    (y + (sy + 0.5f) / samples - center) / size);
+
+                                float radius = point.magnitude;
+                                float angle = Mathf.Atan2(point.y, point.x);
+
+                                if (angle < 0f)
+                                {
+                                    angle += 2f * Mathf.PI;
+                                }
+
+                                bool onArc = Mathf.Abs(radius - ring) <= thickness * 0.5f &&
+                                             angle >= start &&
+                                             angle <= end;
+
+                                if (onArc || Contains(head, point))
+                                {
+                                    inside++;
+                                }
+                            }
+                        }
+
+                        byte alpha = (byte)(255 * inside / (samples * samples));
+                        pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+                    }
+                }
+
+                texture.SetPixels32(pixels);
+                texture.Apply();
+
+                retry = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f));
+                return retry;
+            }
+        }
+
+        /// <summary>Yayın ucundaki üçgen: taban yarıçap yönünde, uç teğet yönünde.</summary>
+        static Vector2[] ArrowHead(float angle, float ring, float thickness)
+        {
+            var radial = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            var tangent = new Vector2(Mathf.Sin(angle), -Mathf.Cos(angle));
+            var origin = radial * ring;
+
+            return new[]
+            {
+                origin + tangent * (thickness * 3.4f),
+                origin + radial * (thickness * 1.9f),
+                origin - radial * (thickness * 1.9f),
+            };
+        }
+
+        /// <summary>
+        /// Yazısı olmayan, simgeli düğme. Simge dikdörtgenin içine oranı
+        /// korunarak yerleşiyor ama dokunma hedefi dikdörtgenin tamamı: küçük
+        /// bir simgeye tam isabet ettirmek zorunda kalmak, parmakla oynanan bir
+        /// oyunda gereksiz bir zorluk.
+        /// </summary>
+        public static UIButton IconButton(Transform parent, Rect area, Sprite icon, Color tint)
+        {
+            // Altlık, dokunma hedefinin tamamını kaplıyor ve köşeleri yuvarlak:
+            // simge tek başına dururken küçük ve kaybolmuş görünüyordu, altlık
+            // hem onu bir düğmeye çeviriyor hem de dokunulacak yeri gösteriyor.
+            var plateGo = new GameObject("IconButton", typeof(RectTransform), typeof(Image));
+            var rect = plateGo.GetComponent<RectTransform>();
+
+            rect.SetParent(parent, false);
+            rect.anchorMin = new Vector2(area.xMin, area.yMin);
+            rect.anchorMax = new Vector2(area.xMax, area.yMax);
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var plate = plateGo.GetComponent<Image>();
+            plate.sprite = RoundedSquare;
+            plate.color = PanelColor;
+
+            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            var iconRect = iconGo.GetComponent<RectTransform>();
+
+            // Simge altlığın içinde pay bırakıyor. Kenara dayanan bir simge,
+            // altlığı çerçeve değil kırpma gibi gösteriyor.
+            iconRect.SetParent(rect, false);
+            iconRect.anchorMin = new Vector2(0.22f, 0.22f);
+            iconRect.anchorMax = new Vector2(0.78f, 0.78f);
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
+
+            var image = iconGo.GetComponent<Image>();
+            image.sprite = icon;
+            image.preserveAspect = true;
+            image.color = tint;
+
+            return new UIButton
+            {
+                Rect = rect,
+                Background = plate,
+            };
+        }
+
         static Vector2[] StarPolygon(float centerX, float centerY, float outerRadius, float innerRatio)
         {
             var points = new Vector2[10];
@@ -295,6 +612,48 @@ namespace PhysicsStack
             label.fontSizeMax = max;
         }
 
+        /// <summary>
+        /// Sürüklenebilir bir çubuk.
+        ///
+        /// uGUI'nin <c>Slider</c> bileşenini kullanmıyorum, aynı sebeple:
+        /// EventSystem istiyor ve bu projede o altyapı hiç kurulu değil. Elle
+        /// yazınca gereken şey iki dikdörtgen ve bir bölme işlemi.
+        ///
+        /// Dokunma hedefi çubuğun kendisinden kalın: görünen çizgi ince olmalı
+        /// ama parmağın ince bir çizgiyi tutturması gerekmemeli. Kök nesne
+        /// saydam ve verilen alanın tamamını kaplıyor, ince çubuk onun içinde
+        /// duruyor.
+        /// </summary>
+        public static UISlider Slider(Transform parent, Rect area, float value)
+        {
+            var root = Panel(
+                parent,
+                new Vector2(area.xMin, area.yMin),
+                new Vector2(area.xMax, area.yMax),
+                new Color(0f, 0f, 0f, 0f));
+
+            root.name = "Slider";
+
+            var track = Panel(root, new Vector2(0f, 0.42f), new Vector2(1f, 0.58f), LockedColor);
+            var fill = Panel(track, Vector2.zero, new Vector2(1f, 1f), AccentColor);
+            var knob = Panel(root, new Vector2(0f, 0.12f), new Vector2(0f, 0.88f), ButtonColor);
+
+            // Topuz sabit genişlikte: çubuğun oranına bağlansaydı dar ekranda
+            // tutulamayacak kadar incelirdi.
+            knob.offsetMin = new Vector2(-22f, 0f);
+            knob.offsetMax = new Vector2(22f, 0f);
+
+            var slider = new UISlider
+            {
+                Rect = root,
+                Fill = fill,
+                Knob = knob,
+            };
+
+            slider.SetValue(value);
+            return slider;
+        }
+
         public static TMP_Text Label(Transform parent, string text, float fontSize, TextAlignmentOptions alignment)
         {
             var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -320,6 +679,47 @@ namespace PhysicsStack
     }
 
     /// <summary>
+    /// Sürüklenebilir çubuğun durumu. <see cref="UIButton"/> gibi düz bir C#
+    /// sınıfı: sahnede bir bileşen değil, kurulan nesnelere tutamak.
+    /// </summary>
+    public sealed class UISlider
+    {
+        public RectTransform Rect;
+        public RectTransform Fill;
+        public RectTransform Knob;
+
+        public float Value { get; private set; }
+
+        public bool Contains(Vector2 screenPoint) =>
+            RectTransformUtility.RectangleContainsScreenPoint(Rect, screenPoint);
+
+        /// <summary>
+        /// Ekrandaki bir noktanın karşılığı olan değer. Parmağın çubuğun
+        /// dışına taşması sorun değil: değer kırpılıyor, yani sürüklerken
+        /// parmağını yukarı kaydıran biri çubuğu kaybetmiyor.
+        /// </summary>
+        public float ValueAt(Vector2 screenPoint)
+        {
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(Rect, screenPoint, null, out var local))
+            {
+                return Value;
+            }
+
+            var rect = Rect.rect;
+            return Mathf.Clamp01((local.x - rect.xMin) / Mathf.Max(1f, rect.width));
+        }
+
+        public void SetValue(float value)
+        {
+            Value = Mathf.Clamp01(value);
+
+            Fill.anchorMax = new Vector2(Value, Fill.anchorMax.y);
+            Knob.anchorMin = new Vector2(Value, Knob.anchorMin.y);
+            Knob.anchorMax = new Vector2(Value, Knob.anchorMax.y);
+        }
+    }
+
+    /// <summary>
     /// Dokunulabilir bir dikdörtgen. uGUI'nin <c>Button</c> bileşeni değil:
     /// o bileşen EventSystem ister, biz de dokunuşu zaten kendimiz okuyoruz.
     /// </summary>
@@ -335,7 +735,14 @@ namespace PhysicsStack
         {
             Enabled = enabled;
             Background.color = enabled ? UIKit.ButtonColor : UIKit.LockedColor;
-            Label.color = enabled ? UIKit.TextColor : UIKit.DimTextColor;
+
+            // Simgeli düğmenin yazısı yok. Etiketi zorunlu tutup boş bir yazı
+            // koymak da olurdu ama o, her karede ölçülen ve hiçbir şey çizmeyen
+            // bir TMP bileşeni demek.
+            if (Label != null)
+            {
+                Label.color = enabled ? UIKit.TextColor : UIKit.DimTextColor;
+            }
         }
 
         public void SetVisible(bool visible)
