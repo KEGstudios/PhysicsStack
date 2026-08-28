@@ -712,41 +712,62 @@ bilmeden ölçüm almak, ölçmemekten daha kötü.
 Uzun süre buraya hiçbir şey yazmadım, çünkü ölçmemiştim: "akıcı çalışıyor"
 cümlesi ölçüm olmadan bir iddia değil, bir izlenim.
 
-Şu an elimdeki tek gerçek ölçüm:
+Beş cihazda ölçtüm, hepsi tarayıcıdaki WebGL sürümünde:
 
-| Cihaz | Ortam | Seviye | Kalite | Sonuç |
-|---|---|---|---|---|
-| iPhone 16 Plus | Safari, WebGL | 1 | yüksek | 59-61 fps |
-| iPhone 16 Plus | Safari, WebGL | 13 | yüksek | 60 fps |
-| iPhone 13 | Safari, WebGL | 1 | yüksek | 55-60 fps |
+| Cihaz | Seviye | Kalite | Sonuç |
+|---|---|---|---|
+| iPhone 16 Plus | 1 | yüksek | 59-61 fps |
+| iPhone 16 Plus | 13 | yüksek | 60 fps |
+| iPhone 13 | 1 | yüksek | 55-60 fps |
+| Vivo Y29s 5G | 1 | yüksek | 60 fps |
+| Oppo Reno 2Z | 1 | yüksek | 40-45 fps |
+| Oppo Reno 2Z | 13 | yüksek | 40-45 fps |
+| Oppo Reno 2Z | 1 ve 13 | düşük | sabit 60 fps |
 
-İki sayının da ne söylediğine dikkat etmek gerekiyor. İki cihazın da ekranı
-60 Hz ve WebGL `requestAnimationFrame`'e bağlı çalışıyor, yani üstteki satırda
-ölçülen şey **oyunun tavanı değil ekranın tavanı**: "oyun kareleri
-yetiştiriyor" diyor, "ne kadar payla" demiyor.
+Sayıların ne söylediğine dikkat etmek gerekiyor. Cihazların ekranı 60 Hz ve
+WebGL `requestAnimationFrame`'e bağlı çalışıyor, yani "60 fps" yazan her satırda
+ölçülen şey **oyunun tavanı değil ekranın tavanı**: "oyun kareleri yetiştiriyor"
+diyor, "ne kadar payla" demiyor.
 
-İkinci satır bir eleme yapıyor: iPhone 16 Plus, **13. seviyede** — oyunun en
+Üst satırlar bir eleme yapıyor: iPhone 16 Plus, **13. seviyede** — oyunun en
 yüklü sahnesinde, iki namlu ateş ederken ve kule sekiz kutuya çıkmışken — hâlâ
-tavanda. Yani oyunun kendisi bu cihazda zorlanmıyor.
+tavanda. Yani oyunun kendisi güçlü bir cihazda zorlanmıyor.
 
-Asıl bilgi son satırda. iPhone 13, **1. seviyede** — yani sahnede iki üç
-kutu varken — tavanın altına düşüyor. Aynı oyun, daha eski cihaz, en hafif
-sahne. Sahnede fizik yok denecek kadar az, yani
-maliyet fizikte değil. En güçlü aday doldurma oranı: proje varsayılan WebGL
-şablonunu kullanıyor ve şablondaki `config.devicePixelRatio = 1;` satırı yorumda,
-yani oyun cihazın tam piksel yoğunluğunda çiziliyor — iPhone 13'te DPR 3, kabaca
-dokuz katı piksel. Üstüne post-process yığını tam ekran geçişler ekliyor.
+Asıl bilgi Oppo Reno 2Z'de. Bu cihaz kare bütçesini yüksek ayarda kaçırıyor ve
+iki şeyi aynı anda söylüyor:
 
-Bu bir hipotez, ölçüm değil. Doğrulaması, aynı cihazda kutu sayısı artarken
-düşüşün büyüyüp büyümediğine bakmak: büyüyorsa fizik, sabit kalıyorsa doldurma
-oranı.
+**Maliyet fizikte değil.** 1. seviye ile 13. seviye **aynı** sayıyı veriyor. Biri
+sahnede iki üç kutu, diğeri sekiz kutu artı iki namlu artı uçuşan toplar. Yük
+sahneyle birlikte artmıyorsa yükün kaynağı sahne değil.
+
+**Maliyet çizimde.** Aynı cihaz, aynı sahne, kalite ayarı düşükte: sabit 60. O
+ayarın değiştirdiği tek şey kaç piksel boyandığı — `renderScale` 1.0'dan 0.65'e
+iniyor (yani piksel sayısı %42'ye) ve post-process yığını kapanıyor.
+
+Yani doldurma oranı hipotezi **doğrulandı**, ve doğrulama tam da önceden
+yazdığım testle geldi: "kutu sayısı artarken düşüş büyüyorsa fizik, sabit
+kalıyorsa doldurma oranı." Sabit kaldı. Bir hipotezi yazarken onu neyin
+yanlışlayacağını da yazmanın faydası bu — ölçümü aldığımda ne anlama geldiğini
+tartışmam gerekmedi.
+
+Sebebin bir kısmı projede: varsayılan WebGL şablonundaki
+`config.devicePixelRatio = 1;` satırı yorumda, yani oyun cihazın tam piksel
+yoğunluğunda çiziliyor. Üstüne post-process yığını tam ekran geçişler ekliyor.
+
+Bunu şablondan zorla sınırlamadım ve sebebi bir tercih: kalite ayarı zaten
+oyuncunun elinde ve `renderScale` aynı işi daha iyi yapıyor — sabit bir DPR
+sınırı güçlü cihazda görüntüyü gereksiz yere bozardı, kalite ayarı ise yalnızca
+ihtiyacı olan cihazda devreye giriyor. Ayarın varsayılanı yüksek; Oppo'da
+oyuncunun bir kez ayarlara girmesi gerekiyor. Otomatik seçim (ilk saniyelerde
+kare süresini ölçüp kaliteyi düşürmek) doğru çözüm ama bu fazın işi değil.
 
 Panelde fps'in yanında **son bir saniyenin en kötü karesi** de var, çünkü
 ortalama tek başına yalan söylüyor: saniyede bir kez 120 ms süren bir kare
 ortalamayı 58'in altına indirmiyor ama oyuncunun hissettiği tek şey o. Yanındaki
-üçüncü sayı uyanık cisim sayısı — bu oyunda kare süresini belirleyen şey çizim
-değil fizik, ve dondurulmuş kutular çözücünün dışında olduğu için toplam kutu
-sayısı yanlış ölçü olurdu.
+üçüncü sayı uyanık cisim sayısı — dondurulmuş kutular çözücünün dışında olduğu
+için toplam kutu sayısı yanlış ölçü olurdu. Bu sayıyı "kare süresini fizik
+belirliyor" varsayımıyla eklemiştim; ölçüm o varsayımı yanlışladı, ama sayı
+kalıyor: yanlışlayan şey de oydu.
 
 Paneli telefonda açmanın yolu sol üst köşeye çift dokunmak: klavye ve Inspector
 olmadan panel açılamıyordu, yani ölçü aleti tam da en çok gerektiği yerde
@@ -794,7 +815,7 @@ Sahneyi ve seviyeleri de kod kuruyor: `PhysicsStack > Sahneyi Sifirdan Kur` ve
 
 **Build ayarları neden kodda?** Inspector'dan tıklayarak da yapılabilirdi, ama bu
 proje iki makine arasında Git ile taşınıyor ve tıklamaların bir kısmı taşınmıyor:
-aktif build target ve çıktı yolu makinede kalıyor. Ayarlar `AndroidBuild.cs`'te
+aktif build target ve çıktı yolu makinede kalıyor. Ayarlar `PlayerBuilds.cs`'te
 durunca build'in nasıl alındığı repoda yazılı oluyor ve iki makinede aynı çıktıyı
 veriyor. Build başarısız olursa script batchmode'da `Exit(1)` veriyor — sessizce
 geçen bir hata, yeşil görünen kırık bir build demek olurdu.

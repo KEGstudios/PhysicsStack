@@ -1664,3 +1664,30 @@ bir düşmüş kutu. Böylece eski kayıtlar yeni yıldız hesabıyla da okunabi
 
 `BoxLimit` ve `StarBoxes` alanları kalktı: ikisi de yükseklik hedefinin
 türeviydi ve artık karşılığı yok. Kaybetme sınırı tek bir sabit — üç düşen kutu.
+
+### Doldurma oranı hipotezi doğrulandı
+
+Beş cihazda ölçüm bitti. Karar veren cihaz Oppo Reno 2Z: yüksek ayarda 40-45
+fps, düşük ayarda sabit 60. Ve daha önemlisi, **1. seviye ile 13. seviye aynı
+sayıyı veriyor** — sahnede iki kutu varken de, sekiz kutu artı iki namlu artı
+uçuşan toplar varken de.
+
+Bu tam olarak hipotezi yazarken belirlediğim testti: "kutu sayısı artarken düşüş
+büyüyorsa fizik, sabit kalıyorsa doldurma oranı." Sabit kaldı. Yükün sahneyle
+büyümemesi fiziği eliyor; kalite ayarının sorunu bitirmesi çizimi işaret ediyor,
+çünkü o ayarın değiştirdiği tek şey kaç piksel boyandığı (`renderScale` 1.0 →
+0.65, post-process kapalı).
+
+Vivo Y29s 5G yüksek ayarda 60 veriyor, yani sorun "Android yavaş" değil, belirli
+bir GPU sınıfının piksel bütçesi.
+
+**Ne yapmadım:** WebGL şablonundaki `devicePixelRatio` sınırını açmadım.
+`renderScale` aynı işi daha iyi yapıyor — sabit bir DPR sınırı iPhone 16 Plus'ta
+görüntüyü sebepsiz bozardı, kalite ayarı ise sadece ihtiyacı olan cihazda
+devreye giriyor. Doğru çözüm otomatik seçim (açılışta birkaç saniye kare süresi
+ölçüp kaliteyi düşürmek) ama o bu fazın işi değil; şu an oyuncunun bir kez
+ayarlara girmesi gerekiyor.
+
+**Yan not:** ölçüm panelindeki "uyanık cisim sayısı", kare süresini fiziğin
+belirlediği varsayımıyla eklenmişti. Varsayım yanlış çıktı. Sayıyı kaldırmadım —
+varsayımı yanlışlayan ölçümü veren şey oydu.
