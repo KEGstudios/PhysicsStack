@@ -1811,3 +1811,34 @@ Yeni testler artık senaryonun kendisini tutuyor: 4-2-2 dizilişi hedefi altı o
 seviyeyi geçmiyor. Panelin `kule 4.00 / 6.00` satırı da düzeldi — ölçülen boyu
 hedef kutu sayısıyla karşılaştırıyordu ve kutu 1 birim olduğu için yanlış bir
 şeyi doğru gösteriyordu.
+
+### APK sonunda bir telefonda çalıştı
+
+Faz 3 boyunca README'de duran en uzun ömürlü dürüstlük notu kapandı: APK bir Oppo
+Reno 2Z'ye kurulup çalıştırıldı, açılıyor ve oynanıyor. Not iki fazdır oradaydı
+çünkü elimde cihaz yoktu ve "build derleniyor" ile "uygulama çalışıyor" aynı şey
+değil — özellikle IL2CPP/ARM64'te, ki oradaki çıktıyı üreten şey tarayıcıdakiyle
+aynı derleyici bile değil.
+
+Doğrulanan şey kurulum ve çalışma; kare süresi ayrıca ölçülmedi. README'deki
+performans tablosu hâlâ tarayıcı sayıları ve öyle kalıyor: yerel çıktının
+tarayıcıdan hızlı olması beklendiği için o sayılar kötü senaryo, yani tabloyu
+olduğundan iyi göstermiyorlar.
+
+### Düşürme sayacındaki artık, bilerek bırakıldı
+
+Kazanma şartındaki ölçüm hatası düzeltildi ama aynı vekil ölçü düşürme hakkında
+ve paneldeki sayaçta duruyor. Düşen bir kutunun üstüne kutu konursa üstteki
+sayılmıyor.
+
+Düzeltmeyi biliyorum — düşen kutu = oturmuş kutu sayısı eksi kuledeki kutu — ve
+yapmadım. Üç sebep: hata oyuncunun **lehine** çalışıyor (hak olduğundan cömert,
+kimse haksız yere kaybetmiyor), fazın son günündeyiz, ve o an cihazda
+doğrulanmış bir build vardı. Oynanış kuralını o noktada değiştirmek, biten bir
+doğrulamayı çöpe atıp yerine doğrulanmamış bir sürüm koymak olurdu.
+
+Karar proje sahibinin: "boş verelim, ikinci oyuna geçmek istiyorum." Doğru karar
+— bu bir ürün değil portföy parçası ve portföyün darboğazı bu prototipin cilası
+değil, henüz yapılmamış olan diğerleri.
+
+Yazılı bıraktım. Bilinen bir eksiği yazmamak, onu düzeltmemekten daha kötü.

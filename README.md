@@ -936,13 +936,17 @@ geçen bir hata, yeşil görünen kırık bir build demek olurdu.
 kısmı 32-bit çalıştırmıyor; ilk build uzun sürüyor (C++ runtime da derleniyor) ama
 telefonda çalışmayan bir APK'yı hızlı almanın değeri yok.
 
-**Ne test edildi, ne edilmedi.** APK derleniyor ve build hattı çalışıyor, ama
-elimde Android cihaz olmadığı için **APK hiçbir zaman bir telefonda
-çalıştırılmadı.** Dokunmatik girdi ve performans, telefonun tarayıcısında WebGL
-sürümü üzerinden test edildi — girdi yolu ikisinde de aynı (Input System'in
-`Pointer` katmanı), ama IL2CPP/ARM64 çıktısının cihazda nasıl davrandığı
-bilinmiyor. Bunu yazmadan "Android hedefli" demek, doğrulanmamış bir şeyi
-doğrulanmış gibi göstermek olurdu.
+**Ne test edildi, ne edilmedi.** APK bir Android cihaza (Oppo Reno 2Z) kurulup
+çalıştırıldı: açılıyor ve oynanıyor. Faz 3'ün büyük bölümünde burada "APK hiçbir
+zaman bir telefonda çalıştırılmadı" yazıyordu, çünkü elimde cihaz yoktu ve
+IL2CPP/ARM64 çıktısının cihazda nasıl davrandığı bilinmiyordu — build'in
+derlenmesi çalıştığı anlamına gelmiyor.
+
+Doğrulanan şey kurulum ve çalışma. Performans ölçümleri hâlâ beş cihazın
+tarayıcısında alınmış WebGL sayıları (aşağıdaki tablo); yerel APK'nin kare
+süresi ayrıca ölçülmedi ve yerel çıktının tarayıcıdan hızlı olması beklenir, yani
+tablodaki sayılar kötü senaryo. Girdi yolu ikisinde de aynı: Input System'in
+`Pointer` katmanı.
 
 Ekran yönü portre kilitli. Prototipte yataydı — kamera yatay kadraj için kuruluydu.
 Faz 2'de kamera görünür genişliği sabitleyecek şekilde yeniden yazılınca portreye
@@ -1144,6 +1148,25 @@ koymadım, çünkü buradaki risk o değil — onay ekranın ortasında açılı
 açan düğme sağ üst köşede, yani refleksle ikinci kez aynı yere basmak
 onaylamaya varmıyor.
 
+## Bilerek düzeltilmeden bırakılan bir şey
+
+Kazanma şartındaki ölçüm hatası düzeltildi (yukarıda), ama aynı vekil ölçü iki
+yerde daha duruyor: **düşürme hakkı** ve paneldeki "düşen X / 3" sayacı. İkisi de
+hâlâ "zemine değen kutulardan birincisi hariç hepsi" hesabını kullanıyor. Düşen
+bir kutunun üstüne kutu koyarsan üstteki sayılmıyor — iki kutu ziyan olmuşken
+sayaç bir gösteriyor.
+
+Düzeltmesi biliniyor ve tek satır: düşen kutu = oturmuş kutu sayısı − kuledeki
+kutu. Yapmadım, çünkü hata **oyuncunun lehine** çalışıyor (hak olduğundan cömert,
+yani kimse haksız yere kaybetmiyor) ve fazın son gününde, cihazda doğrulanmış bir
+build varken oynanış kuralına dokunmak, kazandığından çok riski olan bir iş.
+
+Yıldızlar bundan etkilenmiyor: onlar farklı ve sağlam bir ölçü kullanıyor —
+harcanan kutu eksi hedef. Kutunun nerede durduğuna bakmadığı için aynı sömürüye
+kapalı.
+
+Bunu yazıyorum çünkü bilinen bir eksiği yazmamak, onu düzeltmemekten daha kötü.
+
 ## Sonsuz modun zorluk eğrisi
 
 Sonsuz modda uzun süre hiç tehdit yoktu ve gerekçesini yazmıştım: tek bir şeyin
@@ -1220,6 +1243,7 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Performans — beş cihazda ölçüm, otomatik kalite düşürme
 - [x] Kural birliği — düşürme hakkı iki modda aynı, yeniden başlatma onayı
 - [x] Testler — kural katmanı için 29 EditMode testi
+- [x] Android — APK cihazda (Oppo Reno 2Z) kurulup çalıştırıldı
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı
