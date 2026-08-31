@@ -1,21 +1,57 @@
-# PhysicsStack — Prototip 1
+# PhysicsStack
 
-3D kule yığma prototipi. Kutuyu parmakla sürüklüyorsun ama **kulenin belirli bir
+**[▶ Tarayıcıda oyna](https://kegstudios.github.io/PhysicsStack/)**
+· Unity 6 · URP · C# · Android + WebGL
+
+3D kule yığma oyunu. Kutuyu parmakla sürüklüyorsun ama **kulenin belirli bir
 mesafe üstünden bırakmak zorundasın** — yerleştirme bir koyma değil, bir atış.
-Kule hedefi geçip orada **tutunursa** kazanıyorsun.
+
+<!-- KAYIT: 30 saniyelik oynanış gif'i buraya -->
+
+**Üç teknik başlık**
+
+- **Kural katmanı arayüzün arkasında.** İki mod — on üç seviyelik seri ve
+  sonsuz mod — aynı controller'ı paylaşıyor. Kural sınıfları MonoBehaviour
+  değil düz C#, karar verirken sahneye değil salt-okunur bir struct'a bakıyorlar;
+  bu yüzden **27 unit testle** Unity çalıştırmadan doğrulanabiliyorlar.
+- **His, ayarlanmış bir şey.** Sürükleme hız tabanlı takiple çalışıyor: kutu
+  diğerlerine gerçekten çarpıyor, parmağı hızlı çekince geride kalıyor
+  (ağırlık hissi), bırakınca fırlıyor. Üç yaklaşım denendi, ikisi elendi.
+- **Performans ölçüldü, tahmin edilmedi.** Beş cihazda kare süresi ölçüldü,
+  darboğaz doldurma oranı çıktı ve oyun yavaş cihazda kaliteyi kendisi
+  düşürüyor.
+
+Sanatçısı olmayan bir projede görsel ve ses tamamen koddan geliyor: pastel palet,
+elle yazılmış gökyüzü shader'ı ve dosyadan değil sentezden çıkan ses efektleri.
+
+Buradan aşağısı "ne yaptım" listesi değil **"neden böyle yaptım"**: her başlıkta
+alternatif neydi, neden elendi. Acelesi olan buraya kadarını okusun.
+
+**Nereye bakmalı.** Uzun bölüm mimari kararlar — sürükleme çekirdeği, kural
+katmanı, kamera kadrajı, koddan üretilen ses ve arayüz. Ölçüm ve optimizasyon
+"Ölçülen performans" başlığında. Oynarken çıkıp plana sonradan giren işler
+(kulenin tavanı, kontrol noktası, kural birliği) onun altındaki başlıklarda.
+Günlük karar defteri [docs/KARARLAR.md](docs/KARARLAR.md), faz planları
+[FAZ2](docs/FAZ2.md) ve [FAZ3](docs/FAZ3.md).
+
+---
+
+## Oyun
 
 İki mod var: on üç seviyelik seri (her seviyenin kendi sorusu var — bırakma
 mesafesi, hedef kutu sayısı, rüzgâr, top atıcı, ve sondaki ikisinde bunların
-birleşimi) ve sekizinci seviyede açılan sonsuz mod. Sonsuzda zorluk seviyeler
-arasında değil turun **içinde** artıyor: tehditler sırayla devreye giriyor,
-belirli yüksekliklerde de kulenin altı donarak yeni bir zemin oluyor. Sanatçısı olmayan bir projede görsel ve ses
-tamamen koddan geliyor: pastel palet, elle yazılmış gökyüzü shader'ı ve dosyadan
-değil sentezden çıkan ses efektleri.
+birleşimi) ve sekizinci seviyede açılan sonsuz mod. Kule hedefi geçip orada
+**tutunursa** kazanıyorsun.
 
-- Unity 6 (6000.5.10f1) · URP · Android + WebGL
+Sonsuzda zorluk seviyeler arasında değil turun **içinde** artıyor: tehditler
+sırayla devreye giriyor, belirli yüksekliklerde de kulenin altı donarak yeni bir
+zemin oluyor.
+
+## Üç fazda yapıldı
+
 - **Faz 1 (5 gün):** dokunmatik girdiyi fiziğe bağlamak. `v1-prototype` olarak donduruldu.
 - **Faz 2 (5 gün):** onu oynanabilir bir oyuna çevirmek. `v2-playable`.
-- **Faz 3:** bitmiş gibi görünmesini ve hissettirmesini sağlamak.
+- **Faz 3 (5 gün):** bitmiş gibi görünmesini ve hissettirmesini sağlamak.
 
 Faz 1'in sonunda elimde bir teknik gösterim vardı: beş kutu koyuyordun, bitiyordu.
 Çekirdeğin üstüne gerçek bir oyun döngüsü koymanın maliyeti, sıfırdan yeni bir
@@ -320,6 +356,11 @@ vermeden alanı boş bırakıyor.
 Üçünün ortak sonucu aynı: sahne kurulum aracı artık yazdığı her referansı geri
 okuyup doğruluyor ve yazamadığında bağırıyor.
 
+Bu, sahne tarafının cevabı. Kural tarafının cevabı ise testler: "hedefe ulaşan
+kule kazanıyor mu" sorusu derlemenin cevaplayabileceği bir soru değil, ama
+oynayarak cevaplamak da pahalı — kuleyi her seferinde elle kurman gerekiyor.
+Aşağıdaki başlık onu anlatıyor.
+
 ### Ses dosyadan gelmiyor, koddan üretiliyor
 
 Oyundaki on sesin hiçbiri bir dosya değil. Hepsi açılışta örnek örnek
@@ -565,6 +606,46 @@ zemin boyutunu değiştiren biri farkında olmadan oyunun zorluğunu değiştiri
 tek script değişince tüm proje değil sadece bu assembly derleniyor; ve Editor kodu
 runtime koduna referans verebilirken tersi mümkün olmuyor — sınır dille zorlanıyor.
 
+Üçüncü assembly sonradan geldi: `PhysicsStack.Tests`, yalnızca Editor'de derlenen
+ve `UNITY_INCLUDE_TESTS` kısıtıyla build'e hiç girmeyen bir kütüphane. Testleri
+yazmak istediğimde ayrıca bir şey kurmam gerekmedi, çünkü sınır zaten çizilmişti.
+
+### Ne test edilebilir, ne edilemez
+
+Kural sınıfları MonoBehaviour değil, düz C#. Karar verirken sahneye değil
+`StackSnapshot`'a bakıyorlar ve o da salt-okunur bir struct. Bu üçü bir araya
+gelince "kule şu hâldeyken tur ne olur" sorusu Unity çalıştırmadan sorulabilir
+bir soru oluyor: sahne kurmak, fizik adımı beklemek, kutu düşürmek gerekmiyor.
+
+Bu bir yan fayda, hedef değildi. Kural katmanını arayüzün arkasına almanın
+sebebi iki modun aynı controller'ı paylaşmasıydı; test edilebilirlik o kararın
+kendiliğinden gelen sonucu. Ama sonucu gelince kullanmamak için sebep yok:
+**27 test** hedefe ulaşma, tutunma süresi, çöküş tespiti, düşürme hakkı,
+kontrol noktası aralıkları ve tehdit sırasını doğruluyor.
+
+En değerlisi şu ikisi:
+
+- **Temas gömülmesi payı.** PhysX üst üste duran cisimlerin milimetrik
+  gömülmesine izin veriyor, on kutuluk kule 9.99 ölçülüyor. Pay oransal ama
+  tavanlı; tavan olmasaydı 100 birimlik eşikte pay iki kutu olurdu. Testte iki
+  yön de var: 9.99 hedefi tutturuyor, 99.5 tutturmuyor.
+- **İki modun aynı davranması.** Aynı anlık görüntüyü hem `LevelRules`'a hem
+  `EndlessRules`'a verip aynı sonucu bekliyorum. Sayının paylaşılan sabitten
+  geldiğini değil, iki modun gerçekten aynı davrandığını doğruluyor — biri
+  ileride kendi kopyasını tutmaya kalkarsa test kırılır.
+
+Test edilmeyen şey de belli: `StackTracker`'ın ölçümü, yani "kule gerçekten 4
+birim mi". O fizik işi ve cevabı cihazda oynayarak alınıyor. Testler kuralın
+ölçüyü doğru **yorumladığını** doğruluyor, ölçünün kendisini değil — bu ayrımı
+yazmadan "test edildi" demek, doğrulanmamış bir şeyi doğrulanmış göstermek olurdu.
+
+Çalıştırmak: Unity'de `Window > General > Test Runner > EditMode > Run All`.
+Komut satırından:
+
+```
+Unity.exe -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testResults sonuc.xml
+```
+
 ---
 
 ## Klasör yapısı
@@ -808,10 +889,10 @@ elimde değildi.
 
 ```bash
 # Android
-Unity.exe -batchmode -quit -projectPath . -buildTarget Android           -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildAndroid
+Unity.exe -batchmode -quit -projectPath . -buildTarget Android -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildAndroid
 
 # WebGL
-Unity.exe -batchmode -quit -projectPath . -buildTarget WebGL           -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildWebGL
+Unity.exe -batchmode -quit -projectPath . -buildTarget WebGL -executeMethod PhysicsStack.EditorTools.PlayerBuilds.BuildWebGL
 ```
 
 Çıktı: `Build/Android/PhysicsStack.apk` ve `Build/WebGL/` (Build klasörü
@@ -987,8 +1068,7 @@ yüksekliğe çıkmak için fazladan kutu ister. Hedef kutu sayısına dönünce
 Yeni ölçü doğrudan hatayı sayıyor: **düşen kutu**. Hiç düşürmezsen üç yıldız,
 bir kutuda iki, iki kutuda bir, üçüncüde tur biter. Hata cezasız değil ama
 kademeli — öğrenilecek bir düzen varken öğrenmek hata yapmayı gerektiriyor.
-Sonsuz modda tek kutu hâlâ kaybettiriyor: orada tur zaten "nereye kadar
-dayanabilirsin" sorusu.
+Aynı üç kutuluk hak sonsuz modda da geçerli; bir sonraki başlık onu anlatıyor.
 
 ## Aynı kural iki modda
 
@@ -1109,6 +1189,7 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Simgeler — yıldız, dişli, yeniden başlat, altlık (hepsi kodda)
 - [x] Performans — beş cihazda ölçüm, otomatik kalite düşürme
 - [x] Kural birliği — düşürme hakkı iki modda aynı, yeniden başlatma onayı
+- [x] Testler — kural katmanı için 27 EditMode testi
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı

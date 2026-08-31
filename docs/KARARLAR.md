@@ -1654,6 +1654,10 @@ cezasız değil ama kademeli — ve oyuncunun öğrenmesi gereken bir düzen var
 Sonsuz modda tek kutu hâlâ kaybettiriyor ve fark bilerek: orada tur zaten
 "nereye kadar dayanabilirsin" sorusu, seviyede ise geçilecek bir tasarım var.
 
+> **Sonradan bozuldu.** Bu paragraf iki gün sonra geçersiz oldu; sayı iki modda
+> eşitlendi. Gerekçesi aşağıda, "Düşürme hakkı iki modda aynı sayı" başlığında.
+> Defterden silmiyorum: kararın yanlış çıkması da kararın bir parçası.
+
 Düşen kutu iki olayı birden topluyor: kuleyi ıskalayıp yere düşen kutu ile
 kuleden devrilip yere inen kutu. Oyuncu açısından ikisi aynı şey — bir kutu
 kaybettin — ve ayrı ayrı saymak iki farklı ceza üretirdi.
@@ -1746,3 +1750,29 @@ ulaşılan yere koydum" diyordu, düzen tersini yapıyordu. Düzeni değil gerek
 düzelttim, çünkü düzen zaten duraklatma paneliyle aynı dili konuşuyor (üstteki
 bulunduğun yerde bırakıyor, alttaki turu bitiriyor) ve buradaki risk refleks
 değil: onay ekranın ortasında, onu açan düğme sağ üst köşede.
+
+### Kural katmanına test yazmak
+
+Testler plana sonradan girdi ve girmesinin sebebi şu: Faz 3'te çıkan üç hatanın
+üçünde de derleme temizdi, sahne kuruluyordu, log sessizdi. "0 hata" bir
+doğrulama değil. Sahne tarafının cevabını kurulum aracı verdi (yazdığı her
+referansı geri okuyup doğruluyor); kural tarafı cevapsız kalmıştı.
+
+Yazmak ucuza geldi çünkü altyapı zaten vardı — ve bu bir tesadüf değil, iki eski
+kararın faturası: kural sınıfları MonoBehaviour değil düz C# (iki mod aynı
+controller'ı paylaşsın diye), karar girdisi de salt-okunur bir struct (aynı karar
+içinde ölçüyü iki kez okuyup iki farklı cevap almayalım diye). İkisi de test için
+alınmamıştı; test edilebilirlik onların yan ürünü.
+
+27 test yazıldı. En değerlisi iki tanesi: temas gömülmesi payının iki yönü
+(9.99 hedefi tutturuyor, 99.5 tutturmuyor — payın tavanı olmasaydı ikincisi de
+tutturur, düzeltmeye çalıştığımız hatanın aynısı ters yönde olurdu) ve iki modun
+aynı anlık görüntüye aynı cevabı vermesi. İkincisi sayının paylaşılan sabitten
+geldiğini değil, modların gerçekten aynı davrandığını doğruluyor — biri ileride
+kendi kopyasını tutmaya kalkarsa test kırılır.
+
+Test edilmeyen yer de bilerek belli: `StackTracker`'ın ölçümü. "Kule gerçekten 4
+birim mi" sorusu fizik işi ve cevabı cihazda oynayarak alınıyor. Testler kuralın
+ölçüyü doğru **yorumladığını** doğruluyor, ölçünün kendisini değil. Bu ayrımı
+yazmadan "test edildi" demek, doğrulanmamış bir şeyi doğrulanmış göstermek olurdu
+— APK paragrafında da aynı titizlik var.

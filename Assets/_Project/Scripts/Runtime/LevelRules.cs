@@ -62,11 +62,15 @@ namespace PhysicsStack
                 return RunOutcome.Lost;
             }
 
-            // Seviyede üç kutu düşürmek turu bitiriyor. Sonsuz modda tek kutu
-            // yetiyor ve fark bilerek: orada tur zaten "nereye kadar
-            // dayanabilirsin" sorusu, burada ise oyuncunun öğrenmesi gereken bir
-            // düzen var ve öğrenmek hata yapmayı gerektiriyor. İki kutuluk pay,
-            // yıldızın da ölçüsü — yani hata cezasız değil, kademeli.
+            // Üçüncü düşen kutu turu bitiriyor; iki kutuluk pay bilerek var,
+            // çünkü oyuncunun öğrenmesi gereken bir düzen var ve öğrenmek hata
+            // yapmayı gerektiriyor. Pay aynı zamanda yıldızın da ölçüsü — yani
+            // hata cezasız değil, kademeli.
+            //
+            // Sayı sonsuz modla aynı ve paylaşılan sabitten geliyor: bir süre
+            // farklıydılar, ama aynı el hareketi iki modda farklı
+            // cezalandırılınca oyuncunun öğrendiği şey kural değil "hangi
+            // moddayım" oluyor.
             if (snapshot.DroppedCount >= StackRules.MaxDrops)
             {
                 return RunOutcome.Lost;
