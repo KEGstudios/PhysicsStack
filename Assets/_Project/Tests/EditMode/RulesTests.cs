@@ -292,6 +292,36 @@ namespace PhysicsStack.Tests
             Assert.AreEqual(0, level.StarsFor(5));
         }
 
+        [Test]
+        public void YanSutunlarKuleyeYazilmiyor()
+        {
+            // Oynarken çıkan hata. Zemine üç kutu atılıp üstlerine 4-2-2 diye
+            // yığıldığında sekiz kutu atılmış, ikisi düşmüş sayılıyordu ve
+            // "atılan eksi düşen" altı veriyordu — hedefi altı olan seviye, en
+            // yüksek sütunu dört kutuyken geçiliyordu.
+            //
+            // Ölçü boya bağlanınca sömürü kapandı: yan yana dizilen sütunlar
+            // boyu artırmıyor.
+            var rules = new LevelRules(Level(targetBoxes: 6, holdTime: 1.5f));
+            var snapshot = new Snap
+            {
+                Height = 4f, PlacedCount = 8, GroundedCount = 3, SteadyTime = 5f,
+            };
+
+            Assert.AreEqual(4, snapshot.Build().TowerBoxes);
+            Assert.AreEqual(RunOutcome.Continue, rules.Evaluate(snapshot));
+        }
+
+        [Test]
+        public void KuleKutuSayisiTemasGomulmesineTakilmiyor()
+        {
+            // Altı kutuluk kule biriken gömülme yüzünden 5.97 ölçülüyor.
+            // Yarım birimlik yuvarlama payı bu hatadan kat kat büyük.
+            var snapshot = new Snap { Height = 5.97f }.Build();
+
+            Assert.AreEqual(6, snapshot.TowerBoxes);
+        }
+
         // ---------------------------------------------------------------
         // EndlessRules — sonsuz modun kararları
         // ---------------------------------------------------------------

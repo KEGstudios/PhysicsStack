@@ -13,7 +13,7 @@ mesafe üstünden bırakmak zorundasın** — yerleştirme bir koyma değil, bir
 - **Kural katmanı arayüzün arkasında.** İki mod — on üç seviyelik seri ve
   sonsuz mod — aynı controller'ı paylaşıyor. Kural sınıfları MonoBehaviour
   değil düz C#, karar verirken sahneye değil salt-okunur bir struct'a bakıyorlar;
-  bu yüzden **27 unit testle** Unity çalıştırmadan doğrulanabiliyorlar.
+  bu yüzden **29 unit testle** Unity çalıştırmadan doğrulanabiliyorlar.
 - **His, ayarlanmış bir şey.** Sürükleme hız tabanlı takiple çalışıyor: kutu
   diğerlerine gerçekten çarpıyor, parmağı hızlı çekince geride kalıyor
   (ağırlık hissi), bırakınca fırlıyor. Üç yaklaşım denendi, ikisi elendi.
@@ -620,7 +620,7 @@ bir soru oluyor: sahne kurmak, fizik adımı beklemek, kutu düşürmek gerekmiy
 Bu bir yan fayda, hedef değildi. Kural katmanını arayüzün arkasına almanın
 sebebi iki modun aynı controller'ı paylaşmasıydı; test edilebilirlik o kararın
 kendiliğinden gelen sonucu. Ama sonucu gelince kullanmamak için sebep yok:
-**27 test** hedefe ulaşma, tutunma süresi, çöküş tespiti, düşürme hakkı,
+**29 test** hedefe ulaşma, tutunma süresi, çöküş tespiti, düşürme hakkı,
 kontrol noktası aralıkları ve tehdit sırasını doğruluyor.
 
 En değerlisi şu ikisi:
@@ -1060,6 +1060,36 @@ türünü değiştirdim. **Hedef artık kutu sayısı.** Sayılar aynı (3, 4, 4
 çünkü kutu 1 birim; değişen şey cinsi. Tam sayı olduğu için ondalık ölçünün
 getirdiği bütün sorular ortadan kalkıyor.
 
+### Ama sayıyı yanlış yerden hesapladım
+
+Hedefi değiştirmek doğruydu, hesaplamayı değiştirmek yanlış oldu. "Kulede kaç
+kutu var" sorusunu çıkarmayla cevapladım: **atılan kutular eksi zemine düşenler.**
+Formül sessiz bir varsayım taşıyordu — *zemine değmeyen her kutu kulenin
+parçasıdır.*
+
+Oynayınca varsayım çöktü. Zemine üç kutu atıp üstlerine 4-2-2 diye yığdığımda
+sekiz kutu atılmış, ikisi düşmüş sayıldı; çıkarma altı verdi ve hedefi altı olan
+seviye, **en yüksek sütun dört kutuyken** geçildi. Sömürü basit: kenara kutu at,
+üstüne yığ, hiç kule yapmadan hedefi geç.
+
+Düzeltmesi ölçüyü tek kaynağa indirmek oldu: kutu sayısı artık ölçülen boydan
+türetiliyor, `Mathf.RoundToInt(Height)`. Yan yana dizilen sütunlar boyu
+artırmıyor, yani sömürü kapanıyor — kandırmanın tek yolu gerçekten yükseğe
+yığmak, o da zaten oyunun kendisi. Yuvarlamanın yarım birimlik payı, gömülmenin
+biriktirdiği hatadan kat kat büyük: altı kutuluk kule 5.97 okunuyor, altı
+yuvarlanıyor.
+
+Yani başlangıçtaki ölçü — yükseklik — aslında doğruymuş; yanlış olan onu okuma
+biçimiydi. Hedefin kutu sayısı olarak **ifade edilmesi** duruyor, çünkü oyuncuya
+"dört kutu koy" demek "4 birime çık" demekten net. Değişen şey o sayının nereden
+geldiği.
+
+Hatanın panelde de bir izi vardı ve iki gün boyunca fark etmedim: geliştirici
+paneli `kule 4.00 / 6.00` yazıyordu, yani ölçülen **boyu** hedef **kutu
+sayısıyla** karşılaştırıyordu. Kutu 1 birim olduğu için sayılar birbirini tutuyor
+ve satır yanlış bir şeyi doğru gösteriyordu. Şimdi hesabın kendisini yazıyor:
+`kutu 4 / 6 · atılan 8 · düşen 2 / 3 · zeminde 3`.
+
 Bu, yıldızın ölçtüğü şeyi de değiştirmek zorunda bıraktı. Eski ölçü "kaç kutu
 harcadın" idi ve yalnızca hedef yükseklikken anlamlıydı — eğri oturan kule aynı
 yüksekliğe çıkmak için fazladan kutu ister. Hedef kutu sayısına dönünce o ölçü
@@ -1189,7 +1219,7 @@ Günlük kararlar ve notlar: [docs/KARARLAR.md](docs/KARARLAR.md)
 - [x] Simgeler — yıldız, dişli, yeniden başlat, altlık (hepsi kodda)
 - [x] Performans — beş cihazda ölçüm, otomatik kalite düşürme
 - [x] Kural birliği — düşürme hakkı iki modda aynı, yeniden başlatma onayı
-- [x] Testler — kural katmanı için 27 EditMode testi
+- [x] Testler — kural katmanı için 29 EditMode testi
 - [ ] Kapanış — 30 saniyelik kayıt, README v3, `v3` etiketi
 
 ## Kapsam dışı

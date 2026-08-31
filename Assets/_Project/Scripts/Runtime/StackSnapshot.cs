@@ -82,6 +82,28 @@ namespace PhysicsStack
         public int DroppedCount => Mathf.Max(0, GroundedCount - 1);
 
         /// <summary>
+        /// Kulede duran kutu sayısı.
+        ///
+        /// Kutular 1 birim olduğu için bu, ölçülen boyun yuvarlanmış hâli.
+        /// Yuvarlama temas gömülmesi için: altı kutuluk kule 5.97 okunuyor ve
+        /// yarım birimlik pay, biriken gömülmeden kat kat büyük.
+        ///
+        /// Önce çıkarmayla hesaplanıyordu — atılan kutulardan zemine düşenler
+        /// çıkarılıyordu — ve o formül sessizce şunu varsayıyordu: zemine
+        /// değmeyen her kutu kulenin parçasıdır. Düşen bir kutunun üstüne kutu
+        /// konduğu anda varsayım çöküyor, çünkü yan sütundaki kutular da
+        /// "kulede" sayılıyor. Oynarken tam olarak bu çıktı: zemine üç kutu
+        /// atıp üstlerine 4-2-2 diye yığınca sekiz kutunun altısı kuleye
+        /// yazıldı ve hedefi altı olan seviye, en yüksek sütunu dört kutuyken
+        /// geçildi.
+        ///
+        /// Boy ölçüsü bu sömürüye kapalı: yan yana dizilen sütunlar boyu
+        /// artırmıyor. Kandırmanın tek yolu gerçekten yükseğe yığmak, o da
+        /// zaten oyunun kendisi.
+        /// </summary>
+        public int TowerBoxes => Mathf.RoundToInt(Height);
+
+        /// <summary>
         /// Kule çöktü mü: oturmuş boy, tur boyunca ulaşılan zirvenin bu kadar
         /// altına düştüyse tepeden en az bir kutu gitmiş demektir.
         ///

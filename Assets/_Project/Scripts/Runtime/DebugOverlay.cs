@@ -205,10 +205,27 @@ namespace PhysicsStack
 
             GUILayout.Label($"{title} · {Describe(controller.State)} · {timer}", style);
 
+            GUILayout.Label($"kule {height:0.00} birim · {controller.ScoreText}", style);
+
+            // Kutu muhasebesi ayrı satırda ve bilerek ayrıştırılmış.
+            //
+            // Buradaki eski satır ölçülen **boyu** hedef **kutu sayısıyla**
+            // karşılaştırıyordu ("kule 4.00 / 6.00"). Kutu 1 birim olduğu için
+            // iki sayı birbirini tutuyor ve satır yanlış bir şeyi doğru
+            // gösteriyordu: kazanma şartı hedef kutu sayısına döndüğünde bu
+            // satır eski kuralı anlatmaya devam etti.
+            //
+            // Yeni satır hesabın kendisini gösteriyor, çünkü asıl soru
+            // "kulede kaç kutu var" değil, "bu sayı nasıl çıkıyor":
+            // zemine oturmuş kutulardan birincisi kulenin temeli, gerisi
+            // düşmüş sayılıyor. Zemindeki sayı beklenenden düşükse hata
+            // kuralda değil ölçümde demektir — kuleye değmeden başka bir
+            // kutunun üstüne konan kutu zemine oturmuş görünmüyor.
             GUILayout.Label(
-                target > 0f
-                    ? $"kule {height:0.00} / {target:0.00} · {controller.ScoreText}"
-                    : $"kule {height:0.00} · {controller.ScoreText}",
+                (target > 0f ? $"kutu {controller.TowerBoxes} / {target:0}" : $"kutu {controller.TowerBoxes}") +
+                $" · atılan {controller.Tracker.PlacedCount}" +
+                $" · düşen {controller.DroppedBoxes}/{StackRules.MaxDrops}" +
+                $" · zeminde {controller.Tracker.GroundedCount()}",
                 style);
 
             // Kadraj satırı buradan kalktı: portre çerçevesi Gün 6'da oturdu, artık

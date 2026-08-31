@@ -1764,7 +1764,8 @@ controller'ı paylaşsın diye), karar girdisi de salt-okunur bir struct (aynı 
 içinde ölçüyü iki kez okuyup iki farklı cevap almayalım diye). İkisi de test için
 alınmamıştı; test edilebilirlik onların yan ürünü.
 
-27 test yazıldı. En değerlisi iki tanesi: temas gömülmesi payının iki yönü
+Önce 27 test yazıldı, sonra oynarken çıkan ölçüm hatası ikisini daha ekledi
+(bkz. aşağıda "Çıkarmayla ölçmek"). En değerlisi ikisi: temas gömülmesi payının iki yönü
 (9.99 hedefi tutturuyor, 99.5 tutturmuyor — payın tavanı olmasaydı ikincisi de
 tutturur, düzeltmeye çalıştığımız hatanın aynısı ters yönde olurdu) ve iki modun
 aynı anlık görüntüye aynı cevabı vermesi. İkincisi sayının paylaşılan sabitten
@@ -1776,3 +1777,37 @@ birim mi" sorusu fizik işi ve cevabı cihazda oynayarak alınıyor. Testler kur
 ölçüyü doğru **yorumladığını** doğruluyor, ölçünün kendisini değil. Bu ayrımı
 yazmadan "test edildi" demek, doğrulanmamış bir şeyi doğrulanmış göstermek olurdu
 — APK paragrafında da aynı titizlik var.
+
+### Çıkarmayla ölçmek: sessiz varsayımın faturası
+
+Seviyenin hedefi kutu sayısına dönerken "kulede kaç kutu var" sorusunu çıkarmayla
+cevaplamıştım: atılan kutular eksi zemine düşenler. Kısa, hızlı ve yanlış.
+
+Formülün taşıdığı varsayım yazılı değildi, o yüzden de sınanmadı: *zemine
+değmeyen her kutu kulenin parçasıdır.* Tek bir kule varken doğru. Oyuncu düşen
+bir kutunun üstüne kutu koyduğu anda yanlış.
+
+Proje sahibi buldu: zemine üç kutu atıp üstlerine 4-2-2 diye yığınca sekiz kutu
+atılmış, ikisi düşmüş sayıldı, çıkarma altı verdi ve hedefi altı olan seviye en
+yüksek sütun dört kutuyken geçildi. Kenara at, üstüne yığ, hiç kule yapmadan geç.
+
+Düzeltme ölçüyü tek kaynağa indirmek: kutu sayısı ölçülen boydan türetiliyor.
+Yan sütunlar boyu artırmadığı için sömürü kapanıyor. Yuvarlamanın yarım birimlik
+payı temas gömülmesinden kat kat büyük — altı kutuluk kule 5.97 okunuyor.
+
+İki ders çıktı ve ikisi de tekniğe değil yönteme ait:
+
+**Birincisi:** başlangıçtaki ölçü doğruymuş. Yükseklikten kutu sayısına geçerken
+"ondalık ölçü sorunlu" diye düşünmüştüm; sorunlu olan ondalık değil, onu okuma
+biçimiydi. Yeni ölçü eskisinin sorununu çözerken eskisinin çözdüğü sorunu geri
+getirdi ve bunu iki gün göremedim.
+
+**İkincisi:** hata, test yazarken "test edilmiyor" diye ilan ettiğim yerin tam
+sınırındaydı. Testler kuralın matematiğini doğruluyordu ve matematik doğruydu —
+`8 - 2 = 6` ve hedef 6. Yanlış olan girdiydi. Sınırı doğru çizmişim ama sınırın
+öbür tarafına bakmamışım.
+
+Yeni testler artık senaryonun kendisini tutuyor: 4-2-2 dizilişi hedefi altı olan
+seviyeyi geçmiyor. Panelin `kule 4.00 / 6.00` satırı da düzeldi — ölçülen boyu
+hedef kutu sayısıyla karşılaştırıyordu ve kutu 1 birim olduğu için yanlış bir
+şeyi doğru gösteriyordu.

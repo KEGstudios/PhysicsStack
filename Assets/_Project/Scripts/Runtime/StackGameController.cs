@@ -268,7 +268,7 @@ namespace PhysicsStack
 
             Score = rules.Score(snapshot);
             DroppedBoxes = snapshot.DroppedCount;
-            TowerBoxes = snapshot.PlacedCount - snapshot.DroppedCount;
+            TowerBoxes = snapshot.TowerBoxes;
 
             switch (rules.Evaluate(snapshot))
             {

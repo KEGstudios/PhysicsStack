@@ -96,12 +96,11 @@ namespace PhysicsStack
             // olarak o süre.
             //
             // Sayılan şey kuledeki kutu, atılan kutu değil: yere düşenler
-            // hedefe saymıyor. Önce hedef yükseklikti ve ölçüm kulenin boyuydu;
-            // ikisi kutu 1 birim olduğu için hemen hemen aynı sayı ama aynı şey
-            // değil. Yükseklik ölçümü temas gömülmesine takılıyordu (on kutuluk
-            // kule 9.99 okunuyor), kutu saymak ise tam sayı: "dört kutu koy"
-            // diyen bir seviye dört kutuda geçiliyor.
-            if (TowerBoxes(snapshot) >= level.targetBoxes)
+            // hedefe saymıyor. Sayıyı anlık görüntü veriyor ve ölçülen boydan
+            // türetiyor — bir süre "atılan eksi düşen" diye hesaplanıyordu ve o
+            // formül, düşen kutunun üstüne kutu konduğunda yan sütunu da kuleye
+            // yazıyordu. Gerekçesi StackSnapshot.TowerBoxes'ta.
+            if (snapshot.TowerBoxes >= level.targetBoxes)
             {
                 return snapshot.SteadyTime >= level.holdTime
                     ? RunOutcome.Won
@@ -110,10 +109,6 @@ namespace PhysicsStack
 
             return RunOutcome.Continue;
         }
-
-        /// <summary>Kulede duran kutu sayısı: atılanlardan yere düşenler çıkarılıyor.</summary>
-        static int TowerBoxes(in StackSnapshot snapshot) =>
-            snapshot.PlacedCount - snapshot.DroppedCount;
 
         /// <summary>
         /// Seviyede skor "kaç kutu harcadın". Az olan iyi — sonsuz moddaki skorun
